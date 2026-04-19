@@ -1,0 +1,84 @@
+@startuml Istos Architecture
+
+skinparam componentStyle uml2
+skinparam packageStyle rectangle
+
+package "istos.communication" {
+    interface SessionInterface {
+        +session: Optional[zenoh.Session]
+        +get_info(): dict
+    }
+    class ZenohSession {
+        +__enter__()
+        +__exit__()
+    }
+    class AsyncZenohSession {
+        +__aenter__()
+        +__aexit__()
+    }
+    SessionInterface <|-- ZenohSession
+    SessionInterface <|-- AsyncZenohSession
+}
+
+package "istos.consistency" {
+    interface StoragePlugin <<Protocol>> {
+        +put(key, value)
+        +get(key)
+        +delete(key)
+    }
+
+    interface StateFetcher <<Protocol>> {
+        +fetch_last_state(key_expr)
+        +fetch_historical_data(key_expr, start, end)
+    }
+
+    class ZenohStateFetcher {
+        -session: zenoh.Session
+    }
+
+    abstract class AbstractRegistery {
+        -prefix: str
+        -storage: StoragePlugin
+        +{abstract} register(session)
+        +{abstract} unregister()
+        +{abstract} on_query(query)
+    }
+
+    class PrefixRegistery {
+        -queryable: Optional[zenoh.Queryable]
+    }
+
+    StateFetcher <|.. ZenohStateFetcher
+    AbstractRegistery <|-- PrefixRegistery
+    AbstractRegistery o-- StoragePlugin
+}
+
+package "istos.messages" {
+    interface Serialize <<Protocol>> {
+        +serialize(message): bytes
+        +deserialize(data): Any
+    }
+
+    class JsonSerializer
+    class MsgPackSerializer
+    class ProtobufSerializer
+    class PydanticSerializer
+    class YamlSerializer
+    class Base64Serializer {
+        -inner: Serialize
+    }
+
+    Serialize <|.. JsonSerializer
+    Serialize <|.. MsgPackSerializer
+    Serialize <|.. ProtobufSerializer
+    Serialize <|.. PydanticSerializer
+    Serialize <|.. YamlSerializer
+    Serialize <|.. Base64Serializer
+}
+
+' Relationships
+PrefixRegistery ..> SessionInterface : uses
+ZenohStateFetcher ..> SessionInterface : uses
+Base64Serializer o-- Serialize : wraps
+
+@enduml
