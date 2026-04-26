@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 from unittest.mock import MagicMock, AsyncMock
-from istos.Istos import Istos
+from istos import Istos
 from istos.core.retry import RetryPolicy, execute_with_retry
 
 

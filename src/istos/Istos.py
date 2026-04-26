@@ -1,7 +1,8 @@
 import asyncio
 import inspect
 import zenoh
-from typing import Any, Callable, List, Optional, Union
+from contextlib import AsyncExitStack
+from typing import Any, Callable, List, Optional, Union, AsyncContextManager
 
 from istos.communication.sessions import SessionManager, AsyncZenohSession, ZenohSession
 from istos.consistency.register import AbstractRegistery
@@ -39,10 +40,12 @@ class Istos:
         session_manager: Optional[SessionManager] = None,
         storage: Optional[StoragePlugin] = None,
         serializer: Optional[Serialize] = None,
+        lifespan: Optional[Callable[["Istos"], AsyncContextManager[None]]] = None,
     ):
         self._session_manager = session_manager or AsyncZenohSession()
         self._storage = storage or InMemoryStoragePlugin()
         self._serializer = serializer or JsonSerializer()
+        self.lifespan = lifespan
         self._registries: List[AbstractRegistery] = []
         self._agents: List[agent_wrapper] = []
         self._queries: List[query_wrapper] = []
@@ -315,7 +318,12 @@ class Istos:
         Async entry-point.
         Opens a Zenoh session, binds registries, and keeps the loop alive.
         """
-        async with self._session_manager as session:  # type: ignore
+        async with AsyncExitStack() as stack:
+            if self.lifespan:
+                await stack.enter_async_context(self.lifespan(self))
+                
+            session = await stack.enter_async_context(self._session_manager)  # type: ignore
+
             await self._bind_registries(session)
             await self._bind_agents(session)
             await self._bind_subscribers(session)

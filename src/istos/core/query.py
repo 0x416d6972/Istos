@@ -76,7 +76,11 @@ class query_wrapper:
         import urllib.parse
         selector = self.prefix
         if kwargs:
-            query_string = urllib.parse.urlencode(kwargs)
+            # Zenoh uses ';' as parameter separator, not '&'
+            query_string = ";".join(
+                f"{urllib.parse.quote(str(k))}={urllib.parse.quote(str(v))}"
+                for k, v in kwargs.items()
+            )
             selector = f"{selector}?{query_string}"
             # Consume kwargs so they aren't passed to the decorated func
             kwargs = {}

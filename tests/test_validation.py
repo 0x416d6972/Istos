@@ -2,7 +2,7 @@ import pytest
 import asyncio
 from unittest.mock import MagicMock
 from pydantic import BaseModel
-from istos.Istos import Istos
+from istos import Istos
 from istos.core.validation import validate_params, SchemaValidationError
 
 

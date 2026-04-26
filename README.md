@@ -12,6 +12,8 @@
 
 - **Decorators First**: Write clean business logic. Turn any Python function into a network-addressable agent, subscriber, or publisher using intuitive decorators (`@istos.agent`, `@istos.publish`, `@istos.subscribe`).
 - **Smart Selectors & RPC**: Automatically map Zenoh query parameters (e.g., `?limit=5&role=admin`) directly to your function's Python arguments.
+- **Schema Validation**: Automatic type coercion and Pydantic model validation at the network boundary — bad data is rejected before your code runs.
+- **Retry Policies**: Built-in exponential backoff retries for queries and subscribers via a simple `retry=5` parameter.
 - **Pub/Sub Made Easy**: Broadcast real-time state changes and react instantly across your network with minimal boilerplate.
 - **Async & Sync Compatibility**: First-class support for asynchronous `asyncio` code with automatic looping for synchronous environments (`istos.run()` vs `await istos.run_async()`).
 - **Pluggable Architecture**: Inject custom behavior via simple abstractions:
@@ -164,6 +166,114 @@ istos = Istos(
     storage=InMemoryStoragePlugin(),
     serializer=JsonSerializer()
 )
+```
+
+### 8. Retry Policies
+Add automatic retries with exponential backoff to any query or subscriber. Pass a simple integer or a full `RetryPolicy` for fine-grained control.
+
+```python
+from istos.core.retry import RetryPolicy
+
+# Simple — retry up to 5 times with default exponential backoff
+@istos.query("weather/forecast", retry=5)
+def get_forecast(result):
+    return result
+
+# Subscriber with retries — if processing crashes, it retries before giving up
+@istos.subscribe("sensor/readings", retry=3)
+def on_reading(data):
+    save_to_database(data)  # retried automatically on transient failures
+
+# Advanced — full control over backoff timing and failure handling
+@istos.query("weather/forecast", retry=RetryPolicy(
+    max_retries=10,
+    delay=1.0,
+    backoff_factor=3.0,
+    on_failure=lambda e: print(f"Dead letter: {e}")
+))
+def get_forecast(result):
+    return result
+```
+
+### 9. Schema Validation
+Istos automatically validates and type-coerces incoming parameters at the network boundary — before your business logic runs. Supports three modes:
+
+```python
+from pydantic import BaseModel
+
+# Mode 1: Type hints → auto-coercion
+# Zenoh sends distance="15" (string), Istos casts it to int(15)
+# Zenoh sends distance="hello" → rejected with a validation error reply
+@istos.agent("robot/move")
+async def move(distance: int, speed: str = "normal"):
+    return {"moved": distance, "speed": speed}
+
+# Mode 2: Pydantic BaseModel → full schema validation
+class MoveRequest(BaseModel):
+    distance: int
+    speed: str = "normal"
+
+@istos.agent("robot/move")
+async def move(request: MoveRequest):
+    # request is a fully validated Pydantic object with defaults applied
+    return {"moved": request.distance}
+
+# Mode 3: No type hints → passthrough (backward compatible)
+@istos.agent("robot/echo")
+def echo(message):
+    return {"echo": message}
+```
+
+### 10. Transport Security & Authentication
+Secure your distributed system easily without polluting your code. `IstosZenohConfig` instantly loads properties from your environment (`.env` file or environment variables) using `pydantic-settings` under the hood.
+
+```env
+# .env file
+ISTOS_ZENOH_MODE=client
+ISTOS_ZENOH_CONNECT_ENDPOINTS=["tls/zenoh-router.local:7447"]
+
+# Basic Auth
+ISTOS_ZENOH_USERNAME=robot_1
+ISTOS_ZENOH_PASSWORD=super_secret
+
+# TLS / mTLS
+ISTOS_ZENOH_ROOT_CA_CERTIFICATE=/path/to/ca.pem
+# ISTOS_ZENOH_LISTEN_CERTIFICATE=/path/to/cert.pem
+# ISTOS_ZENOH_LISTEN_PRIVATE_KEY=/path/to/key.pem
+# ISTOS_ZENOH_ENABLE_MTLS=true
+```
+
+Then cleanly pass it to Istos:
+
+```python
+from istos import Istos
+from istos.communication.sessions import AsyncZenohSession, IstosZenohConfig
+
+# Auto-populates from .env!
+config = IstosZenohConfig()
+
+istos = Istos(
+    session_manager=AsyncZenohSession(config.build())
+)
+```
+
+#### Advanced Security: Vault & Secret Managers (Programmatic Raw PEM)
+For enterprise zero-trust environments, Zenoh magically accepts **raw multiline PEM strings** natively, meaning you don't need to write files to disk. You can completely bypass `.env` and pull secrets dynamically into `IstosZenohConfig` during startup:
+
+```python
+# 1. Fetch from your favorite Secrets Manager (HashiCorp Vault, AWS, LDAP, etc.)
+secrets = vault.get_secret("istos/prod")
+
+# 2. Inject raw strings directly into the config builder
+config = IstosZenohConfig(
+    mode="client",
+    connect_endpoints=["tls/zenoh-router.local:7447"],
+    username=secrets["zenoh_user"],
+    password=secrets["zenoh_pass"],
+    root_ca_certificate=secrets["raw_ca_pem_string"] # 👈 Raw Multiline PEM!
+)
+
+istos = Istos(session_manager=AsyncZenohSession(config.build()))
 ```
 
 ##  Testing

@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 from unittest.mock import MagicMock
-from istos.Istos import Istos
+from istos import Istos
 
 @pytest.fixture
 def istos():

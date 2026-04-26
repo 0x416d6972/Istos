@@ -1,2 +1,3 @@
-def main() -> None:
-    print("Hello from istos!")
+from .Istos import Istos
+
+__all__ = ["Istos"]

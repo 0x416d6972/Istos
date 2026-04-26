@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 from unittest.mock import MagicMock
-from istos.Istos import Istos
+from istos import Istos
 from istos.consistency.register import PrefixRegistery
 from istos.messages.serialization import JsonSerializer
 
