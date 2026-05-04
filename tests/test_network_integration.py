@@ -24,7 +24,7 @@ async def test_network_integration_endpoints_modes():
     session_manager_a = AsyncZenohSession(config=config_a.build())
     istos_a = Istos(session_manager=session_manager_a)
 
-    @istos_a.agent(prefix="integration/service_a/greet")
+    @istos_a.handle(prefix="integration/service_a/greet")
     async def greet():
         return "Greetings, Istos!"
 

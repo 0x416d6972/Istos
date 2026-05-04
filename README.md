@@ -10,7 +10,7 @@
 
 ##  Key Features
 
-- **Decorators First**: Write clean business logic. Turn any Python function into a network-addressable agent, subscriber, or publisher using intuitive decorators (`@istos.agent`, `@istos.publish`, `@istos.subscribe`).
+- **Decorators First**: Write clean business logic. Turn any Python function into a network-addressable handler, subscriber, or publisher using intuitive decorators (`@istos.handle`, `@istos.publish`, `@istos.subscribe`).
 - **Smart Selectors & RPC**: Automatically map Zenoh query parameters (e.g., `?limit=5&role=admin`) directly to your function's Python arguments.
 - **Schema Validation**: Automatic type coercion and Pydantic model validation at the network boundary — bad data is rejected before your code runs.
 - **Retry Policies**: Built-in exponential backoff retries for queries and subscribers via a simple `retry=5` parameter.
@@ -22,7 +22,7 @@
 
 ##  The Mental Model
 The framework abstracts network topology into three clear concepts:
-- **`@agent` & `@query`**: 1-to-1 RPC (Request & Reply)
+- **`@handle` & `@query`**: 1-to-1 RPC (Request & Reply)
 - **`@publish` & `@subscribe`**: 1-to-Many Streaming (Fire and Forget)
 - **`@on_liveliness`**: Infrastructure Awareness (Node Discovery & Health)
 
@@ -45,8 +45,8 @@ uv pip install -e ".[sqlite]"
 
 ##  Quick Start
 
-### 1. Registering an Agent
-Agents sit on the network and respond to incoming queries. Istos automatically parses query parameters into your function's arguments.
+### 1. Registering a Handler
+Handlers sit on the network and respond to incoming queries. Istos automatically parses query parameters into your function's arguments.
 
 ```python
 import asyncio
@@ -54,7 +54,7 @@ from istos import Istos
 
 istos = Istos()
 
-@istos.agent(prefix="robot/move")
+@istos.handle(prefix="robot/move")
 async def move(distance: int, speed: str = "normal"):
     """
     Called when a Zenoh Query hits 'robot/move'.
@@ -69,7 +69,7 @@ if __name__ == "__main__":
 ```
 
 ### 2. Querying the Network
-You can easily query agents registered anywhere on the Zenoh network using `kwargs` to build Zenoh Selectors.
+You can easily query handlers registered anywhere on the Zenoh network using `kwargs` to build Zenoh Selectors.
 
 ```python
 import asyncio
@@ -144,7 +144,7 @@ await istos.delete_once("robot/cache/old_logs")
 ```
 
 ### 6. High-Performance Shared Memory (Zero-Copy)
-When sending massive data arrays (like HD video frames) between agents residing on the same hardware, drastically improve performance by enabling POSIX shared memory allocations.
+When sending massive data arrays (like HD video frames) between handlers residing on the same hardware, drastically improve performance by enabling POSIX shared memory allocations.
 
 ```python
 @istos.publish("video/feed", use_shm=True)
@@ -204,7 +204,7 @@ from pydantic import BaseModel
 # Mode 1: Type hints → auto-coercion
 # Zenoh sends distance="15" (string), Istos casts it to int(15)
 # Zenoh sends distance="hello" → rejected with a validation error reply
-@istos.agent("robot/move")
+@istos.handle("robot/move")
 async def move(distance: int, speed: str = "normal"):
     return {"moved": distance, "speed": speed}
 
@@ -213,14 +213,14 @@ class MoveRequest(BaseModel):
     distance: int
     speed: str = "normal"
 
-@istos.agent("robot/move")
+@istos.handle("robot/move")
 async def move(request: MoveRequest):
     # request is a fully validated Pydantic object with defaults applied
     return {"moved": request.distance}
 
 # Mode 3: No type hints → passthrough (backward compatible)
-@istos.agent("robot/echo")
-def echo(message):
+@istos.handle("robot/echo")
+async def echo(message):
     return {"echo": message}
 ```
 
@@ -295,4 +295,4 @@ Contributions and pull requests are welcome! Ensure tests pass and type hints ar
 5. Open a Pull Request
 
 ---
-**License**: MIT (or insert yours here)
+**License**: GPLv3

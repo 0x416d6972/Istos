@@ -6,9 +6,9 @@ from istos.messages.serialization import Serialize, JsonSerializer
 from istos.core.validation import validate_params, SchemaValidationError
 
 
-class bound_agent_wrapper:
+class bound_handler_wrapper:
     """Bound-method proxy that injects `self` (the instance) into calls."""
-    def __init__(self, desc: "agent_wrapper", subj: Any):
+    def __init__(self, desc: "handler_wrapper", subj: Any):
         self.desc = desc
         self.subj = subj
 
@@ -16,7 +16,7 @@ class bound_agent_wrapper:
         return await self.desc(self.subj, *args, **kwargs)
 
 
-class agent_wrapper:
+class handler_wrapper:
     """
     Descriptor that replaces the original function.
     Tracks invocations and writes serialized metadata to storage.
@@ -55,7 +55,7 @@ class agent_wrapper:
             try:
                 validated_params = validate_params(self.func, params)
             except SchemaValidationError as e:
-                print(f"[agent_wrapper] Validation error on '{self.prefix}': {e}")
+                print(f"[handler_wrapper] Validation error on '{self.prefix}': {e}")
                 error_payload = self.serializer.serialize({
                     "error": "validation_error",
                     "details": str(e.errors),
@@ -71,10 +71,10 @@ class agent_wrapper:
                 payload = self.serializer.serialize(result)
                 query.reply(key, payload)
         except Exception as e:
-            print(f"[agent_wrapper] Error executing agent '{self.prefix}': {e}")
+            print(f"[handler_wrapper] Error executing handler '{self.prefix}': {e}")
             
     def __get__(self, instance: Any, owner: Any) -> Any:
         if instance is None:
             return self
-        return bound_agent_wrapper(self, instance)
+        return bound_handler_wrapper(self, instance)
 

@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
+    "aiohttp>=3.13.5",
     "eclipse-zenoh>=1.7.2",
     "msgpack>=1.1.2",
     "pydantic>=2.12.5",
@@ -18,7 +19,7 @@ dependencies = [
 
 [project.optional-dependencies]
 sqlite = ["aiosqlite>=0.22.1"]
-all = ["aiosqlite>=0.22.1"]
+all = ["aiosqlite>=0.22.1", "aiohttp>=3.9.0"]
 
 [project.scripts]
 istos = "istos:main"

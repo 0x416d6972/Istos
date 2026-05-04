@@ -4,7 +4,7 @@ from istos import Istos, IstosRouter
 def test_router_prefixes():
     router = IstosRouter(prefix="users")
     
-    @router.agent("create")
+    @router.handle("create")
     def create_user():
         pass
         
@@ -15,7 +15,7 @@ async def test_include_router():
     istos = Istos()
     router = IstosRouter(prefix="api/v1")
     
-    @router.agent("status")
+    @router.handle("status")
     def status():
         return "ok"
         
@@ -26,8 +26,8 @@ async def test_include_router():
     istos.include_router(router)
     
     # Verify the actions were applied to the main app
-    assert len(istos._agents) == 1
-    assert istos._agents[0].prefix == "api/v1/status"
+    assert len(istos._handlers) == 1
+    assert istos._handlers[0].prefix == "api/v1/status"
     
     assert len(istos._publishers) == 1
     assert istos._publishers[0].prefix == "api/v1/alerts"

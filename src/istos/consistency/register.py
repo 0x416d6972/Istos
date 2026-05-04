@@ -68,7 +68,7 @@ class PrefixRegistery(AbstractRegistery):
             # A true implementation will pass params to the decorated function.
             # Since PrefixRegistery just wraps StoragePlugin now, we can pass parameters
             # by looking for a specific dict structure or just ignoring them if storage doesn't support them.
-            # But the real power is when @agent gets them!
+            # But the real power is when @handle gets them!
             value = await self._storage.get(key)
             
             # (In the future, if value is a function, we could invoke it with **params)

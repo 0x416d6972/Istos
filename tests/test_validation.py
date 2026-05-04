@@ -95,13 +95,13 @@ class TestPassthrough:
 
 
 # ------------------------------------------------------------------
-# Integration: agent_wrapper.on_query with validation
+# Integration: handler_wrapper.on_query with validation
 # ------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_agent_coerces_params(istos):
-    """Agent with typed params auto-coerces string values from Zenoh."""
-    @istos.agent("robot/move")
+async def test_handler_coerces_params(istos):
+    """Handler with typed params auto-coerces string values from Zenoh."""
+    @istos.handle("robot/move")
     async def move(distance: int, speed: str = "normal"):
         return {"moved": distance, "speed": speed}
 
@@ -109,7 +109,7 @@ async def test_agent_coerces_params(istos):
     fake_query.selector.key_expr = "robot/move"
     fake_query.selector.parameters = {"distance": "15", "speed": "fast"}
 
-    wrapper = istos._agents[0]
+    wrapper = istos._handlers[0]
     await wrapper.on_query(fake_query)
 
     fake_query.reply.assert_called_once()
@@ -120,9 +120,9 @@ async def test_agent_coerces_params(istos):
 
 
 @pytest.mark.asyncio
-async def test_agent_rejects_invalid_params(istos):
-    """Agent rejects bad params and replies with a validation error."""
-    @istos.agent("robot/move")
+async def test_handler_rejects_invalid_params(istos):
+    """Handler rejects bad params and replies with a validation error."""
+    @istos.handle("robot/move")
     async def move(distance: int):
         return {"moved": distance}
 
@@ -130,7 +130,7 @@ async def test_agent_rejects_invalid_params(istos):
     fake_query.selector.key_expr = "robot/move"
     fake_query.selector.parameters = {"distance": "not_a_number"}
 
-    wrapper = istos._agents[0]
+    wrapper = istos._handlers[0]
     await wrapper.on_query(fake_query)
 
     # Should still reply, but with an error payload
@@ -141,13 +141,13 @@ async def test_agent_rejects_invalid_params(istos):
 
 
 @pytest.mark.asyncio
-async def test_agent_with_pydantic_model(istos):
-    """Agent accepting a Pydantic BaseModel validates and hydrates it."""
+async def test_handler_with_pydantic_model(istos):
+    """Handler accepting a Pydantic BaseModel validates and hydrates it."""
     class MoveRequest(BaseModel):
         distance: int
         speed: str = "normal"
 
-    @istos.agent("robot/move")
+    @istos.handle("robot/move")
     async def move(request: MoveRequest):
         return {"moved": request.distance, "speed": request.speed}
 
@@ -155,7 +155,7 @@ async def test_agent_with_pydantic_model(istos):
     fake_query.selector.key_expr = "robot/move"
     fake_query.selector.parameters = {"distance": "99", "speed": "turbo"}
 
-    wrapper = istos._agents[0]
+    wrapper = istos._handlers[0]
     await wrapper.on_query(fake_query)
 
     fake_query.reply.assert_called_once()
@@ -166,9 +166,9 @@ async def test_agent_with_pydantic_model(istos):
 
 
 @pytest.mark.asyncio
-async def test_agent_untyped_still_works(istos):
-    """Untyped agents still work without validation (backward compat)."""
-    @istos.agent("robot/echo")
+async def test_handler_untyped_still_works(istos):
+    """Untyped handlers still work without validation (backward compat)."""
+    @istos.handle("robot/echo")
     def echo(message):
         return {"echo": message}
 
@@ -176,7 +176,7 @@ async def test_agent_untyped_still_works(istos):
     fake_query.selector.key_expr = "robot/echo"
     fake_query.selector.parameters = {"message": "hello"}
 
-    wrapper = istos._agents[0]
+    wrapper = istos._handlers[0]
     await wrapper.on_query(fake_query)
 
     fake_query.reply.assert_called_once()

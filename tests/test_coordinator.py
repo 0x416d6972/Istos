@@ -11,13 +11,13 @@ def istos():
     return Istos()
 
 
-# ---- @istos.agent() on sync and async functions ----
+# ---- @istos.handle() on sync and async functions ----
 
 @pytest.mark.asyncio
-async def test_agent_sync_function(istos):
-    """@istos.agent() wraps a sync def correctly."""
+async def test_handler_sync_function(istos):
+    """@istos.handle() wraps a sync def correctly."""
 
-    @istos.agent(prefix="math/add")
+    @istos.handle(prefix="math/add")
     def add(a: int, b: int):
         return a + b
 
@@ -31,10 +31,10 @@ async def test_agent_sync_function(istos):
 
 
 @pytest.mark.asyncio
-async def test_agent_async_function(istos):
-    """@istos.agent() wraps an async def correctly."""
+async def test_handler_async_function(istos):
+    """@istos.handle() wraps an async def correctly."""
 
-    @istos.agent(prefix="math/multiply")
+    @istos.handle(prefix="math/multiply")
     async def multiply(a: int, b: int):
         return a * b
 
@@ -48,11 +48,11 @@ async def test_agent_async_function(istos):
 
 
 @pytest.mark.asyncio
-async def test_agent_on_class_method(istos):
-    """@istos.agent() works as a descriptor on class methods."""
+async def test_handler_on_class_method(istos):
+    """@istos.handle() works as a descriptor on class methods."""
 
     class Robot:
-        @istos.agent(prefix="robot/move")
+        @istos.handle(prefix="robot/move")
         def move(self, dist: int):
             return f"moved {dist}m"
 
@@ -85,16 +85,16 @@ async def test_coordinator_binds_registry(istos, mocker):
 
 
 @pytest.mark.asyncio
-async def test_agent_collects_into_istos(istos):
-    """Every @istos.agent() call is tracked internally."""
+async def test_handler_collects_into_istos(istos):
+    """Every @istos.handle() call is tracked internally."""
 
-    @istos.agent(prefix="a/one")
+    @istos.handle(prefix="a/one")
     async def one(): ...
 
-    @istos.agent(prefix="a/two")
+    @istos.handle(prefix="a/two")
     async def two(): ...
 
-    prefixes = [a.prefix for a in istos._agents]
+    prefixes = [a.prefix for a in istos._handlers]
     assert "a/one" in prefixes
     assert "a/two" in prefixes
 

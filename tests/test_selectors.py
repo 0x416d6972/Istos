@@ -9,8 +9,8 @@ def istos():
 
 @pytest.mark.asyncio
 async def test_zenoh_selectors_query_parameters(istos):
-    # 1. Define an agent that accepts parameters
-    @istos.agent("datastore/users")
+    # 1. Define an handler that accepts parameters
+    @istos.handle("datastore/users")
     async def get_users(limit: int, role: str = "guest", active: str = "true"):
         return {
             "status": "success",
@@ -30,7 +30,7 @@ async def test_zenoh_selectors_query_parameters(istos):
     }
 
     # 3. Get the registered wrapper and trigger on_query
-    wrapper = istos._agents[0]
+    wrapper = istos._handlers[0]
     await wrapper.on_query(fake_query)
     
     # 4. Verify the core function replied with the CORRECT calculated logic
@@ -51,8 +51,8 @@ async def test_zenoh_selectors_query_parameters(istos):
 async def test_zenoh_selectors_ignore_extra_kwargs(istos):
     istos = Istos()
 
-    # Agent only asks for `name`
-    @istos.agent("greeter")
+    # Handler only asks for `name`
+    @istos.handle("greeter")
     def greet(name: str):
         return f"Hello, {name}!"
 
@@ -65,7 +65,7 @@ async def test_zenoh_selectors_ignore_extra_kwargs(istos):
     }
 
     # Trigger it
-    wrapper = istos._agents[0]
+    wrapper = istos._handlers[0]
     await wrapper.on_query(fake_query)
 
     # Verify foo and bar were ignored and it executed successfully

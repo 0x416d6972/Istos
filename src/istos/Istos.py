@@ -8,12 +8,13 @@ from istos.communication.sessions import SessionManager, AsyncZenohSession, Zeno
 from istos.consistency.register import AbstractRegistery
 from istos.consistency.storage import StoragePlugin, InMemoryStoragePlugin
 from istos.messages.serialization import Serialize, JsonSerializer
-from istos.core.agent import agent_wrapper
+from istos.core.handler import handler_wrapper
 from istos.core.query import query_wrapper
 from istos.core.subscribe import subscribe_wrapper
 from istos.core.publish import publish_wrapper
 from istos.core.liveliness import liveliness_wrapper
 from istos.core.retry import RetryPolicy
+from istos.core.asyncapi import AsyncApiGenerator, get_asyncapi_ui_html
 from istos.routing import IstosRouter
 
 class Istos:
@@ -23,12 +24,12 @@ class Istos:
     Usage:
         istos = Istos()
 
-        @istos.agent(prefix="robot/move")
+        @istos.handle(prefix="robot/move")
         async def move(distance: int):
             return f"moved {distance}m"
 
         class Drone:
-            @istos.agent(prefix="drone/fly")
+            @istos.handle(prefix="drone/fly")
             def fly(self, altitude: int):
                 return f"flying at {altitude}m"
 
@@ -48,7 +49,7 @@ class Istos:
         self._serializer = serializer or JsonSerializer()
         self.lifespan = lifespan
         self._registries: List[AbstractRegistery] = []
-        self._agents: List[agent_wrapper] = []
+        self._handlers: List[handler_wrapper] = []
         self._queries: List[query_wrapper] = []
         self._subscribers: List[subscribe_wrapper] = []
         self._publishers: List[publish_wrapper] = []
@@ -59,6 +60,8 @@ class Istos:
         self._zenoh_liveliness_subs: List[Any] = []
         self._zenoh_liveliness_tokens: List[Any] = []
         self._shm_provider: Optional[Any] = None
+        self._docs_web_port: Optional[int] = None
+        self._docs_prefix: Optional[str] = None
 
     def _get_or_init_shm(self) -> Any:
         if self._shm_provider is None:
@@ -69,16 +72,16 @@ class Istos:
     # Decorator
     # ------------------------------------------------------------------
 
-    def agent(self, prefix: str) -> Callable:
+    def handle(self, prefix: str) -> Callable:
         """
-        Decorator that registers a function or method as an Istos agent.
+        Decorator that registers a function or method as an Istos handler.
 
-            @istos.agent(prefix="robot/move")
+            @istos.handle(prefix="robot/move")
             async def move(distance: int): ...
         """
-        def decorator(func: Callable) -> agent_wrapper:
-            wrapper = agent_wrapper(func, prefix, self._storage, self._serializer)
-            self._agents.append(wrapper)
+        def decorator(func: Callable) -> handler_wrapper:
+            wrapper = handler_wrapper(func, prefix, self._storage, self._serializer)
+            self._handlers.append(wrapper)
             
             return wrapper
         return decorator
@@ -93,7 +96,7 @@ class Istos:
 
     def query(self, prefix: str, timeout_s: float = 5.0, retry: Optional[Union[int, RetryPolicy]] = None) -> Callable:
         """
-        Decorator that queries a registered agent when the function is called.
+        Decorator that queries a registered handler when the function is called.
 
             @istos.query("math/add", retry=5)
             def process(result):
@@ -237,6 +240,30 @@ class Istos:
             action(self)
 
     # ------------------------------------------------------------------
+    # Auto-Documentation (AsyncAPI)
+    # ------------------------------------------------------------------
+
+    def export_asyncapi(self, title: str = "Istos Network", version: str = "1.0.0") -> str:
+        """
+        Generates and returns the AsyncAPI YAML specification for the network.
+        """
+        generator = AsyncApiGenerator(title=title, version=version)
+        return generator.generate(self)
+
+    def serve_docs(self, prefix: str = ".istos/docs", title: str = "Istos Network", version: str = "1.0.0", web_port: Optional[int] = None) -> None:
+        """
+        Registers a built-in handler to serve the AsyncAPI specification over Zenoh.
+        If web_port is provided, it starts an embedded HTTP server to display the UI.
+        """
+        @self.handle(prefix=prefix)
+        def _serve_docs() -> str:
+            return self.export_asyncapi(title=title, version=version)
+            
+        if web_port is not None:
+            self._docs_web_port = web_port
+            self._docs_prefix = prefix
+
+    # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
@@ -249,11 +276,11 @@ class Istos:
         for registry in self._registries:
             await registry.unregister()
 
-    async def _bind_agents(self, session: zenoh.Session) -> None:
+    async def _bind_handlers(self, session: zenoh.Session) -> None:
         loop = asyncio.get_running_loop()
         
-        for wrapper in self._agents:
-            print(f"[Istos] Binding agent to: {wrapper.prefix}")
+        for wrapper in self._handlers:
+            print(f"[Istos] Binding handler to: {wrapper.prefix}")
 
             def make_callback(w=wrapper):
                 def _sync_callback(query: zenoh.Query):
@@ -268,7 +295,7 @@ class Istos:
             )
             self._zenoh_queryables.append(queryable)
 
-    async def _unbind_agents(self) -> None:
+    async def _unbind_handlers(self) -> None:
         for q in self._zenoh_queryables:
             q.undeclare()
         self._zenoh_queryables.clear()
@@ -322,6 +349,39 @@ class Istos:
             token.undeclare()
         self._zenoh_liveliness_tokens.clear()
 
+    async def _start_web_docs(self) -> Any:
+        try:
+            from aiohttp import web
+        except ImportError:
+            print("[Istos] aiohttp is required for web docs. Install it using: uv pip install aiohttp")
+            return None
+
+        html = get_asyncapi_ui_html(title="Istos Network Docs", schema_url="/asyncapi.yaml")
+
+        async def web_ui_handler(request: web.Request) -> web.Response:
+            return web.Response(text=html, content_type='text/html')
+
+        async def asyncapi_yaml_handler(request: web.Request) -> web.Response:
+            try:
+                results = await self.query_once(self._docs_prefix or ".istos/docs", timeout_s=2.0)
+                if results:
+                    yaml_content = results[0] if isinstance(results, list) else results
+                    return web.Response(text=yaml_content, content_type='application/yaml')
+                return web.Response(text="Docs not found on network", status=404)
+            except Exception as e:
+                return web.Response(text=f"Error querying network: {e}", status=500)
+
+        app = web.Application()
+        app.router.add_get('/', web_ui_handler)
+        app.router.add_get('/asyncapi.yaml', asyncapi_yaml_handler)
+        
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, '0.0.0.0', self._docs_web_port)
+        await site.start()
+        print(f"[Istos] 🌍 AsyncAPI Web Docs running at: http://localhost:{self._docs_web_port}")
+        return runner
+
     async def run_async(self) -> None:
         """
         Async entry-point.
@@ -334,15 +394,19 @@ class Istos:
             session = await stack.enter_async_context(self._session_manager)  # type: ignore
 
             await self._bind_registries(session)
-            await self._bind_agents(session)
+            await self._bind_handlers(session)
             await self._bind_subscribers(session)
             await self._bind_liveliness(session)
 
-            prefixes = [a.prefix for a in self._agents]
-            print(f"[Istos] Active agents: {prefixes}")
+            prefixes = [a.prefix for a in self._handlers]
+            print(f"[Istos] Active handlers: {prefixes}")
             subs = [s.prefix for s in self._subscribers]
             print(f"[Istos] Active subscribers: {subs}")
             print("[Istos] Running (async). Press Ctrl+C to stop.")
+
+            web_runner = None
+            if self._docs_web_port is not None:
+                web_runner = await self._start_web_docs()
 
             try:
                 while True:
@@ -350,9 +414,11 @@ class Istos:
             except asyncio.CancelledError:
                 pass
             finally:
+                if web_runner:
+                    await web_runner.cleanup()
                 await self._unbind_liveliness()
                 await self._unbind_subscribers()
-                await self._unbind_agents()
+                await self._unbind_handlers()
                 await self._unbind_registries()
 
     def run(self) -> None:

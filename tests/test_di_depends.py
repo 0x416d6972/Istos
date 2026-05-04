@@ -10,10 +10,10 @@ async def test_simple_dependency():
     def get_number() -> int:
         return 42
 
-    async def my_agent(num: int = Depends(get_number)):
+    async def my_handler(num: int = Depends(get_number)):
         return num
 
-    result = await inject_and_run(my_agent)
+    result = await inject_and_run(my_handler)
     assert result == 42
 
 
@@ -22,11 +22,11 @@ async def test_context_injection():
     def sub_dep(header: str) -> str:
         return f"Bearer {header}"
 
-    async def my_agent(auth: str = Depends(sub_dep), payload: dict = {}):
+    async def my_handler(auth: str = Depends(sub_dep), payload: dict = {}):
         return auth, payload
 
     context = {"header": "token123", "payload": {"foo": "bar"}}
-    result = await inject_and_run(my_agent, context=context)
+    result = await inject_and_run(my_handler, context=context)
     assert result == ("Bearer token123", {"foo": "bar"})
 
 
@@ -42,14 +42,14 @@ async def test_caching_behavior():
     def intermediate(val: int = Depends(expensive_calc)):
         return val * 10
 
-    # Agent requires both `expensive_calc` and `intermediate`
-    async def my_agent(
+    # Handler requires both `expensive_calc` and `intermediate`
+    async def my_handler(
         val1: int = Depends(expensive_calc), 
         val2: int = Depends(intermediate)
     ):
         return val1, val2
 
-    result = await inject_and_run(my_agent)
+    result = await inject_and_run(my_handler)
     assert result == (1, 10)
     assert count == 1  # Should only be executed ONCE
 
@@ -65,13 +65,13 @@ async def test_no_caching():
     def intermediate(val: int = Depends(expensive_calc, use_cache=False)):
         return val * 10
 
-    async def my_agent(
+    async def my_handler(
         val1: int = Depends(expensive_calc, use_cache=False), 
         val2: int = Depends(intermediate)
     ):
         return val1, val2
 
-    result = await inject_and_run(my_agent)
+    result = await inject_and_run(my_handler)
     # val1 calculates first (count=1), intermediate calculates it second (count=2)
     assert result[0] in (1, 2)
     assert result[1] in (10, 20)
@@ -92,14 +92,14 @@ async def test_generators_and_teardown():
         yield "file_handle"
         state.append("sync_close")
 
-    async def my_agent(
+    async def my_handler(
         db: str = Depends(get_db),
         file: str = Depends(sync_gen)
     ):
         state.append("running")
         return f"{db} + {file}"
 
-    result = await inject_and_run(my_agent)
+    result = await inject_and_run(my_handler)
     assert result == "db_connection + file_handle"
     
     # Assert Order: Setup -> Running -> Teardown
@@ -120,25 +120,25 @@ async def test_overrides():
     def mock_db():
         return "sqlite"
 
-    async def my_agent(db: str = Depends(production_db)):
+    async def my_handler(db: str = Depends(production_db)):
         return db
 
     # Normal run
-    result = await inject_and_run(my_agent)
+    result = await inject_and_run(my_handler)
     assert result == "postgres"
 
     # Override run
-    result = await inject_and_run(my_agent, overrides={production_db: mock_db})
+    result = await inject_and_run(my_handler, overrides={production_db: mock_db})
     assert result == "sqlite"
 
 
-async def test_sync_agent_fallback():
+async def test_sync_handler_fallback():
     """Test that inject_and_run safely works with standard synchronous handlers."""
     def get_data():
         return "pure_sync"
         
-    def sync_agent(data: str = Depends(get_data)):
+    def sync_handler(data: str = Depends(get_data)):
         return data.upper()
         
-    result = await inject_and_run(sync_agent)
+    result = await inject_and_run(sync_handler)
     assert result == "PURE_SYNC"

@@ -49,13 +49,13 @@ class IstosRouter:
             return f"{base}/{sub}" if base and sub else (base or sub)
         return prefix
 
-    def agent(self, prefix: str) -> Callable:
+    def handle(self, prefix: str) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
                 # Register on the app and store the real wrapper in the proxy
-                proxy._real_wrapper = app.agent(full_prefix)(func)
+                proxy._real_wrapper = app.handle(full_prefix)(func)
             self._actions.append(action)
             return proxy
         return decorator
