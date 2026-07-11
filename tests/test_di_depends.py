@@ -1,6 +1,5 @@
 import pytest
-import asyncio
-from typing import Any, AsyncGenerator, Generator
+from typing import AsyncGenerator, Generator
 from istos.di.depends import Depends, inject_and_run
 
 pytestmark = pytest.mark.asyncio

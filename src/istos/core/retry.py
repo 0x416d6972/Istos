@@ -2,6 +2,10 @@ import asyncio
 from typing import Any, Callable, Optional
 from dataclasses import dataclass
 
+from istos.logging import get_logger
+
+_logger = get_logger("retry")
+
 
 @dataclass
 class RetryPolicy:
@@ -44,9 +48,10 @@ async def execute_with_retry(
             last_exception = e
             if attempt < policy.max_retries:
                 wait = policy.delay * (policy.backoff_factor ** attempt)
-                print(
-                    f"[Istos Retry] Attempt {attempt + 1}/{policy.max_retries} "
-                    f"failed: {e}. Retrying in {wait:.2f}s..."
+                _logger.warning(
+                    "Attempt %d/%d failed: %s. Retrying in %.2fs...",
+                    attempt + 1, policy.max_retries, e, wait,
+                    extra={"attempt": attempt + 1, "max_retries": policy.max_retries},
                 )
                 await asyncio.sleep(wait)
 

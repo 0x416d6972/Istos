@@ -1,6 +1,6 @@
+from .config import IstosZenohConfig
 from .sessions import (
     SessionManager,
-    IstosZenohConfig,
     ZenohSession,
     AsyncZenohSession,
 )

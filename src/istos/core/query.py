@@ -3,8 +3,9 @@ import inspect
 import zenoh
 from typing import Any, Callable, List, Optional, Union
 
-from istos.messages.serialization import Serialize, JsonSerializer
+from istos.messages.serialization import Serialize
 from istos.core.retry import RetryPolicy, execute_with_retry
+from istos.di.depends import has_dependencies, invoke_with_dependencies, positional_param_names
 
 
 class QueryResult:
@@ -47,12 +48,15 @@ class query_wrapper:
         get_session: Callable[[], Optional[zenoh.Session]],
         timeout_s: float = 5.0,
         retry: Optional[Union[int, RetryPolicy]] = None,
+        attachment: Optional[bytes] = None,
+        dependency_overrides: Optional[dict] = None,
     ):
         self.func = func
         self.prefix = prefix
         self.serializer = serializer
         self._get_session = get_session
         self.timeout_s = timeout_s
+        self._attachment = attachment
         self.calls = 0
 
         # Normalize retry parameter
@@ -63,32 +67,40 @@ class query_wrapper:
         else:
             self.retry_policy = retry
 
+        # Dependency injection: the query reply fills the first positional slot.
+        self._has_depends = has_dependencies(func)
+        self._skip_names = tuple(positional_param_names(func)[:1])
+        self._dependency_overrides = dependency_overrides if dependency_overrides is not None else {}
+
     async def __call__(self, *args: Any, **kwargs: Any) -> Any:
         self.calls += 1
 
-        session = self._get_session()
-        if session is None:
+        zenoh_session = self._get_session()
+        if zenoh_session is None:
             raise RuntimeError(
-                "No active Zenoh session. Call istos.run() or istos.run_async() first."
+                "No active Zenoh session. Queries run over the service's shared "
+                "session — start it with istos.run()/run_async() first."
             )
 
         # Build selector with kwargs
         import urllib.parse
         selector = self.prefix
-        if kwargs:
+        query_kwargs = dict(kwargs)
+        if query_kwargs:
             # Zenoh uses ';' as parameter separator, not '&'
             query_string = ";".join(
                 f"{urllib.parse.quote(str(k))}={urllib.parse.quote(str(v))}"
-                for k, v in kwargs.items()
+                for k, v in query_kwargs.items()
             )
             selector = f"{selector}?{query_string}"
             # Consume kwargs so they aren't passed to the decorated func
-            kwargs = {}
+            for k in query_kwargs:
+                kwargs.pop(k)
 
         async def _do_query():
             # Query Zenoh on a background thread (session.get is blocking)
             results: List[QueryResult] = await asyncio.to_thread(
-                self._blocking_query, session, selector
+                self._blocking_query, zenoh_session, selector
             )
 
             # Decode the first result (most common case) or pass the full list
@@ -97,17 +109,25 @@ class query_wrapper:
 
             # Pass the queried data after any bound instance args (e.g. self)
             # args may contain 'self' injected by bound_query_wrapper
+            if self._has_depends:
+                return await invoke_with_dependencies(
+                    self.func, args=(*args, data), skip_names=self._skip_names,
+                    overrides=self._dependency_overrides,
+                )
             if inspect.iscoroutinefunction(self.func):
                 return await self.func(*args, data, **kwargs)
             else:
-                return self.func(*args, data, **kwargs)
+                return await asyncio.to_thread(self.func, *args, data, **kwargs)
 
         return await execute_with_retry(_do_query, self.retry_policy)
 
     def _blocking_query(self, session: zenoh.Session, selector: str) -> List[QueryResult]:
         """Synchronous Zenoh get — runs inside asyncio.to_thread."""
         results: List[QueryResult] = []
-        replies = session.get(selector, timeout=self.timeout_s)
+        get_kwargs: dict = {"timeout": self.timeout_s}
+        if self._attachment is not None:
+            get_kwargs["attachment"] = self._attachment
+        replies = session.get(selector, **get_kwargs)
 
         for reply in replies:
             if reply.ok is not None:

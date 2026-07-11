@@ -1,8 +1,11 @@
+import inspect
 from typing import Any, Callable, List, Optional, Union, TYPE_CHECKING
 from istos.core.retry import RetryPolicy
+from istos.core.authz import Authorizer
+from istos.messages.serialization import Serialize
 
 if TYPE_CHECKING:
-    from istos.Istos import Istos
+    from istos.app import Istos
 
 class RouterProxy:
     """
@@ -20,7 +23,10 @@ class RouterProxy:
                 f"Router has not been included in the Istos app yet. "
                 f"Cannot invoke '{self._name}'."
             )
-        return self._real_wrapper(*args, **kwargs)
+        result = self._real_wrapper(*args, **kwargs)
+        if inspect.iscoroutine(result):
+            return result
+        return result
 
     def __get__(self, instance: Any, owner: Any) -> Any:
         if self._real_wrapper is None:
@@ -49,43 +55,42 @@ class IstosRouter:
             return f"{base}/{sub}" if base and sub else (base or sub)
         return prefix
 
-    def handle(self, prefix: str) -> Callable:
+    def handle(self, prefix: str, serializer: Optional[Serialize] = None, retry: Optional[Union[int, RetryPolicy]] = None, durability: str = "at_most_once", authorizer: Optional[Authorizer] = None) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
-                # Register on the app and store the real wrapper in the proxy
-                proxy._real_wrapper = app.handle(full_prefix)(func)
+                proxy._real_wrapper = app.handle(full_prefix, serializer=serializer, retry=retry, durability=durability, authorizer=authorizer)(func)
             self._actions.append(action)
             return proxy
         return decorator
 
-    def query(self, prefix: str, timeout_s: float = 5.0, retry: Optional[Union[int, RetryPolicy]] = None) -> Callable:
+    def query(self, prefix: str, timeout_s: float = 5.0, retry: Optional[Union[int, RetryPolicy]] = None, serializer: Optional[Serialize] = None) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
-                proxy._real_wrapper = app.query(full_prefix, timeout_s=timeout_s, retry=retry)(func)
+                proxy._real_wrapper = app.query(full_prefix, timeout_s=timeout_s, retry=retry, serializer=serializer)(func)
             self._actions.append(action)
             return proxy
         return decorator
 
-    def publish(self, prefix: str, use_shm: bool = False) -> Callable:
+    def publish(self, prefix: str, use_shm: bool = False, serializer: Optional[Serialize] = None, durable: bool = False, cache: int = 1000, heartbeat: float = 1.0) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
-                proxy._real_wrapper = app.publish(full_prefix, use_shm=use_shm)(func)
+                proxy._real_wrapper = app.publish(full_prefix, use_shm=use_shm, serializer=serializer, durable=durable, cache=cache, heartbeat=heartbeat)(func)
             self._actions.append(action)
             return proxy
         return decorator
 
-    def subscribe(self, prefix: str, retry: Optional[Union[int, RetryPolicy]] = None) -> Callable:
+    def subscribe(self, prefix: str, retry: Optional[Union[int, RetryPolicy]] = None, serializer: Optional[Serialize] = None, durable: bool = False, replay: int = 1000, recover: bool = True, authorizer: Optional[Authorizer] = None) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
-                proxy._real_wrapper = app.subscribe(full_prefix, retry=retry)(func)
+                proxy._real_wrapper = app.subscribe(full_prefix, retry=retry, serializer=serializer, durable=durable, replay=replay, recover=recover, authorizer=authorizer)(func)
             self._actions.append(action)
             return proxy
         return decorator

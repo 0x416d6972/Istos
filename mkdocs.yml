@@ -1,0 +1,136 @@
+site_name: Istos Documentation
+site_description: A unified Python framework for building robust distributed systems and multi-agent applications over Eclipse Zenoh.
+site_author: Amir Rezaei
+repo_url: https://github.com/A111ir/Istos
+repo_name: A111ir/Istos
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            heading_level: 3
+            docstring_style: google
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - User Guide:
+    - Getting Started: user-guide/getting-started.md
+    - Handlers & Queries (RPC): user-guide/rpc.md
+    - Publish & Subscribe: user-guide/pubsub.md
+    - Brokerless Durable Messaging: user-guide/durable-messaging.md
+    - Security & TLS: user-guide/security.md
+    - Authorization: user-guide/authorization.md
+    - Deployment: user-guide/deployment.md
+    - Liveliness Tracking: user-guide/liveliness.md
+    - Retry Policies: user-guide/retry.md
+    - Schema Validation: user-guide/validation.md
+    - Dependency Injection: user-guide/dependency-injection.md
+    - Application Databases: user-guide/application-databases.md
+    - Middleware: user-guide/middleware.md
+    - Observability: user-guide/observability.md
+    - Storage: user-guide/storage.md
+    - Testing: user-guide/testing.md
+    - CLI: user-guide/cli.md
+  - Recipes:
+    - Overview: recipes/index.md
+    - RPC with lifespan: recipes/rpc-lifespan.md
+    - Pub/Sub telemetry: recipes/pubsub-telemetry.md
+    - Durable orders: recipes/durable-orders.md
+    - Secure RPC: recipes/secure-rpc.md
+    - Redis storage: recipes/redis-storage.md
+    - Health checks: recipes/health-checks.md
+    - Custom middleware: recipes/custom-middleware.md
+    - Production service: recipes/production-service.md
+    - Scaffold a service: recipes/scaffold-service.md
+  - API Reference:
+    - Istos: api/istos.md
+    - IstosRouter: api/router.md
+    - TestClient: api/testing/testclient.md
+    - CLI: api/cli.md
+    - Core:
+      - Handler: api/core/handler.md
+      - Query: api/core/query.md
+      - Publish: api/core/publish.md
+      - Subscribe: api/core/subscribe.md
+      - Liveliness: api/core/liveliness.md
+      - Retry Policy: api/core/retry.md
+      - Validation: api/core/validation.md
+      - AsyncAPI Generator: api/core/asyncapi.md
+      - Authorization: api/core/authz.md
+      - Errors: api/core/errors.md
+    - Communication:
+      - Sessions: api/communication/sessions.md
+      - Zenoh Config: api/communication/config.md
+      - Durable Pub/Sub: api/communication/durable.md
+    - Consistency:
+      - Storage: api/consistency/storage.md
+      - Redis Storage: api/consistency/redis_storage.md
+      - SQLAlchemy Storage: api/consistency/sqlalchemy_storage.md
+      - Database Config: api/consistency/config.md
+      - Database Registry: api/consistency/databases.md
+    - Messages:
+      - Serialization: api/messages/serialization.md
+    - Dependency Injection:
+      - Depends: api/di/depends.md
+    - Middleware: api/middleware/base.md
+    - Context: api/context.md
+    - Health: api/health.md
+    - Logging: api/logging.md
+    - Observability:
+      - Metrics: api/observability/metrics.md
+      - Tracing: api/observability/tracing.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
+  - License: license.md

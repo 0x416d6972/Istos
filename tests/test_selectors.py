@@ -1,11 +1,6 @@
 import pytest
-import asyncio
 from unittest.mock import MagicMock
 from istos import Istos
-
-@pytest.fixture
-def istos():
-    return Istos()
 
 @pytest.mark.asyncio
 async def test_zenoh_selectors_query_parameters(istos):

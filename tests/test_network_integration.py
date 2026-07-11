@@ -1,12 +1,13 @@
 import pytest
 import asyncio
-from typing import Any
 import json
 from unittest.mock import patch
 
 from istos import Istos
-from istos.communication.sessions import AsyncZenohSession, IstosZenohConfig
+from istos.communication.sessions import AsyncZenohSession
+from istos.communication.config import IstosZenohConfig
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_network_integration_endpoints_modes():
     """

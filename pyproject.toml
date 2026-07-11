@@ -1,25 +1,81 @@
 [project]
 name = "istos"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "A unified Python framework for distributed systems and multi-agent applications over Eclipse Zenoh"
 readme = "README.md"
 authors = [
     { name = "amirrezaei", email = "corvology@gmail.com" }
 ]
-requires-python = ">=3.14"
+license = "Apache-2.0"
+requires-python = ">=3.10,<3.15"
+keywords = ["zenoh", "distributed-systems", "pubsub", "rpc", "microservices", "agents", "iot"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: System :: Distributed Computing",
+    "Typing :: Typed",
+]
 dependencies = [
     "aiohttp>=3.13.5",
     "eclipse-zenoh>=1.7.2",
     "msgpack>=1.1.2",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.13.1",
-    "pytest-asyncio>=1.3.0",
     "pyyaml>=6.0.3",
 ]
 
 [project.optional-dependencies]
-sqlite = ["aiosqlite>=0.22.1"]
-all = ["aiosqlite>=0.22.1", "aiohttp>=3.9.0"]
+redis = ["redis>=5.0.0"]
+# SQLAlchemy backend targets any SQL database; the client brings their own
+# async driver via the URL (e.g. asyncpg or psycopg for Postgres).
+sqlalchemy = [
+    "sqlalchemy[asyncio]>=2.0.0",
+]
+# Convenience extra: the SQLAlchemy backend plus the aiosqlite async driver, so
+# `pip install "istos[sqlite]"` gives a zero-config, file-backed durable ledger.
+sqlite = [
+    "sqlalchemy[asyncio]>=2.0.0",
+    "aiosqlite>=0.22.1",
+]
+otel = [
+    "opentelemetry-api>=1.28.0",
+    "opentelemetry-sdk>=1.28.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.28.0",
+]
+all = [
+    "redis>=5.0.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "aiosqlite>=0.22.1",
+    "opentelemetry-api>=1.28.0",
+    "opentelemetry-sdk>=1.28.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.28.0",
+]
+dev = [
+    "mypy>=1.19.1",
+    "pylint>=4.0.5",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-mock>=3.15.1",
+    "pytest-cov>=6.0.0",
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.27.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/A111ir/Istos"
+Documentation = "https://a111ir.github.io/Istos/"
+Repository = "https://github.com/A111ir/Istos"
+Issues = "https://github.com/A111ir/Istos/issues"
+Changelog = "https://github.com/A111ir/Istos/blob/main/docs/changelog.md"
 
 [project.scripts]
 istos = "istos:main"
@@ -28,6 +84,9 @@ istos = "istos:main"
 requires = ["uv_build>=0.9.0,<0.10.0"]
 build-backend = "uv_build"
 
+[tool.uv.build-backend]
+module-root = "src"
+
 [dependency-groups]
 dev = [
     "mypy>=1.19.1",
@@ -35,4 +94,42 @@ dev = [
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
     "pytest-mock>=3.15.1",
+    "pytest-cov>=6.0.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "aiosqlite>=0.22.1",
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.27.0",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+markers = [
+    "integration: tests requiring a live Zenoh network (deselect with '-m \"not integration\"')",
+]
+
+[tool.coverage.run]
+source = ["istos"]
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py310"
+src = ["src", "tests"]
+
+# Default rules only (pyflakes F + a subset of pycodestyle E). Line length (E501)
+# stays off by default — the codebase favors readable long lines.
+[tool.ruff.lint.per-file-ignores]
+# Guarded `import` used only to test dependency availability (HAS_PYDANTIC pattern).
+"src/istos/core/asyncapi.py" = ["F401"]
+"src/istos/core/validation.py" = ["F401"]
+"src/istos/core/handler.py" = ["F401"]

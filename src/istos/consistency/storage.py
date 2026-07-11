@@ -1,47 +1,77 @@
-from typing import Protocol, Any, Optional, runtime_checkable, runtime_checkable
-from abc import ABC, abstractmethod
+from typing import Protocol, Any, Optional, List, runtime_checkable
+from enum import Enum
 import asyncio
+import time
 
-try:
-    import aiosqlite
-except ImportError:
-    aiosqlite = None # type: ignore
+
+class Durability(str, Enum):
+    """
+    Delivery semantics for handler execution.
+
+    - AT_MOST_ONCE:  Fire-and-forget. No logging, no dedup. Fastest.
+    - AT_LEAST_ONCE: Logs every call to event_log. Retries may cause duplicates.
+    - EXACTLY_ONCE:  Logs + idempotency. Duplicate calls return cached result.
+    """
+    AT_MOST_ONCE = "at_most_once"
+    AT_LEAST_ONCE = "at_least_once"
+    EXACTLY_ONCE = "exactly_once"
 
 
 @runtime_checkable
 class StoragePlugin(Protocol):
     """
-    Interface for attaching 'Storages' to save messages, states or historical data.
-    Different type of Storages like Databases could be used.
+    Unified interface for storage backends.
+    Every storage must support all operations — the handler's `durability`
+    parameter decides which ones are actually called.
     """
+
+    # ---- Core key-value (always used) ----
+
     async def put(self, key: str, value: Any) -> None:
-        """
-        Intercept put messages and writes them to disk.
-        """
+        """Write or overwrite a value by key."""
         ...
 
     async def get(self, key: str) -> Optional[Any]:
-        """
-        Retrieve a value by key.
-        """
+        """Retrieve a value by key."""
         ...
 
     async def delete(self, key: str) -> None:
-        """
-        Delete a key from storage.
-        """
+        """Delete a key from storage."""
         ...
 
+    # ---- Event log (used by AT_LEAST_ONCE and EXACTLY_ONCE) ----
+
+    async def log(self, key: str, value: Any, idempotency_key: Optional[str] = None) -> None:
+        """Append an event to the durable log. Skips duplicates by idempotency_key."""
+        ...
+
+    async def get_log(self, key: str, limit: int = 100) -> List[Any]:
+        """Retrieve event log entries for a key, newest first."""
+        ...
+
+    # ---- Idempotency (used by EXACTLY_ONCE) ----
+
+    async def check_processed(self, idempotency_key: str) -> Optional[Any]:
+        """Check if already processed. Returns cached result or None."""
+        ...
+
+    async def mark_processed(self, idempotency_key: str, result: Any) -> None:
+        """Mark as processed and cache the result."""
+        ...
 
 
 class InMemoryStoragePlugin:
     """
-    A simple thread-safe in-memory key-value store.
-    Useful for storing temporary node metadata, states, or registry information.
+    Thread-safe in-memory storage with full durability support.
+    Data is lost on restart — use for testing and development.
     """
     def __init__(self):
         self._store: dict[str, Any] = {}
+        self._event_log: dict[str, List[dict]] = {}
+        self._processed: dict[str, Any] = {}
         self._lock = asyncio.Lock()
+
+    # ---- Core key-value ----
 
     async def put(self, key: str, value: Any) -> None:
         async with self._lock:
@@ -56,77 +86,32 @@ class InMemoryStoragePlugin:
             if key in self._store:
                 del self._store[key]
 
+    # ---- Event log ----
 
-class SQLiteStoragePlugin:
-    """
-    A persistent key-value store using SQLite and `aiosqlite`.
-    Useful for storing state and events that must survive restarts.
-    Values are stored as serialized strings or blobs.
-    """
-    def __init__(self, db_path: str = "istos_storage.db"):
-        if aiosqlite is None:
-            raise ImportError(
-                "aiosqlite is not installed. "
-                "Please install istos with the sqlite extra: pip install 'istos[sqlite]'"
-            )
-        self.db_path = db_path
-        self._db: Optional[Any] = None # using Any so we don't break type hinting if aiosqlite missing
-        self._init_task = asyncio.create_task(self._init_db())
+    async def log(self, key: str, value: Any, idempotency_key: Optional[str] = None) -> None:
+        async with self._lock:
+            if idempotency_key and idempotency_key in self._processed:
+                return
+            if key not in self._event_log:
+                self._event_log[key] = []
+            self._event_log[key].append({
+                "value": value,
+                "timestamp": time.time(),
+                "idempotency_key": idempotency_key,
+            })
 
-    async def _init_db(self) -> None:
-        """Initialize the database table if it doesn't exist."""
-        self._db = await aiosqlite.connect(self.db_path)
-        await self._db.execute(
-            '''
-            CREATE TABLE IF NOT EXISTS kv_store (
-                key TEXT PRIMARY KEY,
-                value BLOB
-            )
-            '''
-        )
-        await self._db.commit()
+    async def get_log(self, key: str, limit: int = 100) -> List[Any]:
+        async with self._lock:
+            entries = self._event_log.get(key, [])
+            return list(reversed(entries[-limit:]))
 
-    async def _ensure_db(self):
-        """Wait for the DB to be ready before querying."""
-        if self._db is None:
-            await self._init_task
+    # ---- Idempotency ----
 
-    async def put(self, key: str, value: Any) -> None:
-        await self._ensure_db()
-        
-        # Ensure value is bytes for SQLite BLOB storage
-        if isinstance(value, str):
-            value = value.encode('utf-8')
-        elif not isinstance(value, bytes):
-            value = str(value).encode('utf-8')
+    async def check_processed(self, idempotency_key: str) -> Optional[Any]:
+        async with self._lock:
+            return self._processed.get(idempotency_key)
 
-        await self._db.execute( # type: ignore
-            'INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)',
-            (key, value)
-        )
-        await self._db.commit() # type: ignore
+    async def mark_processed(self, idempotency_key: str, result: Any) -> None:
+        async with self._lock:
+            self._processed[idempotency_key] = result
 
-    async def get(self, key: str) -> Optional[Any]:
-        await self._ensure_db()
-        async with self._db.execute( # type: ignore
-            'SELECT value FROM kv_store WHERE key = ?', 
-            (key,)
-        ) as cursor:
-            row = await cursor.fetchone()
-            if row is not None:
-                return row[0] # Returns BLOB as bytes
-            return None
-
-    async def delete(self, key: str) -> None:
-        await self._ensure_db()
-        await self._db.execute( # type: ignore
-            'DELETE FROM kv_store WHERE key = ?',
-            (key,)
-        )
-        await self._db.commit() # type: ignore
-
-    async def close(self) -> None:
-        """Close the database connection cleanly."""
-        if self._db:
-            await self._db.close()
-            self._db = None

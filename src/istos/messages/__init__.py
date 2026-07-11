@@ -1,8 +1,8 @@
 from .serialization import (
     Serialize,
     JsonSerializer,
+    RawSerializer,
     MsgPackSerializer,
-    PickleSerializer,
     ProtobufSerializer,
     PydanticSerializer,
     YamlSerializer,
@@ -12,8 +12,8 @@ from .serialization import (
 __all__ = [
     "Serialize",
     "JsonSerializer",
+    "RawSerializer",
     "MsgPackSerializer",
-    "PickleSerializer",
     "ProtobufSerializer",
     "PydanticSerializer",
     "YamlSerializer",

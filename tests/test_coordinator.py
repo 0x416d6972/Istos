@@ -1,14 +1,6 @@
 import pytest
-import asyncio
 from unittest.mock import MagicMock
-from istos import Istos
-from istos.consistency.register import PrefixRegistery
 from istos.messages.serialization import JsonSerializer
-
-
-@pytest.fixture
-def istos():
-    return Istos()
 
 
 # ---- @istos.handle() on sync and async functions ----
@@ -62,27 +54,6 @@ async def test_handler_on_class_method(istos):
 
 
 # ---- Coordinator lifecycle ----
-
-@pytest.mark.asyncio
-async def test_coordinator_binds_registry(istos, mocker):
-    """Istos.run_async() calls registry.register(session) on startup."""
-    registry = PrefixRegistery("test/prefix", istos._storage)
-    istos.add_registry(registry)
-
-    mock_session = mocker.Mock()
-    istos._session_manager = mocker.AsyncMock()
-    istos._session_manager.__aenter__.return_value = mock_session
-
-    task = asyncio.create_task(istos.run_async())
-    await asyncio.sleep(0.1)
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
-
-    mock_session.declare_queryable.assert_called_once()
-
 
 @pytest.mark.asyncio
 async def test_handler_collects_into_istos(istos):

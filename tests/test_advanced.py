@@ -2,11 +2,6 @@ import pytest
 import asyncio
 import zenoh
 from unittest.mock import MagicMock
-from istos import Istos
-
-@pytest.fixture
-def istos():
-    return Istos()
 
 @pytest.mark.asyncio
 async def test_delete_once(istos, mocker):

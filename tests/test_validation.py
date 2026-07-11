@@ -1,14 +1,7 @@
 import pytest
-import asyncio
 from unittest.mock import MagicMock
 from pydantic import BaseModel
-from istos import Istos
 from istos.core.validation import validate_params, SchemaValidationError
-
-
-@pytest.fixture
-def istos():
-    return Istos()
 
 
 # ------------------------------------------------------------------
@@ -183,3 +176,69 @@ async def test_handler_untyped_still_works(istos):
     args, _ = fake_query.reply.call_args
     result = istos._serializer.deserialize(args[1])
     assert result["echo"] == "hello"
+
+
+# ------------------------------------------------------------------
+# @subscribe payload validation (network-input boundary)
+# ------------------------------------------------------------------
+
+class TestSubscribePayloadValidation:
+    """A subscriber's payload is untrusted network input — validate/coerce it
+    against the first positional parameter's type hint, like @handle does."""
+
+    @pytest.mark.asyncio
+    async def test_basemodel_payload_coerced(self, istos):
+        class Telemetry(BaseModel):
+            battery: float
+            altitude: int
+
+        received = {}
+
+        @istos.subscribe("drone/telemetry")
+        def on_t(data: Telemetry):
+            received["v"] = data
+
+        wrapper = istos._subscribers[0]
+        await wrapper({"battery": 80, "altitude": 100})
+
+        assert isinstance(received["v"], Telemetry)
+        assert received["v"].battery == 80.0
+
+    @pytest.mark.asyncio
+    async def test_scalar_payload_coerced(self, istos):
+        received = {}
+
+        @istos.subscribe("n/count")
+        def on_n(data: int):
+            received["v"] = data
+
+        wrapper = istos._subscribers[0]
+        await wrapper("42")
+
+        assert received["v"] == 42
+        assert isinstance(received["v"], int)
+
+    @pytest.mark.asyncio
+    async def test_invalid_payload_raises(self, istos):
+        class Telemetry(BaseModel):
+            battery: float
+
+        @istos.subscribe("drone/telemetry")
+        def on_t(data: Telemetry): ...
+
+        wrapper = istos._subscribers[0]
+        with pytest.raises(SchemaValidationError):
+            await wrapper({"battery": "not-a-number"})
+
+    @pytest.mark.asyncio
+    async def test_untyped_payload_passthrough(self, istos):
+        received = {}
+
+        @istos.subscribe("raw/data")
+        def on_r(data):
+            received["v"] = data
+
+        wrapper = istos._subscribers[0]
+        await wrapper({"anything": 1})
+
+        assert received["v"] == {"anything": 1}

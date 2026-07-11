@@ -1,0 +1,37 @@
+services:
+  zenoh-router:
+    image: eclipse/zenoh:1.1.1
+    container_name: istos-zenoh-router
+    ports:
+      - "7447:7447"
+    command: zenohd
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: istos-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: istos-postgres
+    environment:
+      POSTGRES_USER: istos
+      POSTGRES_PASSWORD: istos
+      POSTGRES_DB: istos
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # Example Istos service — uncomment and customize:
+  # istos-service:
+  #   build: .
+  #   depends_on:
+  #     - zenoh-router
+  #     - redis
+  #   environment:
+  #     ISTOS_ZENOH_MODE: client
+  #     ISTOS_ZENOH_CONNECT_ENDPOINTS: '["tcp/zenoh-router:7447"]'
+  #   command: python main.py
