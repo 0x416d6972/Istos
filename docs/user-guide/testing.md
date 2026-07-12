@@ -47,6 +47,45 @@ def test_move_sync():
     assert result["moved"] == 5
 ```
 
+### Testing streams
+
+```python
+@istos.stream("llm/generate")
+async def generate(prompt: str):
+    for tok in prompt.split():
+        yield tok
+
+@pytest.mark.asyncio
+async def test_stream():
+    client = IstosTestClient(istos)
+    chunks = [c async for c in client.stream("llm/generate", prompt="hi there")]
+    assert chunks == ["hi", "there"]
+```
+
+### Testing channels
+
+```python
+from istos import ChannelSession
+
+@istos.channel("agent/chat")
+async def chat(s: ChannelSession):
+    await s.send({"role": "system", "text": "ready"})
+    msg = await s.receive()
+    await s.send({"echo": msg})
+
+@pytest.mark.asyncio
+async def test_channel():
+    client = IstosTestClient(istos)
+    async with client.channel("agent/chat") as chan:
+        assert await chan.receive() == {"role": "system", "text": "ready"}
+        await chan.send("hello")
+        assert await chan.receive() == {"echo": "hello"}
+```
+
+Pass `token=` on `query` / `stream` / `channel` to drive an authorizer. For
+durable channels, pass `conversation_id=` the same way you would on
+`open_channel`. See [Channels](channels.md).
+
 ## Testing with Mocks
 
 For unit tests that don't need handler logic, mock the Zenoh session:

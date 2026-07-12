@@ -27,6 +27,7 @@ from istos.core.errors import ExceptionHandlerRegistry, get_default_registry
 from istos.core.validation import validate_params
 from istos.di.depends import extract_depends, resolve_dependencies
 from istos.messages.serialization import Serialize
+from istos.middleware.base import MiddlewareStack, RequestScope
 from istos.logging import get_logger
 
 
@@ -137,6 +138,7 @@ class channel_wrapper:
         dependency_overrides: Optional[dict] = None,
         durable: bool = False,
         session_store: Any = None,
+        middleware: Optional[MiddlewareStack] = None,
     ) -> None:
         if not inspect.iscoroutinefunction(func):
             raise TypeError(
@@ -149,6 +151,7 @@ class channel_wrapper:
         self.durable = durable
         self.session_store = session_store if durable else None
         self._authorizer = authorizer
+        self._middleware = middleware
         self._exception_registry = exception_registry or get_default_registry()
         self._logger = get_logger("channel")
 
@@ -212,7 +215,22 @@ class channel_wrapper:
                     self.func, call_kwargs, di_stack, cache={},
                     overrides=self._dependency_overrides,
                 )
-            await self.func(**call_kwargs)
+
+            async def _drive(_scope: Any = None) -> None:
+                await self.func(**call_kwargs)
+
+            # Middleware wraps the whole session — once at open, once at close.
+            if self._middleware is not None:
+                scope = RequestScope(
+                    prefix=self.prefix, operation="channel", params=params,
+                )
+                scope.context.principal = req_ctx.principal
+                scope.context.attachment = req_ctx.attachment
+                scope.context.correlation_id = req_ctx.correlation_id
+                scope.context.traceparent = req_ctx.traceparent
+                await self._middleware.invoke(scope, _drive)
+            else:
+                await _drive()
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """In-process invocation (TestClient) calls the handler directly."""

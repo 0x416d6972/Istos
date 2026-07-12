@@ -10,7 +10,7 @@ from typing import Any, AsyncIterator, Callable, List, Mapping, Optional, Type, 
 
 from istos.communication.sessions import SessionManager, AsyncZenohSession, ZenohSession
 from istos.communication.config import IstosZenohConfig
-from istos.communication.persist import ObjectStore, PersistRole, parse_store_url
+from istos.communication.persist import ObjectStore, PersistRole, ReplayEvent, parse_store_url
 from istos.consistency.storage import StoragePlugin, InMemoryStoragePlugin, Durability
 from istos.consistency.sqlalchemy_storage import SqlAlchemyStoragePlugin
 from istos.consistency.config import DatabaseConfig
@@ -324,7 +324,7 @@ class Istos:
             return wrapper
         return decorator
 
-    def query(self, prefix: str, timeout_s: float = 5.0, retry: Optional[Union[int, RetryPolicy]] = None, serializer: Optional[Serialize] = None, attachment: Optional[Union[bytes, str]] = None) -> Callable:
+    def query(self, prefix: str, timeout_s: float = 5.0, retry: Optional[Union[int, RetryPolicy]] = None, serializer: Optional[Serialize] = None, token: Optional[Union[bytes, str]] = None) -> Callable:
         """
         Decorator that queries a registered handler when the function is called.
 
@@ -335,14 +335,14 @@ class Istos:
             @istos.query("binary/data", serializer=MsgPackSerializer())
             def process_binary(result): ...
 
-        Pass ``attachment`` (bytes or str) to carry an auth token on every call —
+        Pass ``token`` (bytes or str) to carry an auth token on every call —
         symmetry with ``query_once`` for calling gated handlers:
 
-            @istos.query("admin/op", attachment="secret")
+            @istos.query("admin/op", token="secret")
             def op(result): ...
         """
-        if isinstance(attachment, str):
-            attachment = attachment.encode("utf-8")
+        if isinstance(token, str):
+            token = token.encode("utf-8")
         def decorator(func: Callable) -> query_wrapper:
             wrapper = query_wrapper(
                 func, prefix, serializer or JsonSerializer(),
@@ -350,7 +350,7 @@ class Istos:
                 timeout_s=timeout_s,
                 retry=retry,
                 dependency_overrides=self.dependency_overrides,
-                attachment=attachment,
+                attachment=token,
             )
             self._queries.append(wrapper)
             return wrapper
@@ -373,8 +373,9 @@ class Istos:
                 async for token in model.stream(prompt):
                     yield token
 
-        Consume with :meth:`stream_query`. Auth, validation, DI, and the request
-        envelope work like ``@handle``; deps stay open until the stream ends.
+        Consume with :meth:`stream_query`. Auth, validation, DI, middleware and
+        the request envelope work like ``@handle`` (middleware wraps the whole
+        stream — once at open, once when it ends); deps stay open for the stream.
 
         ``http=True`` (or ``http="GET /path"``) also serves the stream as SSE.
         Chunks are ``data:`` frames; the stream finishes with ``event: end``
@@ -391,6 +392,7 @@ class Istos:
                 authorizer=combine_authorizers(self._authorizer, authorizer),
                 exception_registry=self._exception_registry,
                 dependency_overrides=self.dependency_overrides,
+                middleware=self._middleware_stack,
             )
             self._streams.append(wrapper)
             return wrapper
@@ -418,7 +420,8 @@ class Istos:
         ``ws=True`` (or ``ws="/path"``) exposes the channel as a WebSocket on the
         HTTP surface (needs ``Istos(http_port=...)``); the ``Authorization`` header
         and trace headers from the handshake feed the usual authorizer/envelope.
-        Auth, validation and DI work like ``@handle``.
+        Auth, validation, DI and middleware work like ``@handle`` (middleware
+        wraps the whole session — once at open, once at close).
 
         ``durable=True`` persists every message to a conversation log (over the
         app's storage), so a session resumes after a disconnect: the caller
@@ -432,6 +435,7 @@ class Istos:
                 exception_registry=self._exception_registry,
                 dependency_overrides=self.dependency_overrides,
                 durable=durable, session_store=SessionStore(self._storage),
+                middleware=self._middleware_stack,
             )
             self._channels.append(wrapper)
             if ws is not None:
@@ -448,7 +452,7 @@ class Istos:
         *,
         timeout_s: float = 60.0,
         serializer: Optional[Serialize] = None,
-        attachment: Optional[Union[bytes, str]] = None,
+        token: Optional[Union[bytes, str]] = None,
         **params: Any,
     ) -> AsyncIterator[Any]:
         """Yield chunks from a ``@stream`` handler as they arrive::
@@ -477,12 +481,12 @@ class Istos:
             )
             selector = f"{key_expr}?{query_string}"
 
-        token = None
-        if attachment is not None:
-            token = attachment.decode("utf-8") if isinstance(attachment, bytes) else str(attachment)
+        tok = None
+        if token is not None:
+            tok = token.decode("utf-8") if isinstance(token, bytes) else str(token)
         ctx = peek_request_context()
         outbound = RequestEnvelope(
-            token=token,
+            token=tok,
             correlation_id=ctx.correlation_id if ctx else None,
             traceparent=ctx.traceparent if ctx else None,
         ).to_attachment()
@@ -616,7 +620,7 @@ class Istos:
         prefix: str,
         serializer: Optional[Serialize] = None,
         timeout_s: float = 60.0,
-        attachment: Optional[Union[bytes, str]] = None,
+        token: Optional[Union[bytes, str]] = None,
     ) -> Callable:
         """
         Client-side decorator for reaching a ``@stream`` — the streaming
@@ -629,12 +633,12 @@ class Istos:
 
             await generate(prompt="hi")     # call kwargs → params
 
-        Pass ``token=`` when calling (or ``attachment=`` on the decorator) for auth.
+        Pass ``token=`` when calling, or set a default ``token=`` on the decorator.
         """
         def decorator(func: Callable) -> stream_client_wrapper:
             return stream_client_wrapper(
                 func, self, prefix, serializer=serializer, timeout_s=timeout_s,
-                attachment=attachment, dependency_overrides=self.dependency_overrides,
+                token=token, dependency_overrides=self.dependency_overrides,
             )
         return decorator
 
@@ -643,7 +647,7 @@ class Istos:
         prefix: str,
         serializer: Optional[Serialize] = None,
         timeout_s: float = 5.0,
-        attachment: Optional[Union[bytes, str]] = None,
+        token: Optional[Union[bytes, str]] = None,
     ) -> Callable:
         """
         Client-side decorator for reaching a ``@channel``. The body receives an
@@ -660,7 +664,7 @@ class Istos:
         def decorator(func: Callable) -> channel_client_wrapper:
             return channel_client_wrapper(
                 func, self, prefix, serializer=serializer, timeout_s=timeout_s,
-                attachment=attachment, dependency_overrides=self.dependency_overrides,
+                token=token, dependency_overrides=self.dependency_overrides,
             )
         return decorator
 
@@ -758,6 +762,52 @@ class Istos:
         self._persist_roles.append(role)
         return role
 
+    async def replay(
+        self,
+        prefix: str,
+        *,
+        since: Optional[str] = None,
+        serializer: Optional[Serialize] = None,
+        timeout_s: float = 10.0,
+    ) -> AsyncIterator["ReplayEvent"]:
+        """Read a persisted stream back as a durable event log, oldest-first::
+
+            cursor = load_cursor()            # None on first run
+            async for event in app.replay("orders/created", since=cursor):
+                process(event.data)
+                cursor = event.position       # checkpoint to resume later
+            save_cursor(cursor)
+
+        Answered by a persistence role (see :meth:`persist`), so it works across
+        producer restarts. ``since`` is a ``position`` from an earlier event;
+        replay resumes strictly after it, so a consumer picks up where it stopped.
+        """
+        session = self._session_manager.session
+        if session is None:
+            raise RuntimeError(
+                "No active Zenoh session. Call istos.run()/run_async()/serving() first."
+            )
+        serializer = serializer or JsonSerializer()
+
+        selector = f"{prefix.rstrip('/')}/**"
+        if since is not None:
+            import urllib.parse
+            selector = f"{selector}?_since={urllib.parse.quote(since)}"
+
+        def _collect() -> list:
+            out: list = []
+            for reply in session.get(selector, timeout=timeout_s):
+                try:
+                    sample = reply.ok
+                    out.append((str(sample.key_expr), bytes(sample.payload)))
+                except Exception:
+                    continue
+            out.sort(key=lambda kv: kv[0])
+            return out
+
+        for position, raw in await asyncio.to_thread(_collect):
+            yield ReplayEvent(position=position, data=serializer.deserialize(raw))
+
     def subscribe(
         self,
         prefix: str,
@@ -849,7 +899,7 @@ class Istos:
         key_expr: str,
         timeout_s: float = 5.0,
         serializer: Optional[Serialize] = None,
-        attachment: Optional[Union[bytes, str]] = None,
+        token: Optional[Union[bytes, str]] = None,
         **kwargs: Any
     ) -> Any:
         """
@@ -858,35 +908,35 @@ class Istos:
             results = await istos.query_once("robot/move", distance=10)
             results = await istos.query_once("binary/data", serializer=MsgPackSerializer())
 
-        Pass ``attachment`` (bytes or str) to carry an auth token to a handler
+        Pass ``token`` (bytes or str) to carry an auth token to a handler
         protected by a TokenAuthorizer:
 
-            await istos.query_once("admin/op", attachment="secret")
+            await istos.query_once("admin/op", token="secret")
         """
         if self._session_manager.session is None:
             raise RuntimeError(
                 "No active Zenoh session. Call istos.run() or istos.run_async() first."
             )
-        if isinstance(attachment, str):
-            attachment = attachment.encode("utf-8")
+        if isinstance(token, str):
+            token = token.encode("utf-8")
         wrapper = query_wrapper(
             func=lambda data: data,
             prefix=key_expr,
             serializer=serializer or JsonSerializer(),
             get_session=lambda: self._session_manager.session,
             timeout_s=timeout_s,
-            attachment=attachment,
+            attachment=token,
         )
         return await wrapper(**kwargs)
 
-    async def publish_once(self, prefix: str, data: Any, use_shm: bool = False, serializer: Optional[Serialize] = None, attachment: Optional[Union[bytes, str]] = None) -> None:
+    async def publish_once(self, prefix: str, data: Any, use_shm: bool = False, serializer: Optional[Serialize] = None, token: Optional[Union[bytes, str]] = None) -> None:
         """
         One-shot publish without a decorator.
 
             await istos.publish_once("drone/status", {"ok": True})
             await istos.publish_once("binary/data", payload, serializer=MsgPackSerializer())
 
-        Pass ``attachment`` (bytes or str) to carry an auth token to a gated
+        Pass ``token`` (bytes or str) to carry an auth token to a gated
         subscriber. The current request's correlation_id / traceparent are
         forwarded too (see the request envelope).
         """
@@ -896,12 +946,12 @@ class Istos:
         _serializer = serializer or JsonSerializer()
         serialized = _serializer.serialize(data)
 
-        token = None
-        if attachment is not None:
-            token = attachment.decode("utf-8") if isinstance(attachment, bytes) else str(attachment)
+        tok = None
+        if token is not None:
+            tok = token.decode("utf-8") if isinstance(token, bytes) else str(token)
         ctx = peek_request_context()
         att = RequestEnvelope(
-            token=token,
+            token=tok,
             correlation_id=ctx.correlation_id if ctx else None,
             traceparent=ctx.traceparent if ctx else None,
         ).to_attachment()
@@ -1339,7 +1389,7 @@ class Istos:
 
             try:
                 async for chunk in self.stream_query(
-                    route.key_expr, timeout_s=route.timeout_s, attachment=token, **params
+                    route.key_expr, timeout_s=route.timeout_s, token=token, **params
                 ):
                     text_chunk = chunk if isinstance(chunk, str) else _json.dumps(chunk)
                     await response.write(sse_event(text_chunk).encode("utf-8"))

@@ -175,6 +175,33 @@ app.run()
 backend. Persistence never crashes the producer: a failing store write is logged
 and swallowed.
 
+### Replaying the log from a cursor
+
+`@subscribe(replay_persisted=True)` replays the whole stream on join, which is
+what a recovering subscriber wants. But sometimes you want to *read* the durable
+log directly — a batch job, a projection rebuild, a consumer that resumes exactly
+where it left off. `app.replay()` gives you the stream as an async iterator,
+oldest-first:
+
+```python
+cursor = load_cursor()          # None the first time
+async for event in app.replay("orders/created", since=cursor):
+    await project(event.data)
+    cursor = event.position     # checkpoint
+save_cursor(cursor)
+```
+
+Each `event` carries the decoded `data`, a `position` (an opaque cursor) and a
+`timestamp_ms`. Pass a saved `position` back as `since=` and replay resumes
+*strictly after* it — so a consumer that stops, crashes, or redeploys picks up
+from its last checkpoint instead of reprocessing the whole history. Positions
+sort in publish order, and with S3 the `since` filter is applied server-side
+(`StartAfter`), so resuming a long stream doesn't re-list what you've already
+seen.
+
+Where you keep the cursor is up to you — a file, a row, or the app's own storage
+ledger. Istos hands you the position; it doesn't decide your checkpoint policy.
+
 ### Configuring S3 / MinIO
 
 Install the extra: `pip install "istos[s3]"`.

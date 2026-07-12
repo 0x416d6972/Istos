@@ -171,7 +171,7 @@ istos = Istos(
 async def status():
     return {"ok": True}
 
-await istos.query_once("fleet/status", attachment="super-secret-token")
+await istos.query_once("fleet/status", token="super-secret-token")
 ```
 
 Transport auth and app authorizers are separate — you usually want both.

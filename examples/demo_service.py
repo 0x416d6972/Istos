@@ -83,7 +83,7 @@ istos.serve_docs(
 # 5. Run it
 # ---------------------------------------------------------
 # A caller reaches `robot/move` by presenting a token in the request attachment:
-#     await client.query_once("robot/move", attachment="pilot-key", distance=5)
+#     await client.query_once("robot/move", token="pilot-key", distance=5)
 if __name__ == "__main__":
     try:
         istos.run()

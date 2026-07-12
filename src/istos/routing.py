@@ -65,12 +65,12 @@ class IstosRouter:
             return proxy
         return decorator
 
-    def query(self, prefix: str, timeout_s: float = 5.0, retry: Optional[Union[int, RetryPolicy]] = None, serializer: Optional[Serialize] = None, attachment: Optional[Union[bytes, str]] = None) -> Callable:
+    def query(self, prefix: str, timeout_s: float = 5.0, retry: Optional[Union[int, RetryPolicy]] = None, serializer: Optional[Serialize] = None, token: Optional[Union[bytes, str]] = None) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
-                proxy._real_wrapper = app.query(full_prefix, timeout_s=timeout_s, retry=retry, serializer=serializer, attachment=attachment)(func)
+                proxy._real_wrapper = app.query(full_prefix, timeout_s=timeout_s, retry=retry, serializer=serializer, token=token)(func)
             self._actions.append(action)
             return proxy
         return decorator
@@ -95,22 +95,22 @@ class IstosRouter:
             return proxy
         return decorator
 
-    def stream_client(self, prefix: str, serializer: Optional[Serialize] = None, timeout_s: float = 60.0, attachment: Optional[Union[bytes, str]] = None) -> Callable:
+    def stream_client(self, prefix: str, serializer: Optional[Serialize] = None, timeout_s: float = 60.0, token: Optional[Union[bytes, str]] = None) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
-                proxy._real_wrapper = app.stream_client(full_prefix, serializer=serializer, timeout_s=timeout_s, attachment=attachment)(func)
+                proxy._real_wrapper = app.stream_client(full_prefix, serializer=serializer, timeout_s=timeout_s, token=token)(func)
             self._actions.append(action)
             return proxy
         return decorator
 
-    def channel_client(self, prefix: str, serializer: Optional[Serialize] = None, timeout_s: float = 5.0, attachment: Optional[Union[bytes, str]] = None) -> Callable:
+    def channel_client(self, prefix: str, serializer: Optional[Serialize] = None, timeout_s: float = 5.0, token: Optional[Union[bytes, str]] = None) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
-                proxy._real_wrapper = app.channel_client(full_prefix, serializer=serializer, timeout_s=timeout_s, attachment=attachment)(func)
+                proxy._real_wrapper = app.channel_client(full_prefix, serializer=serializer, timeout_s=timeout_s, token=token)(func)
             self._actions.append(action)
             return proxy
         return decorator

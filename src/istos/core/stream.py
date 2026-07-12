@@ -34,6 +34,7 @@ from istos.di.depends import extract_depends, resolve_dependencies
 from istos.gateway import decode_params
 from istos.logging import get_logger
 from istos.messages.serialization import Serialize
+from istos.middleware.base import MiddlewareStack, RequestScope
 
 
 class stream_wrapper:
@@ -48,6 +49,7 @@ class stream_wrapper:
         authorizer: Optional[Authorizer] = None,
         exception_registry: Optional[ExceptionHandlerRegistry] = None,
         dependency_overrides: Optional[dict] = None,
+        middleware: Optional[MiddlewareStack] = None,
     ) -> None:
         if not inspect.isasyncgenfunction(func):
             raise TypeError(
@@ -58,6 +60,7 @@ class stream_wrapper:
         self.prefix = prefix
         self.serializer = serializer
         self._authorizer = authorizer
+        self._middleware = middleware
         self._exception_registry = exception_registry or get_default_registry()
         self._logger = get_logger("stream")
 
@@ -137,15 +140,31 @@ class stream_wrapper:
                         self.func, call_kwargs, di_stack, cache={},
                         overrides=self._dependency_overrides,
                     )
-                agen = self.func(**call_kwargs)
-                try:
-                    async for chunk in agen:
-                        payload = self.serializer.serialize(chunk)
-                        # Zenoh reply is sync; offload so the loop keeps pumping.
-                        await asyncio.to_thread(query.reply, key, payload)
-                finally:
-                    if hasattr(agen, "aclose"):
-                        await agen.aclose()
+
+                async def _drive(_scope: Any = None) -> None:
+                    agen = self.func(**call_kwargs)
+                    try:
+                        async for chunk in agen:
+                            payload = self.serializer.serialize(chunk)
+                            # Zenoh reply is sync; offload so the loop keeps pumping.
+                            await asyncio.to_thread(query.reply, key, payload)
+                    finally:
+                        if hasattr(agen, "aclose"):
+                            await agen.aclose()
+
+                # Middleware wraps the whole stream — it runs once at open and
+                # once when the last chunk has gone out, not per chunk.
+                if self._middleware is not None:
+                    scope = RequestScope(
+                        prefix=self.prefix, operation="stream", params=params,
+                    )
+                    scope.context.principal = req_ctx.principal
+                    scope.context.attachment = req_ctx.attachment
+                    scope.context.correlation_id = req_ctx.correlation_id
+                    scope.context.traceparent = req_ctx.traceparent
+                    await self._middleware.invoke(scope, _drive)
+                else:
+                    await _drive()
         except Exception as e:
             self._logger.error(
                 "Stream error on %s: %s", self.prefix, e,

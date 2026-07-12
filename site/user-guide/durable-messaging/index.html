@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A unified Python framework for building robust distributed systems and multi-agent applications over Eclipse Zenoh.">
+        <meta name="description" content="Decorator-first Python services on Eclipse Zenoh — RPC, streaming, duplex channels, and durable pub/sub.">
       
       
         <meta name="author" content="Amir Rezaei">
@@ -617,6 +617,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../channels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Channels & Agent Sessions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../pubsub/" class="md-nav__link">
         
   
@@ -782,6 +810,17 @@
     <span class="md-ellipsis">
       
         Standalone persistence node
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#replaying-the-log-from-a-cursor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Replaying the log from a cursor
       
     </span>
   </a>
@@ -1435,6 +1474,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../recipes/agent-channel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent channel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../recipes/secure-rpc/" class="md-nav__link">
         
   
@@ -1864,6 +1931,90 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../api/asgi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ASGI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gateway
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
     
@@ -1880,10 +2031,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_8" >
         
           
-          <label class="md-nav__link" for="__nav_6_5" id="__nav_6_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_8" id="__nav_6_8_label" tabindex="0">
             
   
   
@@ -1901,8 +2052,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1983,6 +2134,62 @@
     
   
     Stream
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/core/channel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Channel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/core/session_store/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SessionStore
   
 
     
@@ -2250,10 +2457,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_6" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_9" >
         
           
-          <label class="md-nav__link" for="__nav_6_6" id="__nav_6_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_9" id="__nav_6_9_label" tabindex="0">
             
   
   
@@ -2271,8 +2478,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2424,10 +2631,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_7" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_10" >
         
           
-          <label class="md-nav__link" for="__nav_6_7" id="__nav_6_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_10" id="__nav_6_10_label" tabindex="0">
             
   
   
@@ -2445,8 +2652,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_7">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_10">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2626,10 +2833,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_11" >
         
           
-          <label class="md-nav__link" for="__nav_6_8" id="__nav_6_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_11" id="__nav_6_11_label" tabindex="0">
             
   
   
@@ -2647,8 +2854,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2716,10 +2923,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_12" >
         
           
-          <label class="md-nav__link" for="__nav_6_9" id="__nav_6_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
             
   
   
@@ -2737,8 +2944,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_9">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2918,10 +3125,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_14" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_17" >
         
           
-          <label class="md-nav__link" for="__nav_6_14" id="__nav_6_14_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_17" id="__nav_6_17_label" tabindex="0">
             
   
   
@@ -2939,8 +3146,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_14_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_14">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_17_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_17">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3213,6 +3420,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#replaying-the-log-from-a-cursor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Replaying the log from a cursor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#configuring-s3-minio" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3467,34 +3685,55 @@ storage node. It keeps serving history even while producers come and go:</p>
 <a href="../../api/communication/persist/"><code>ObjectStore</code></a> instance if you want a custom
 backend. Persistence never crashes the producer: a failing store write is logged
 and swallowed.</p>
+<h3 id="replaying-the-log-from-a-cursor">Replaying the log from a cursor<a class="headerlink" href="#replaying-the-log-from-a-cursor" title="Permanent link">&para;</a></h3>
+<p><code>@subscribe(replay_persisted=True)</code> replays the whole stream on join, which is
+what a recovering subscriber wants. But sometimes you want to <em>read</em> the durable
+log directly — a batch job, a projection rebuild, a consumer that resumes exactly
+where it left off. <code>app.replay()</code> gives you the stream as an async iterator,
+oldest-first:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">cursor</span> <span class="o">=</span> <span class="n">load_cursor</span><span class="p">()</span>          <span class="c1"># None the first time</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">async</span> <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">app</span><span class="o">.</span><span class="n">replay</span><span class="p">(</span><span class="s2">&quot;orders/created&quot;</span><span class="p">,</span> <span class="n">since</span><span class="o">=</span><span class="n">cursor</span><span class="p">):</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="k">await</span> <span class="n">project</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">cursor</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">position</span>     <span class="c1"># checkpoint</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">save_cursor</span><span class="p">(</span><span class="n">cursor</span><span class="p">)</span>
+</code></pre></div>
+<p>Each <code>event</code> carries the decoded <code>data</code>, a <code>position</code> (an opaque cursor) and a
+<code>timestamp_ms</code>. Pass a saved <code>position</code> back as <code>since=</code> and replay resumes
+<em>strictly after</em> it — so a consumer that stops, crashes, or redeploys picks up
+from its last checkpoint instead of reprocessing the whole history. Positions
+sort in publish order, and with S3 the <code>since</code> filter is applied server-side
+(<code>StartAfter</code>), so resuming a long stream doesn't re-list what you've already
+seen.</p>
+<p>Where you keep the cursor is up to you — a file, a row, or the app's own storage
+ledger. Istos hands you the position; it doesn't decide your checkpoint policy.</p>
 <h3 id="configuring-s3-minio">Configuring S3 / MinIO<a class="headerlink" href="#configuring-s3-minio" title="Permanent link">&para;</a></h3>
 <p>Install the extra: <code>pip install "istos[s3]"</code>.</p>
 <p><strong>Credentials</strong> use the standard AWS chain — set them out-of-band, never in the
 URL:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_ACCESS_KEY_ID</span><span class="o">=</span>…
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="o">=</span>…
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1"># or ~/.aws/credentials, or an instance/IAM role in production</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_ACCESS_KEY_ID</span><span class="o">=</span>…
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="o">=</span>…
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1"># or ~/.aws/credentials, or an instance/IAM role in production</span>
 </code></pre></div>
 <p><strong>Bucket, prefix, endpoint, and region</strong> come from the URL. A custom <code>endpoint</code>
 (for MinIO or an S3-compatible store) and <code>region</code> go in the query string:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># AWS, default endpoint:</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nd">@app</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="s2">&quot;orders/created&quot;</span><span class="p">,</span> <span class="n">durable</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>             <span class="n">persist</span><span class="o">=</span><span class="s2">&quot;s3://orders-log/prod?region=us-east-1&quot;</span><span class="p">)</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">created</span><span class="p">(</span><span class="n">order</span><span class="p">):</span> <span class="o">...</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1"># MinIO:</span>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">app</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="s2">&quot;orders/created&quot;</span><span class="p">,</span> <span class="s2">&quot;s3://orders-log?endpoint=http://localhost:9000&amp;region=us-east-1&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># AWS, default endpoint:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nd">@app</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="s2">&quot;orders/created&quot;</span><span class="p">,</span> <span class="n">durable</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>             <span class="n">persist</span><span class="o">=</span><span class="s2">&quot;s3://orders-log/prod?region=us-east-1&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">created</span><span class="p">(</span><span class="n">order</span><span class="p">):</span> <span class="o">...</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="c1"># MinIO:</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">app</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="s2">&quot;orders/created&quot;</span><span class="p">,</span> <span class="s2">&quot;s3://orders-log?endpoint=http://localhost:9000&amp;region=us-east-1&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p>For full control (or dev credentials for MinIO) construct the store directly and
 pass it in:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">S3ObjectStore</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">store</span> <span class="o">=</span> <span class="n">S3ObjectStore</span><span class="p">(</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="s2">&quot;orders-log&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;prod&quot;</span><span class="p">,</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">endpoint_url</span><span class="o">=</span><span class="s2">&quot;http://localhost:9000&quot;</span><span class="p">,</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">access_key_id</span><span class="o">=</span><span class="s2">&quot;minioadmin&quot;</span><span class="p">,</span> <span class="n">secret_access_key</span><span class="o">=</span><span class="s2">&quot;minioadmin&quot;</span><span class="p">,</span>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="p">)</span>
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">app</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="s2">&quot;orders/created&quot;</span><span class="p">,</span> <span class="n">store</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">S3ObjectStore</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">store</span> <span class="o">=</span> <span class="n">S3ObjectStore</span><span class="p">(</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="s2">&quot;orders-log&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;prod&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">endpoint_url</span><span class="o">=</span><span class="s2">&quot;http://localhost:9000&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">access_key_id</span><span class="o">=</span><span class="s2">&quot;minioadmin&quot;</span><span class="p">,</span> <span class="n">secret_access_key</span><span class="o">=</span><span class="s2">&quot;minioadmin&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="p">)</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="n">app</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="s2">&quot;orders/created&quot;</span><span class="p">,</span> <span class="n">store</span><span class="p">)</span>
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Consumers query the wildcard</p>

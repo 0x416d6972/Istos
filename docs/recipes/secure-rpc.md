@@ -28,7 +28,7 @@ async def status():
     return {"ok": True}
 
 # Caller (after session is open):
-# await istos.query_once("fleet/status", attachment="super-secret-token")
+# await istos.query_once("fleet/status", token="super-secret-token")
 ```
 
 Per-handler override:

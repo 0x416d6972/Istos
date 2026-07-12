@@ -9,19 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `@stream` / `stream_query` — chunked RPC replies
+- `@channel` / `open_channel` / `ChannelClient` — duplex agent sessions (WebSocket via `ws=`, fabric via Zenoh)
+- `@stream_client` / `@channel_client` — declarative clients (mirrors `@query`)
+- `@channel(durable=True)` + `SessionStore` — resumable conversations over the app storage ledger
 - HTTP gateway (`http_port`) for `@handle(..., http=…)` and `@stream(..., http=…)` (SSE)
+- `Istos(enable_mcp=True)` — MCP JSON-RPC tools from `@handle` endpoints (`/mcp`)
+- `istos.asgi.lifespan` / `Istos.serving()` — co-host the mesh inside FastAPI/Starlette
 - `GET /livez`, `/readyz`, `/metrics` when `http_port` is set
-- `.istos/capabilities` + `export_capabilities()`
+- `.istos/capabilities` + `export_capabilities()` (includes `channel` + optional `websocket`)
 - Request envelope on attachments (`tok` / `cid` / `tp`)
 - `require_auth=True` (raises `IstosSecurityError` without an authorizer)
 - `JWTAuthorizer`, `require_roles` (`istos[jwt]`)
 - `authorizer=` on subscribers
-- `attachment=` on `@query`, `query_once`, `publish_once`
-- `@publish(persist="s3://…")` / `app.persist(...)` (`istos[s3]`)
+- `token=` on `@query`, `query_once`, `publish_once`, `stream_query`, `open_channel`
+- `@publish(persist="s3://…")` / `app.persist(...)` / `app.replay(...)` (`istos[s3]`)
+- `RateLimitMiddleware` — token-bucket rate limits
 - Structured logging (`log_level`, `json_logs`)
 - `IstosError` / `ErrorResponse` / `@exception_handler`
 - Middleware stack (correlation ID, logging, …)
-- `IstosTestClient`
+- `IstosTestClient` (query, stream, channel, publish)
 - `.istos/health`, `.istos/ready`, `.istos/metrics`
 - Prometheus metrics + optional OTel (`istos[otel]`)
 - SIGINT/SIGTERM shutdown

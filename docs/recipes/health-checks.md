@@ -22,6 +22,6 @@ async def ping():
 # await istos.query_once(".istos/ready")
 ```
 
-If you set an app-wide `authorizer`, callers must pass `attachment=` for these endpoints too.
+If you set an app-wide `authorizer`, callers must pass `token=` for these endpoints too.
 
 See [Observability](../user-guide/observability.md) and [Deployment](../user-guide/deployment.md).

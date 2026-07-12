@@ -67,3 +67,32 @@ def test_asyncapi_generator():
     pub_op = next(op for name, op in ops.items() if "publish_publish_status" in name)
     assert pub_op["action"] == "send"
     assert "reply" not in pub_op
+
+
+def test_asyncapi_includes_streams_and_channels():
+    from istos import ChannelSession
+
+    istos = Istos()
+
+    @istos.stream("llm/generate")
+    async def generate(prompt: str):
+        yield prompt
+
+    @istos.channel("agent/chat")
+    async def chat(session: ChannelSession):
+        async for msg in session:
+            await session.send(msg)
+
+    doc = yaml.safe_load(istos.export_asyncapi())
+
+    assert "llm_generate" in doc["channels"]
+    assert "agent_chat" in doc["channels"]
+
+    ops = doc["operations"]
+    stream_op = next(op for name, op in ops.items() if "stream_generate" in name)
+    assert {"name": "@stream"} in stream_op["tags"]
+
+    # A ChannelSession parameter has no JSON Schema; the channel must still appear
+    # rather than sinking the whole document.
+    channel_op = next(op for name, op in ops.items() if "channel_chat" in name)
+    assert {"name": "@channel"} in channel_op["tags"]

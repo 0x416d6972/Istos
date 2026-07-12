@@ -107,13 +107,14 @@ Because the context carries `prefix`, `key_expr`, and `params`, you can authoriz
 !!! info "Not the Zenoh username"
     `ctx.token` is whatever the caller put in the attachment — same idea as
     `Authorization: Bearer …`. Unrelated to `IstosZenohConfig` credentials.
-    Send it with `query_once` / `@query(..., attachment=…)` /
-    `publish_once(..., attachment=…)`, or as Bearer on the [gateway](http-gateway.md):
+    Send it with `query_once` / `@query(..., token=…)` /
+    `publish_once(..., token=…)`, `stream_query(..., token=…)`,
+    `open_channel(..., token=…)`, or as Bearer on the [gateway](http-gateway.md):
 
     ```python
-    await client.query_once("fleet/status", attachment="super-secret-token")
+    await client.query_once("fleet/status", token="super-secret-token")
 
-    @client.query("fleet/status", attachment="super-secret-token")
+    @client.query("fleet/status", token="super-secret-token")
     async def status(result):
         return result
     ```

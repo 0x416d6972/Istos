@@ -30,10 +30,10 @@ def test_require_auth_defaults_off():
 
 
 # ---------------------------------------------------------------------------
-# 2. @query carries an attachment (symmetry with query_once)
+# 2. @query carries a token (symmetry with query_once)
 # ---------------------------------------------------------------------------
-def test_query_decorator_accepts_attachment(istos: Istos):
-    @istos.query("admin/op", attachment="tok")
+def test_query_decorator_accepts_token(istos: Istos):
+    @istos.query("admin/op", token="tok")
     def op(result):
         return result
 
@@ -56,7 +56,7 @@ async def test_publish_once_token_reaches_gated_subscriber():
     task = asyncio.create_task(app.run_async())
     try:
         await asyncio.sleep(1.2)
-        await app.publish_once("secure/topic", {"x": 1}, attachment="k")  # allowed
+        await app.publish_once("secure/topic", {"x": 1}, token="k")  # allowed
         await app.publish_once("secure/topic", {"x": 2})                  # no token → dropped
         await asyncio.sleep(0.5)
         assert received == [{"x": 1}]

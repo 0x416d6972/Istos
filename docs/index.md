@@ -2,7 +2,8 @@
 
 !!! tip "Istos Framework"
     **Decorator-first apps on [Eclipse Zenoh](https://zenoh.io/)** — RPC, streaming
-    replies, pub/sub, durable messaging, and an optional HTTP/SSE surface.
+    replies, duplex channels, pub/sub, durable messaging, and an optional
+    HTTP / SSE / WebSocket / MCP surface.
 
     ![Python](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12%20|%203.13%20|%203.14-blue)
     ![License](https://img.shields.io/badge/license-Apache--2.0-green)
@@ -33,6 +34,7 @@ istos new my-service && cd my-service && python main.py
 graph LR
     A["@handle & @query"] -->|1-to-1| B["RPC"]
     S["@stream"] -->|1-to-1 chunks| T["Streaming reply"]
+    CH["@channel"] -->|duplex| U["Agent session"]
     C["@publish & @subscribe"] -->|1-to-N| D["Events"]
     E["@on_liveliness"] -->|presence| F["Who is up"]
 ```
@@ -41,10 +43,11 @@ graph LR
 |---|------------|--------------|
 | RPC | `@handle`, `@query` | one request, one reply |
 | Streaming RPC | `@stream`, `stream_query` | one request, many chunks (optional SSE) |
+| Duplex | `@channel`, `open_channel` | interactive agent sessions (optional WebSocket) |
 | Events | `@publish`, `@subscribe` | fire-and-forget |
 | Discovery | liveliness + `.istos/capabilities` | who's up, what they expose |
-| Durability | `durable=True`, `persist="s3://…"`, storage plugins | replay / survive crashes / idempotency |
-| HTTP | `http_port`, `http=` on handle/stream | JSON + SSE for outside callers |
+| Durability | `durable=True`, `persist="s3://…"`, `replay()`, storage plugins | replay / survive crashes / idempotency |
+| HTTP | `http_port`, `http=` / `ws=`, ASGI co-host, MCP | JSON + SSE + WebSocket + tools for outside callers |
 | Glue | `Depends`, middleware, authorizer | the usual |
 
 ## Quick example
@@ -110,11 +113,12 @@ Other guides: [capabilities](user-guide/capabilities.md), [liveliness](user-guid
 |---------|-------|-----|
 | `@handle` / `@query` | [RPC](user-guide/rpc.md) | [Handler](api/core/handler.md), [Query](api/core/query.md) |
 | `@stream` | [RPC](user-guide/rpc.md), [HTTP](user-guide/http-gateway.md) | [Stream](api/core/stream.md) |
+| `@channel` / `open_channel` | [Channels](user-guide/channels.md) | [Channel](api/core/channel.md) |
 | `@publish` / `@subscribe` | [Pub/Sub](user-guide/pubsub.md) | [Publish](api/core/publish.md), [Subscribe](api/core/subscribe.md) |
-| Durable + S3 persist | [Durable messaging](user-guide/durable-messaging.md) | [Durable](api/communication/durable.md), [Persist](api/communication/persist.md) |
+| Durable + S3 persist / `replay()` | [Durable messaging](user-guide/durable-messaging.md) | [Durable](api/communication/durable.md), [Persist](api/communication/persist.md) |
 | Liveliness | [Liveliness](user-guide/liveliness.md) | [Liveliness](api/core/liveliness.md) |
 | Capabilities | [Capabilities](user-guide/capabilities.md) | [Istos](api/istos.md) |
-| HTTP / SSE / probes | [HTTP Gateway](user-guide/http-gateway.md) | [Istos](api/istos.md) |
+| HTTP / SSE / WS / MCP / ASGI | [HTTP Gateway](user-guide/http-gateway.md) | [Istos](api/istos.md), [ASGI](api/asgi.md), [MCP](api/mcp.md) |
 | Validation | [Validation](user-guide/validation.md) | [Validation](api/core/validation.md) |
 | Retry | [Retry](user-guide/retry.md) | [Retry](api/core/retry.md) |
 | TLS / authz | [Security](user-guide/security.md), [Authorization](user-guide/authorization.md) | [Config](api/communication/config.md), [Authz](api/core/authz.md) |
@@ -171,10 +175,10 @@ More: [Deployment](user-guide/deployment.md) · [Security](user-guide/security.m
 ## API index
 
 - **App:** [Istos](api/istos.md) · [Router](api/router.md) · [TestClient](api/testing/testclient.md) · [CLI](api/cli.md)
-- **Core:** [Handler](api/core/handler.md) · [Query](api/core/query.md) · [Stream](api/core/stream.md) · [Publish](api/core/publish.md) · [Subscribe](api/core/subscribe.md) · [Liveliness](api/core/liveliness.md) · [Retry](api/core/retry.md) · [Validation](api/core/validation.md) · [AsyncAPI](api/core/asyncapi.md) · [Authz](api/core/authz.md) · [Errors](api/core/errors.md)
+- **Core:** [Handler](api/core/handler.md) · [Query](api/core/query.md) · [Stream](api/core/stream.md) · [Channel](api/core/channel.md) · [Publish](api/core/publish.md) · [Subscribe](api/core/subscribe.md) · [Liveliness](api/core/liveliness.md) · [Retry](api/core/retry.md) · [Validation](api/core/validation.md) · [AsyncAPI](api/core/asyncapi.md) · [Authz](api/core/authz.md) · [Errors](api/core/errors.md) · [SessionStore](api/core/session_store.md)
 - **Communication:** [Sessions](api/communication/sessions.md) · [Config](api/communication/config.md) · [Durable](api/communication/durable.md) · [Persist](api/communication/persist.md)
 - **Consistency:** [Storage](api/consistency/storage.md) · [Redis](api/consistency/redis_storage.md) · [SQLAlchemy](api/consistency/sqlalchemy_storage.md) · [DB Config](api/consistency/config.md) · [Registry](api/consistency/databases.md)
-- **Other:** [Serialization](api/messages/serialization.md) · [Depends](api/di/depends.md) · [Middleware](api/middleware/base.md) · [Context](api/context.md) · [Health](api/health.md) · [Logging](api/logging.md) · [Metrics](api/observability/metrics.md) · [Tracing](api/observability/tracing.md)
+- **Other:** [Serialization](api/messages/serialization.md) · [Depends](api/di/depends.md) · [Middleware](api/middleware/base.md) · [Context](api/context.md) · [Health](api/health.md) · [Logging](api/logging.md) · [Metrics](api/observability/metrics.md) · [Tracing](api/observability/tracing.md) · [ASGI](api/asgi.md) · [MCP](api/mcp.md) · [Gateway](api/gateway.md)
 
 ## Links
 

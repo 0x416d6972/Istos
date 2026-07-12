@@ -9,6 +9,7 @@ from typing import Any, AsyncIterator, List, Optional
 from istos.app import Istos
 from istos.context import RequestContext, RequestEnvelope, set_request_context
 from istos.core.authz import AuthContext, check_authorized
+from istos.core.channel import ChannelClosed, ChannelSession
 from istos.core.validation import validate_params
 from istos.di.depends import resolve_dependencies
 
@@ -48,6 +49,12 @@ class IstosTestClient:
 
     def _find_subscribers(self, prefix: str) -> List[Any]:
         return [s for s in self.app._subscribers if s.prefix == prefix]
+
+    def _find_channel(self, prefix: str) -> Any:
+        for wrapper in self.app._channels:
+            if wrapper.prefix == prefix:
+                return wrapper
+        raise KeyError(f"No channel registered for prefix: {prefix!r}")
 
     async def _gate(self, wrapper: Any, prefix: str, params: dict, token: Optional[str]) -> None:
         """Run the authorizer and set a request context so the body can inject
@@ -109,6 +116,24 @@ class IstosTestClient:
         for sub in subscribers:
             await sub(data)
 
+    def channel(
+        self, prefix: str, token: Optional[str] = None,
+        conversation_id: Optional[str] = None, **params: Any,
+    ) -> "_TestChannel":
+        """Open a ``@channel`` in-process and return a duplex handle. Use it as an
+        async context manager; ``send`` / ``receive`` / ``async for`` from the
+        caller's side while the handler runs::
+
+            async with client.channel("agent/chat") as chan:
+                await chan.send("hi")
+                assert await chan.receive() == {"role": "system", "text": "ready"}
+
+        The authorizer, validation and DI run exactly as on the WebSocket/fabric
+        transport; a denied ``token`` raises ``UnauthorizedError`` on enter.
+        """
+        wrapper = self._find_channel(prefix)
+        return _TestChannel(wrapper, token=token, conversation_id=conversation_id, params=params)
+
     def run_query(self, prefix: str, **kwargs: Any) -> Any:
         """Synchronous wrapper around query()."""
         return asyncio.run(self.query(prefix, **kwargs))
@@ -116,3 +141,93 @@ class IstosTestClient:
     def run_publish(self, prefix: str, data: Any) -> None:
         """Synchronous wrapper around publish()."""
         return asyncio.run(self.publish(prefix, data))
+
+
+_DONE = object()
+
+
+class _TestChannel:
+    """Caller's end of an in-process ``@channel`` session. Runs the handler as a
+    background task and mirrors the transport: caller ``send`` feeds the handler,
+    caller ``receive`` drains what the handler sent back."""
+
+    def __init__(self, wrapper: Any, *, token: Optional[str],
+                 conversation_id: Optional[str], params: dict) -> None:
+        self._wrapper = wrapper
+        self._params = params
+        self._conversation_id = conversation_id
+        self._attachment = (
+            RequestEnvelope(token=token).to_attachment() if token is not None else None
+        )
+        self._outbound: asyncio.Queue = asyncio.Queue()
+        self._session: Optional[ChannelSession] = None
+        self._task: Optional[asyncio.Task] = None
+
+    @property
+    def conversation_id(self) -> Optional[str]:
+        return self._session.conversation_id if self._session else self._conversation_id
+
+    async def __aenter__(self) -> "_TestChannel":
+        # Authorize up front so a denial surfaces here, before the task starts.
+        principal = await self._wrapper.authorize(self._attachment, self._params)
+
+        async def sink(raw: bytes) -> None:
+            await self._outbound.put(raw)
+
+        self._session = ChannelSession(
+            self._wrapper.serializer, sink,
+            attachment=self._attachment,
+            store=self._wrapper.session_store,
+            conversation_id=self._conversation_id,
+        )
+        set_request_context(RequestContext(
+            prefix=self._wrapper.prefix, principal=principal, attachment=self._attachment,
+        ))
+
+        async def _run() -> None:
+            try:
+                await self._wrapper.run(
+                    self._session, attachment=self._attachment,
+                    params=self._params, principal=principal,
+                )
+            finally:
+                await self._outbound.put(_DONE)
+
+        self._task = asyncio.ensure_future(_run())
+        return self
+
+    async def __aexit__(self, *exc: Any) -> None:
+        if self._session is not None:
+            self._session.close()
+        if self._task is not None:
+            self._task.cancel()
+            try:
+                await self._task
+            except (asyncio.CancelledError, Exception):
+                pass
+
+    async def send(self, data: Any) -> None:
+        """Deliver a message to the handler."""
+        assert self._session is not None, "use `async with client.channel(...)`"
+        self._session.feed(self._wrapper.serializer.serialize(data))
+
+    async def receive(self) -> Any:
+        """Wait for the handler's next message, or raise ChannelClosed when it ends."""
+        item = await self._outbound.get()
+        if item is _DONE:
+            self._outbound.put_nowait(_DONE)
+            if self._task is not None and self._task.done():
+                exc = self._task.exception()
+                if exc is not None:
+                    raise exc
+            raise ChannelClosed()
+        return self._wrapper.serializer.deserialize(item)
+
+    def __aiter__(self) -> "_TestChannel":
+        return self
+
+    async def __anext__(self) -> Any:
+        try:
+            return await self.receive()
+        except ChannelClosed:
+            raise StopAsyncIteration

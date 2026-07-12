@@ -27,12 +27,43 @@ import abc
 import asyncio
 import logging
 import time
+from dataclasses import dataclass
 from typing import Any, List, Optional, Tuple
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 import zenoh
 
 _logger = logging.getLogger("istos.persist")
+
+
+@dataclass
+class ReplayEvent:
+    """One event read back from the durable log.
+
+    ``position`` is an opaque cursor — persist it and pass it as ``since=`` to
+    resume after it. ``timestamp_ms`` is when the event was persisted.
+    """
+
+    position: str
+    data: Any
+
+    @property
+    def timestamp_ms(self) -> int:
+        try:
+            return int(self.position.rsplit("/", 1)[1].split("-", 1)[0])
+        except (IndexError, ValueError):
+            return 0
+
+
+def _read_since(query: "zenoh.Query") -> Optional[str]:
+    """Pull the ``_since`` cursor out of a history query's selector params."""
+    params = getattr(getattr(query, "selector", None), "parameters", None)
+    if not params:
+        return None
+    for k, v in dict(params).items():
+        if k == "_since":
+            return unquote(v)
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -51,9 +82,12 @@ class ObjectStore(abc.ABC):
         """Persist ``payload`` under ``key`` (overwrite if the key repeats)."""
 
     @abc.abstractmethod
-    async def history(self, prefix: str) -> List[Tuple[str, bytes]]:
-        """Return ``(key, payload)`` for every stored object under ``prefix``,
-        ordered oldest-first."""
+    async def history(
+        self, prefix: str, since: Optional[str] = None
+    ) -> List[Tuple[str, bytes]]:
+        """Return ``(key, payload)`` for stored objects under ``prefix``,
+        oldest-first. With ``since`` (a key returned by an earlier call), return
+        only objects that sort strictly after it — resumable replay."""
 
     async def close(self) -> None:  # pragma: no cover - trivial default
         """Release any resources (network clients). Default: no-op."""
@@ -74,12 +108,16 @@ class InMemoryObjectStore(ObjectStore):
     async def put(self, key: str, payload: bytes) -> None:
         self._objects[key] = payload
 
-    async def history(self, prefix: str) -> List[Tuple[str, bytes]]:
+    async def history(
+        self, prefix: str, since: Optional[str] = None
+    ) -> List[Tuple[str, bytes]]:
         matches = [
             (k, v)
             for k, v in self._objects.items()
             if k == prefix or k.startswith(prefix.rstrip("/") + "/")
         ]
+        if since is not None:
+            matches = [(k, v) for k, v in matches if k > since]
         matches.sort(key=lambda kv: kv[0])
         return matches
 
@@ -173,13 +211,19 @@ class S3ObjectStore(ObjectStore):
         async with self._client() as s3:
             await s3.put_object(Bucket=self._bucket, Key=self._object_key(key), Body=payload)
 
-    async def history(self, prefix: str) -> List[Tuple[str, bytes]]:
+    async def history(
+        self, prefix: str, since: Optional[str] = None
+    ) -> List[Tuple[str, bytes]]:
         listing_prefix = self._object_key(prefix.rstrip("/") + "/")
+        paginate_kwargs: dict = {"Bucket": self._bucket, "Prefix": listing_prefix}
+        if since is not None:
+            # S3 lists keys after StartAfter, so resumption is server-side.
+            paginate_kwargs["StartAfter"] = self._object_key(since)
         out: List[Tuple[str, bytes]] = []
         async with self._client() as s3:
             paginator = s3.get_paginator("list_objects_v2")
             keys: List[str] = []
-            async for page in paginator.paginate(Bucket=self._bucket, Prefix=listing_prefix):
+            async for page in paginator.paginate(**paginate_kwargs):
                 for obj in page.get("Contents", []):
                     keys.append(obj["Key"])
             keys.sort()
@@ -272,8 +316,9 @@ class PersistRole:
         selector = str(query.key_expr)
         # Wildcards in the selector become a plain listing prefix.
         listing_prefix = selector.split("*", 1)[0].rstrip("/")
+        since = _read_since(query)
         try:
-            history = await self.store.history(listing_prefix)
+            history = await self.store.history(listing_prefix, since=since)
             # Reply each sample under its own minted key: distinct keys keep
             # Zenoh's reply consolidation from collapsing the stream to a single
             # latest value. Consumers query the wildcard (e.g. "orders/created/**").

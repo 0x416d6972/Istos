@@ -26,11 +26,13 @@ Work through these guides in order:
 | Step | Guide | You will learn |
 |------|-------|----------------|
 | 1 | **This page** | Handlers, queries, pub/sub, validation |
-| 2 | [Handlers & Queries (RPC)](rpc.md) | Request/reply in depth |
-| 3 | [Publish & Subscribe](pubsub.md) | Event streaming |
-| 4 | [Brokerless Durable Messaging](durable-messaging.md) | Late-join replay without a broker |
-| 5 | [Security & TLS](security.md) | Transport auth + handler authorization |
-| 6 | [Deployment](deployment.md) | Docker, health, metrics, production config |
+| 2 | [Handlers & Queries (RPC)](rpc.md) | Request/reply and `@stream` in depth |
+| 3 | [Channels & Agent Sessions](channels.md) | Duplex agents, WebSocket, SessionStore |
+| 4 | [Publish & Subscribe](pubsub.md) | Event streaming |
+| 5 | [Brokerless Durable Messaging](durable-messaging.md) | Late-join replay without a broker |
+| 6 | [HTTP Gateway](http-gateway.md) | HTTP / SSE / MCP / FastAPI co-host |
+| 7 | [Security & TLS](security.md) | Transport auth + handler authorization |
+| 8 | [Deployment](deployment.md) | Docker, health, metrics, production config |
 
 Supporting topics (any time after step 1): [Validation](validation.md), [Dependency Injection](dependency-injection.md), [Application Databases](application-databases.md), [Middleware](middleware.md), [Observability](observability.md), [Storage](storage.md), [Testing](testing.md), [CLI](cli.md), [Recipes](../recipes/index.md).
 
@@ -44,7 +46,10 @@ Istos provides a decorator-based API that maps directly to network operations:
 |-----------|---------|-----------|-------------|
 | `@handle` | RPC | Receive | Listens for queries and replies |
 | `@query` | RPC | Send | Sends queries and receives replies |
-| `@stream` | RPC | Receive | Streams chunked replies (SLM/LLM tokens) |
+| `@stream` | Streaming RPC | Receive | Streams chunked replies (SLM/LLM tokens) |
+| `@stream_client` | Streaming RPC | Send | Consumes a `@stream` (decorator form of `stream_query`) |
+| `@channel` | Duplex | Receive | Interactive agent sessions (`send` / `receive`) |
+| `@channel_client` | Duplex | Send | Opens a remote `@channel` (decorator form of `open_channel`) |
 | `@subscribe` | Pub/Sub | Receive | Listens for published events |
 | `@publish` | Pub/Sub | Send | Broadcasts events to the network |
 | `@on_liveliness` | Discovery | Receive | Monitors node health |

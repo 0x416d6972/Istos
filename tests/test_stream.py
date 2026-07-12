@@ -90,7 +90,7 @@ async def test_stream_authorization():
             await _drain(app.stream_query("istos/test/secure", prompt="x", timeout_s=5))
         # With token → streams.
         got = await _drain(
-            app.stream_query("istos/test/secure", prompt="x", attachment="k", timeout_s=5)
+            app.stream_query("istos/test/secure", prompt="x", token="k", timeout_s=5)
         )
         assert got == ["x"]
     finally:

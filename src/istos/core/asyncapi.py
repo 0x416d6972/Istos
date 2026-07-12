@@ -53,7 +53,7 @@ def get_function_schemas(func: Callable) -> Dict[str, Any]:
                 field_definitions[name] = (annotation, ...)
         
         if field_definitions:
-            DynamicModel = create_model(f"{func.__name__}_Payload", **field_definitions)
+            DynamicModel = create_model(f"{func.__name__}_Payload", **field_definitions)  # type: ignore[call-overload]
             payload_schema = DynamicModel.model_json_schema()
             
     # Return Schema
@@ -80,7 +80,7 @@ def get_function_schemas(func: Callable) -> Dict[str, Any]:
 
 class AsyncApiGenerator:
     def __init__(self, title: str = "Istos Network", version: str = "1.0.0"):
-        self.doc = {
+        self.doc: Dict[str, Any] = {
             "asyncapi": "3.0.0",
             "info": {
                 "title": title,
@@ -197,7 +197,7 @@ class AsyncApiGenerator:
             _ensure_channel(ch_name, query.prefix, f"Query: {query.func.__name__}", inspect.getdoc(query.func) or "")
             
             op_id = f"query_{query.func.__name__}"
-            op: Dict[str, Any] = {
+            op = {
                 "action": "send",
                 "channel": { "$ref": f"#/channels/{ch_name}" },
                 "tags": [{"name": "@query"}, {"name": "RPC"}]
@@ -216,10 +216,56 @@ class AsyncApiGenerator:
                 op["reply"] = {
                     "messages": [{ "$ref": f"#/channels/{ch_name}/messages/{rep_msg_key}" }]
                 }
-                
+
             self.doc["operations"][op_id] = op
 
-        return yaml.dump(self.doc, sort_keys=False)
+        def _safe_schemas(func: Callable) -> Dict[str, Any]:
+            # A @channel handler takes a ChannelSession, which has no JSON Schema;
+            # never let an unrepresentable parameter sink the whole document.
+            try:
+                return get_function_schemas(func)
+            except Exception:
+                return {"payload_schema": None, "return_schema": None}
+
+        # 5. Streams (RPC - one request, many reply chunks)
+        for stream in getattr(istos_instance, "_streams", []):
+            schemas = _safe_schemas(stream.func)
+            ch_name = stream.prefix.replace('/', '_').replace('*', 'star')
+            _ensure_channel(ch_name, stream.prefix, f"Stream: {stream.func.__name__}", inspect.getdoc(stream.func) or "")
+
+            op_id = f"stream_{stream.func.__name__}"
+            op = {
+                "action": "receive",
+                "channel": { "$ref": f"#/channels/{ch_name}" },
+                "tags": [{"name": "@stream"}, {"name": "Streaming"}]
+            }
+            if schemas["payload_schema"]:
+                msg_key = stream.func.__name__ + "_req"
+                msg_ref = self._register_message(msg_key, schemas["payload_schema"])
+                self.doc["channels"][ch_name]["messages"][msg_key] = { "$ref": msg_ref }
+                op["messages"] = [{ "$ref": f"#/channels/{ch_name}/messages/{msg_key}" }]
+            self.doc["operations"][op_id] = op
+
+        # 6. Channels (bidirectional - full-duplex session)
+        for channel in getattr(istos_instance, "_channels", []):
+            schemas = _safe_schemas(channel.func)
+            ch_name = channel.prefix.replace('/', '_').replace('*', 'star')
+            _ensure_channel(ch_name, channel.prefix, f"Channel: {channel.func.__name__}", inspect.getdoc(channel.func) or "")
+
+            op_id = f"channel_{channel.func.__name__}"
+            op = {
+                "action": "receive",
+                "channel": { "$ref": f"#/channels/{ch_name}" },
+                "tags": [{"name": "@channel"}, {"name": "Bidirectional"}]
+            }
+            if schemas["payload_schema"]:
+                msg_key = channel.func.__name__ + "_open"
+                msg_ref = self._register_message(msg_key, schemas["payload_schema"])
+                self.doc["channels"][ch_name]["messages"][msg_key] = { "$ref": msg_ref }
+                op["messages"] = [{ "$ref": f"#/channels/{ch_name}/messages/{msg_key}" }]
+            self.doc["operations"][op_id] = op
+
+        return str(yaml.dump(self.doc, sort_keys=False))
 
 def get_asyncapi_ui_html(title: str = "Istos Network Docs", schema_url: str = "/asyncapi.yaml") -> str:
     """Returns the HTML string for the AsyncAPI Standalone React UI."""

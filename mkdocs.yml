@@ -1,5 +1,5 @@
 site_name: Istos Documentation
-site_description: A unified Python framework for building robust distributed systems and multi-agent applications over Eclipse Zenoh.
+site_description: Decorator-first Python services on Eclipse Zenoh — RPC, streaming, duplex channels, and durable pub/sub.
 site_author: Amir Rezaei
 repo_url: https://github.com/A111ir/Istos
 repo_name: A111ir/Istos
@@ -68,6 +68,7 @@ nav:
   - User Guide:
     - Getting Started: user-guide/getting-started.md
     - Handlers & Queries (RPC): user-guide/rpc.md
+    - Channels & Agent Sessions: user-guide/channels.md
     - Publish & Subscribe: user-guide/pubsub.md
     - Brokerless Durable Messaging: user-guide/durable-messaging.md
     - HTTP Gateway & Probes: user-guide/http-gateway.md
@@ -90,6 +91,7 @@ nav:
     - RPC with lifespan: recipes/rpc-lifespan.md
     - Pub/Sub telemetry: recipes/pubsub-telemetry.md
     - Durable orders: recipes/durable-orders.md
+    - Agent channel: recipes/agent-channel.md
     - Secure RPC: recipes/secure-rpc.md
     - Redis storage: recipes/redis-storage.md
     - Health checks: recipes/health-checks.md
@@ -103,10 +105,15 @@ nav:
     - IstosRouter: api/router.md
     - TestClient: api/testing/testclient.md
     - CLI: api/cli.md
+    - ASGI: api/asgi.md
+    - MCP: api/mcp.md
+    - Gateway: api/gateway.md
     - Core:
       - Handler: api/core/handler.md
       - Query: api/core/query.md
       - Stream: api/core/stream.md
+      - Channel: api/core/channel.md
+      - SessionStore: api/core/session_store.md
       - Publish: api/core/publish.md
       - Subscribe: api/core/subscribe.md
       - Liveliness: api/core/liveliness.md

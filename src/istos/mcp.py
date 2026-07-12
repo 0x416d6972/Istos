@@ -90,7 +90,7 @@ class MCPServer:
 
     async def _call(self, prefix: str, arguments: dict, token: Optional[str]) -> dict:
         try:
-            reply = await self._app.query_once(prefix, attachment=token, **arguments)
+            reply = await self._app.query_once(prefix, token=token, **arguments)
         except Exception as e:
             return {"content": [{"type": "text", "text": str(e)}], "isError": True}
         data = reply[0] if isinstance(reply, list) and len(reply) == 1 else reply

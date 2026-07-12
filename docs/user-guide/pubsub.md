@@ -244,7 +244,7 @@ await app.delete_once("robot/cache/old_logs")
 ## Authorizing subscribers
 
 `@subscribe(..., authorizer=…)` drops samples that fail the gate (no NACK —
-pub/sub has nowhere to reply). Attach a token with `publish_once(..., attachment=…)`
+pub/sub has nowhere to reply). Attach a token with `publish_once(..., token=…)`
 or via the request envelope when publishing from an authorized handler. Details
 in [Authorization](authorization.md).
 

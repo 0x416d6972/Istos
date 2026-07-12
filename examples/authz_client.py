@@ -13,11 +13,11 @@ How a client presents a credential
 The token travels in the Zenoh request *attachment*. Only `query_once` can send
 one today (the `@query` decorator can't), so this client uses:
 
-    await istos.query_once("fleet/status", attachment="app-token")
+    await istos.query_once("fleet/status", token="app-token")
 
 Selector params (like the role) are just keyword args:
 
-    await istos.query_once("fleet/shutdown", attachment="app-token", role="admin")
+    await istos.query_once("fleet/shutdown", token="app-token", role="admin")
 """
 
 import asyncio
@@ -39,7 +39,7 @@ def verdict(reply) -> str:
 
 
 async def call(istos: Istos, label: str, key: str, *, token=None, **params) -> None:
-    reply = await istos.query_once(key, attachment=token, **params)
+    reply = await istos.query_once(key, token=token, **params)
     print(f"{label:<48} {verdict(reply)}")
 
 

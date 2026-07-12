@@ -20,7 +20,7 @@ from .core.authz import (
     require_roles,
     Public,
 )
-from .communication.persist import ObjectStore, InMemoryObjectStore, S3ObjectStore, PersistRole
+from .communication.persist import ObjectStore, InMemoryObjectStore, S3ObjectStore, PersistRole, ReplayEvent
 from .core.channel import ChannelSession, ChannelClosed
 from .core.channel_fabric import ChannelClient
 from .core.session_store import SessionStore
@@ -53,6 +53,7 @@ __all__ = [
     "InMemoryObjectStore",
     "S3ObjectStore",
     "PersistRole",
+    "ReplayEvent",
     "ChannelSession",
     "ChannelClosed",
     "ChannelClient",

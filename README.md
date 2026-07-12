@@ -1,56 +1,47 @@
 # Istos
 
 <p align="center">
-  <em>A unified Python framework for building robust distributed systems and multi-agent applications over the <a href="https://zenoh.io/">Eclipse Zenoh</a> protocol.</em>
+  <em>Decorator-first Python services on <a href="https://zenoh.io/">Eclipse Zenoh</a> — RPC, streaming, duplex channels, and durable pub/sub for microservices and agents.</em>
 </p>
 
-**Istos** provides a simple, decorator-based API that strips away the complexities of networking, serialization, and state distribution. By extending Zenoh's publish/subscribe and query functionality, Istos lets you wire up event-driven microservices or distributed agents in native Python.
+**Istos** maps network operations onto Python decorators so you can wire request/reply, token streams, interactive agent sessions, and events without standing up a message broker.
 
 ---
 
-##  Why Istos
+## Why Istos
 
-**Keep your architecture brain on the problem — not the plumbing.** Distributed
-systems are hard enough without spending your design budget on message brokers.
-Istos lets you reason about your system the way you actually think about it —
-*services that answer requests* and *events that fan out* — and nothing else. You
-draw the boxes and arrows; Istos **is** the arrows. A two-service prototype and a
-hundred-service fleet are the same mental model, just more decorators.
+Distributed systems are hard enough without spending your design budget on
+message brokers. Istos lets you reason about *services that answer requests*
+and *events that fan out* — you draw the boxes and arrows; Istos **is** the
+arrows. A two-service prototype and a hundred-service fleet are the same
+mental model, just more decorators.
 
-**No broker. No bloat.** There is no Kafka, RabbitMQ, NATS, or Redis Streams
-cluster to provision, size, shard, secure, patch, monitor, and pay for. Durability
-lives in the *peers* — via [Eclipse Zenoh](https://zenoh.io/)'s advanced pub/sub —
-not in a central log you have to operate. Removing the broker removes an entire
-category of operational burden, single points of failure, and cognitive overhead.
-
-The result: **broker-grade capabilities with library-grade simplicity** — RPC,
-durable replayable streams, and effectively-once processing, with nothing to run
-but your own service. `pip install`, write a decorated function, `run()`. That's
-the whole architecture.
+There is no Kafka, RabbitMQ, NATS, or Redis Streams cluster to provision.
+Durability lives in the *peers* — via [Eclipse Zenoh](https://zenoh.io/)'s
+advanced pub/sub — not in a central log you have to operate. `pip install`,
+write a decorated function, `run()`.
 
 ---
 
-##  Key Features
+## Key Features
 
-- **Decorators First**: Write the function, decorate it — `@handle`, `@stream`, `@publish`, `@subscribe`.
-- **Smart Selectors & RPC**: Query params like `?limit=5` land on your Python arguments.
-- **Streaming RPC**: `@stream` yields chunks over one query; `stream_query` consumes them.
-- **HTTP gateway**: `Istos(http_port=8080)` plus `http=` on a handler or stream — JSON or SSE for FastAPI, browsers, and probes. See [HTTP Gateway](docs/user-guide/http-gateway.md).
-- **Schema Validation**: Type hints / Pydantic at the edge; bad input never reaches your body.
-- **Retry Policies**: `retry=5` (or a `RetryPolicy`) on queries and subscribers.
-- **Pub/Sub**: Put a value on a key; someone else reacts.
-- **Brokerless Durability**: `durable=True` keeps a replay cache on the producer. Late joiners catch up peer-to-peer. `persist="s3://…"` if the producer itself can die. Useful for services and agent traffic alike.
-- **Async & Sync**: `async def` on the loop; plain `def` offloaded to a thread pool. Callers don't manage asyncio for you.
-- **Pluggable Architecture**:
-  - **Storage:** in-memory, Redis, or SQLAlchemy (bring your async driver).
-  - **Serialization:** JSON (default), msgpack, and friends.
-- **Security**: TLS/mTLS and Zenoh credentials at the transport; `TokenAuthorizer` / `JWTAuthorizer` / `require_roles` on handlers. Default is still open — use `require_auth=True` when you mean it. See [Security](#10-security-transport-authentication--authorization).
+- **Decorators first**: `@handle`, `@stream`, `@channel`, `@publish`, `@subscribe`.
+- **Streaming RPC**: `@stream` yields chunks; `stream_query` / `@stream_client` consume them.
+- **Duplex channels**: `@channel` + `open_channel` / `@channel_client` for multi-turn agents (WebSocket or fabric).
+- **HTTP gateway**: `Istos(http_port=8080)` plus `http=` / `ws=` — JSON, SSE, WebSocket. Co-host inside FastAPI with `istos.asgi.lifespan`. Optional MCP tools from `@handle`.
+- **Smart selectors**: Query params like `?limit=5` land on your Python arguments.
+- **Schema validation**: Type hints / Pydantic at the edge.
+- **Retry policies**: `retry=5` (or a `RetryPolicy`) on queries and subscribers.
+- **Brokerless durability**: `durable=True` replay caches; `persist="s3://…"` / `app.replay(...)` when the producer itself can die.
+- **Security**: TLS/mTLS at the transport; `TokenAuthorizer` / `JWTAuthorizer` / `require_roles` on handlers. Default is still open — use `require_auth=True` when you mean it.
+- **Pluggable storage**: in-memory, Redis, or SQLAlchemy (bring your async driver).
 
-##  The Mental Model
-The framework maps network topology onto a few decorators:
-- **`@handle` & `@query`**: 1-to-1 RPC (request & reply)
-- **`@stream`**: 1-to-1 streaming RPC (chunked replies, e.g. SLM/LLM tokens)
-- **`@publish` & `@subscribe`**: 1-to-many events (fire and forget)
+## The Mental Model
+
+- **`@handle` & `@query`**: 1-to-1 RPC
+- **`@stream`**: 1-to-1 streaming RPC (SLM/LLM tokens)
+- **`@channel`**: full-duplex sessions (agents)
+- **`@publish` & `@subscribe`**: 1-to-many events
 - **`@on_liveliness`**: node discovery & health
 
 ##  Installation

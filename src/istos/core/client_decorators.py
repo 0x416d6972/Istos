@@ -5,7 +5,7 @@ side be attached the same way, on the app or a router.
 
 @stream_client hands the body the live chunk iterator; @channel_client hands it
 an open ChannelClient and closes it when the body returns. Call kwargs become the
-selector params, and a per-call ``token=`` (or a decorator ``attachment=``)
+selector params, and a per-call ``token=`` (or a decorator-level ``token=``)
 carries the auth token — just like @query.
 """
 
@@ -38,7 +38,7 @@ class _client_base:
         *,
         serializer: Optional[Serialize],
         timeout_s: float,
-        attachment: Optional[Union[bytes, str]] = None,
+        token: Optional[Union[bytes, str]] = None,
         dependency_overrides: Optional[dict] = None,
     ) -> None:
         self.func = func
@@ -46,7 +46,7 @@ class _client_base:
         self.prefix = prefix
         self.serializer = serializer
         self.timeout_s = timeout_s
-        self._attachment = attachment
+        self._token = token
         self._has_depends = has_dependencies(func)
         # The live object (iterator / session) fills the first positional slot;
         # Depends fill the rest.
@@ -78,7 +78,7 @@ class stream_client_wrapper(_client_base):
         token = kwargs.pop("token", None)
         stream = self._app.stream_query(
             self.prefix, timeout_s=self.timeout_s, serializer=self.serializer,
-            attachment=token if token is not None else self._attachment, **kwargs,
+            token=token if token is not None else self._token, **kwargs,
         )
         return await self._drive(args, stream)
 
@@ -90,7 +90,7 @@ class channel_client_wrapper(_client_base):
     async def __call__(self, *args: Any, **kwargs: Any) -> Any:
         token = kwargs.pop("token", None)
         chan = await self._app.open_channel(
-            self.prefix, token=token if token is not None else self._attachment,
+            self.prefix, token=token if token is not None else self._token,
             timeout_s=self.timeout_s, serializer=self.serializer, **kwargs,
         )
         try:
