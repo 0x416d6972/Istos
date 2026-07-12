@@ -1,6 +1,6 @@
 # Dependency Injection
 
-Istos resolves `Depends` on `@handle`, `@subscribe`, `@publish`, `@query`, and `@on_liveliness`, and supports pluggable serializers, storage, sessions, and routers.
+Istos resolves `Depends` on `@handle`, `@stream`, `@subscribe`, `@publish`, `@query`, and `@on_liveliness`, and supports pluggable serializers, storage, sessions, and routers.
 
 ## `Depends`
 
@@ -36,7 +36,10 @@ You can also use the default-argument form: `db=Depends(get_db)`.
 
 ### Streaming note
 
-On `@subscribe` / `@publish`, dependencies resolve **per message**. For expensive shared resources (DB pool, socket), create them once in `lifespan` and inject a cheap `Depends` that returns the shared instance.
+On `@stream`, the dependency scope stays open for the **whole stream** (teardown
+runs after the last chunk). On `@subscribe` / `@publish`, dependencies resolve
+**per message**. For expensive shared resources (DB pool, socket), create them
+once in `lifespan` and inject a cheap `Depends` that returns the shared instance.
 
 ### Named databases
 

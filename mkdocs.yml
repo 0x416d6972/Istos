@@ -71,6 +71,7 @@ nav:
     - Publish & Subscribe: user-guide/pubsub.md
     - Brokerless Durable Messaging: user-guide/durable-messaging.md
     - HTTP Gateway & Probes: user-guide/http-gateway.md
+    - Capability Discovery: user-guide/capabilities.md
     - Security & TLS: user-guide/security.md
     - Authorization: user-guide/authorization.md
     - Deployment: user-guide/deployment.md
@@ -105,6 +106,7 @@ nav:
     - Core:
       - Handler: api/core/handler.md
       - Query: api/core/query.md
+      - Stream: api/core/stream.md
       - Publish: api/core/publish.md
       - Subscribe: api/core/subscribe.md
       - Liveliness: api/core/liveliness.md

@@ -241,6 +241,13 @@ await app.delete_once("robot/cache/old_logs")
   `app.run()` / `run_async()` raises `RuntimeError`. Publish from a lifespan hook, a
   handler, or after the session is open.
 
+## Authorizing subscribers
+
+Pass `authorizer=` on `@subscribe` to drop samples whose attachment token fails
+the gate (denied samples are dropped — there is no NACK channel). Producers can
+send a token with `publish_once(..., attachment=…)` or via the request envelope
+when publishing from inside an authorized RPC. See [Authorization](authorization.md).
+
 ## Next Steps
 
 - [Brokerless Durable Messaging](durable-messaging.md)

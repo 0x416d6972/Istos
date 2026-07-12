@@ -42,6 +42,7 @@ Istos validates and coerces parameters at the **network boundary** — before yo
 | Decorator | Validated input |
 |-----------|-----------------|
 | `@handle` | Query parameters / payload mapped to arguments |
+| `@stream` | Query parameters / payload mapped to arguments (same as `@handle`) |
 | `@subscribe` | Published payload (when typed) |
 | `@query` / `@publish` | Return processing as configured; outbound kwargs build selectors |
 

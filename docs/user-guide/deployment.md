@@ -65,6 +65,7 @@ Istos registers built-in Zenoh query handlers:
 | `.istos/health` | Liveness — process is alive |
 | `.istos/ready` | Readiness — service is ready to accept traffic |
 | `.istos/metrics` | Prometheus-format metrics |
+| `.istos/capabilities` | Tool / handler manifest (when `enable_discovery=True`) |
 
 Query from any node on the network:
 
@@ -72,6 +73,17 @@ Query from any node on the network:
 health = await istos.query_once(".istos/health")
 ready = await istos.query_once(".istos/ready")
 ```
+
+When `Istos(http_port=8080)` is set, the same process also serves HTTP probes that
+kubelet can hit without Zenoh:
+
+| Path | Purpose |
+|------|---------|
+| `GET /livez`, `GET /healthz` | Liveness |
+| `GET /readyz` | Readiness (503 when not ready) |
+| `GET /metrics` | Prometheus scrape |
+
+See [HTTP Gateway & Probes](http-gateway.md).
 
 ### Custom Readiness Checks
 
@@ -163,21 +175,37 @@ spec:
               value: "client"
             - name: ISTOS_ZENOH_CONNECT_ENDPOINTS
               value: '["tcp/zenoh-router:7447"]'
+          ports:
+            - containerPort: 8080
+              name: http
+          # Prefer HTTP probes when Istos(http_port=8080) is set:
           livenessProbe:
-            exec:
-              command: ["python", "-c", "import asyncio; from main import istos; asyncio.run(istos.query_once('.istos/health'))"]
+            httpGet:
+              path: /livez
+              port: http
             initialDelaySeconds: 10
             periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
 ```
+
+!!! note "No `http_port`?"
+    If the process does not expose HTTP, you can still probe over Zenoh with an
+    `exec` check that runs `query_once('.istos/health')` — less ideal for kubelet,
+    but valid inside the fabric.
 
 ## Security Checklist
 
 - [ ] Enable TLS on Zenoh router connections
 - [ ] Configure authentication (username/password or mTLS)
-- [ ] Set an app-wide `authorizer` (or per-handler rules)
+- [ ] Prefer `Istos(require_auth=True, authorizer=…)` (or app-wide / per-handler rules)
 - [ ] Use secret managers for certificates (never write PEM to disk)
 - [ ] Run services as non-root in containers
-- [ ] Restrict network policies to Zenoh router port only
+- [ ] Restrict network policies to Zenoh router (+ HTTP port if gateway enabled)
 
 See [Security & TLS](security.md) for detailed configuration.
 

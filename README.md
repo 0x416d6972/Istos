@@ -32,17 +32,19 @@ the whole architecture.
 
 ##  Key Features
 
-- **Decorators First**: Write clean business logic. Turn any Python function into a network-addressable handler, subscriber, or publisher using intuitive decorators (`@istos.handle`, `@istos.publish`, `@istos.subscribe`).
+- **Decorators First**: Write clean business logic. Turn any Python function into a network-addressable handler, subscriber, publisher, or stream using intuitive decorators (`@istos.handle`, `@istos.stream`, `@istos.publish`, `@istos.subscribe`).
 - **Smart Selectors & RPC**: Automatically map Zenoh query parameters (e.g., `?limit=5&role=admin`) directly to your function's Python arguments.
+- **Streaming RPC**: `@istos.stream` yields chunked replies (SLM/LLM tokens) over one query; consume with `stream_query`.
+- **HTTP / SSE gateway**: `Istos(http_port=8080)` exposes selected `@handle(..., http=…)` routes as JSON and `@stream(..., http=…)` as Server-Sent Events — so FastAPI, browsers, and kubelet probes need no Zenoh client. See [HTTP Gateway](docs/user-guide/http-gateway.md).
 - **Schema Validation**: Automatic type coercion and Pydantic model validation at the network boundary — bad data is rejected before your code runs.
 - **Retry Policies**: Built-in exponential backoff retries for queries and subscribers via a simple `retry=5` parameter.
 - **Pub/Sub**: Broadcast real-time state changes and react across your network with minimal boilerplate.
-- **Brokerless Durability**: `durable=True` gives you replayable, recoverable streams with **no broker to run** — a late subscriber replays history peer-to-peer from the producer's cache. Built for microservices *and* SLM/agent messaging.
+- **Brokerless Durability**: `durable=True` gives you replayable, recoverable streams with **no broker to run** — a late subscriber replays history peer-to-peer from the producer's cache. Optional `persist="s3://…"` survives producer crashes. Built for microservices *and* SLM/agent messaging.
 - **Async & Sync Compatibility**: First-class support for `asyncio` — write `async def` for maximum speed on the main loop, or `def` which gets automatically offloaded to a background thread pool without blocking the network. Clients do not need to import or manage `asyncio` themselves.
 - **Pluggable Architecture**: Inject custom behavior via simple abstractions:
   - **Storage:** Use `InMemoryStoragePlugin`, `RedisStoragePlugin`, or `SqlAlchemyStoragePlugin` (any SQL database — you bring the async driver).
   - **Serialization:** Built-in `JsonSerializer` powered by Pydantic and msgpack integrations.
-- **Security**: TLS/mTLS + username/password transport auth, plus per-handler **authorization** hooks (`@istos.handle(authorizer=...)`) to control who can invoke what. Note that Istos is **unauthenticated by default** — see [Security](#10-security-transport-authentication--authorization) before deploying.
+- **Security**: TLS/mTLS + username/password transport auth, plus app-wide / per-handler **authorization** (`TokenAuthorizer`, `JWTAuthorizer`, `require_roles`). Prefer `Istos(require_auth=True, authorizer=…)` in production — Istos is **unauthenticated by default**. See [Security](#10-security-transport-authentication--authorization).
 
 ##  The Mental Model
 The framework maps network topology onto a few decorators:
@@ -461,16 +463,17 @@ pytest tests/                         # includes network integration tests
 ##  Production Features
 
 - **Structured logging** — human-readable text or JSON. Istos follows the standard library convention: it logs through the `istos.*` logger namespace with a `NullHandler` and **never reconfigures your app's logging**. A standalone `istos.run()` installs a sensible default handler only if you haven't configured one; embed Istos in a larger app and its records simply propagate to your root logger. Opt into Istos-managed output explicitly with `Istos(configure_logging=True, log_level=..., json_logs=...)` or by calling `configure_logging()`. Messages are prose with structured context in `extra=`, surfaced as fields in JSON mode.
-- **Health checks** — `.istos/health` and `.istos/ready` endpoints
-- **Prometheus metrics** — `.istos/metrics` endpoint
+- **Health checks** — `.istos/health` and `.istos/ready` (and HTTP `/livez` / `/readyz` when `http_port` is set)
+- **Prometheus metrics** — `.istos/metrics` (and HTTP `/metrics`)
 - **Capability discovery** — `.istos/capabilities` returns a machine-readable tool manifest (schemas included) for agents to discover and invoke tools
+- **HTTP / SSE northbound** — `http_port` + `@handle(http=…)` / `@stream(http=…)` for FastAPI and browsers
 - **OpenTelemetry tracing** — optional via `pip install 'istos[otel]'`
 - **Middleware pipeline** — cross-cutting concerns (logging, correlation IDs, custom)
 - **Exception handlers** — `@istos.exception_handler()` for typed errors
 - **Graceful shutdown** — SIGINT/SIGTERM handling
-- **Storage plugins** — Redis (`istos[redis]`) and any SQL database via SQLAlchemy (`istos[sqlalchemy]` + your async driver)
+- **Storage plugins** — Redis (`istos[redis]`), SQLAlchemy (`istos[sqlalchemy]`), S3 persist (`istos[s3]`), JWT (`istos[jwt]`)
 
-See the [Deployment Guide](docs/user-guide/deployment.md) for Docker, Kubernetes, and observability setup.
+See the [Deployment Guide](docs/user-guide/deployment.md) and [HTTP Gateway](docs/user-guide/http-gateway.md) for Docker, Kubernetes, and observability setup.
 
 ##  CLI
 

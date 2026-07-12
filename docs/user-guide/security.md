@@ -106,7 +106,10 @@ page. The short version:
 ```python
 from istos import Istos, TokenAuthorizer
 
-istos = Istos(authorizer=TokenAuthorizer("super-secret-token"))
+istos = Istos(
+    require_auth=True,                              # fail-closed at construction
+    authorizer=TokenAuthorizer("super-secret-token"),
+)
 
 @istos.handle("fleet/status")
 async def status():
@@ -117,7 +120,8 @@ await istos.query_once("fleet/status", attachment="super-secret-token")
 ```
 
 Authentication and authorization are **independent, complementary layers** — configure
-both before deploying.
+both before deploying. For JWT identity and RBAC, see
+[`JWTAuthorizer`](authorization.md#jwtauthorizer--verified-identity--roles).
 
 ## Serialization note
 
@@ -127,11 +131,11 @@ Istos does **not** ship a pickle serializer. `pickle.loads` executes arbitrary c
 
 - [ ] Enable TLS on Zenoh router connections
 - [ ] Configure authentication (username/password or mTLS)
-- [ ] Set an app-wide `authorizer` (or per-handler rules)
+- [ ] Prefer `Istos(require_auth=True, authorizer=…)` (or app-wide / per-handler rules)
 - [ ] Disable multicast scouting in production when using explicit endpoints
 - [ ] Use secret managers for certificates (prefer raw PEM in memory)
 - [ ] Escalate `IstosSecurityWarning` to errors in CI
-- [ ] Restrict network policies to the Zenoh router port
+- [ ] Restrict network policies to the Zenoh router port (+ HTTP if gateway enabled)
 
 ## Next Steps
 

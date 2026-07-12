@@ -1,6 +1,8 @@
 # Observability
 
-Istos ships structured logging, Zenoh-addressable health/readiness/metrics endpoints, and optional OpenTelemetry tracing.
+Istos ships structured logging, Zenoh-addressable health/readiness/metrics/capabilities
+endpoints, optional HTTP probes via the [gateway](http-gateway.md), and optional
+OpenTelemetry tracing.
 
 ## Structured logging
 
@@ -71,6 +73,22 @@ print(istos.metrics.export_prometheus())
 ```
 
 Handler latency and request counts are recorded via the metrics middleware when metrics are enabled.
+
+## Capability discovery
+
+When `enable_discovery=True` (default), Istos also registers:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `.istos/capabilities` | Machine-readable tool / handler manifest for agents |
+
+```python
+caps = await istos.query_once(".istos/capabilities")
+# or in-process:
+print(istos.export_capabilities())
+```
+
+See [Capability Discovery](capabilities.md) and the [Wire Protocol](../reference/wire-protocol.md).
 
 ## OpenTelemetry tracing
 

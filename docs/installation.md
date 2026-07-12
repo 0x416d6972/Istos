@@ -34,10 +34,16 @@ uv pip install "istos[redis]"
 # SQL-backed durability ledger (any SQLAlchemy DB — add your async driver)
 uv pip install "istos[sqlalchemy]" asyncpg
 
+# S3/MinIO persistence for durable pub/sub (producer-crash survival)
+uv pip install "istos[s3]"
+
+# JWTAuthorizer (PyJWT)
+uv pip install "istos[jwt]"
+
 # OpenTelemetry tracing
 uv pip install "istos[otel]"
 
-# Redis + SQLAlchemy + OpenTelemetry
+# Redis + SQLAlchemy + S3 + JWT + OpenTelemetry
 uv pip install "istos[all]"
 ```
 

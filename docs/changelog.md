@@ -5,9 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - 2025
+## [0.2.0] - 2026-07
 
 ### Added
+- Streaming RPC: `@stream` / `stream_query` for chunked replies (SLM/LLM tokens)
+- HTTP ingress gateway: `Istos(http_port=…)` with `@handle(..., http=…)` JSON routes
+- HTTP SSE bridge: `@stream(..., http=…)` → `text/event-stream` for browsers / FastAPI
+- K8s-friendly HTTP probes: `GET /livez`, `/readyz`, `/metrics` when `http_port` is set
+- Capability discovery: `.istos/capabilities` tool manifest (`enable_discovery`, `export_capabilities()`)
+- Request envelope: correlation ID + W3C `traceparent` (+ token) on Zenoh attachments
+- Fail-closed auth mode: `Istos(require_auth=True, authorizer=…)` → `IstosSecurityError` if no authorizer
+- `JWTAuthorizer` and `require_roles` (`istos[jwt]`)
+- Subscriber-side `authorizer=` gating
+- Attachment support on `@query`, `query_once`, and `publish_once`
+- Brokerless producer-crash persistence: `@publish(persist="s3://…")` / `app.persist(...)` (`istos[s3]`)
 - Structured logging with JSON output (`log_level`, `json_logs`)
 - Standard error protocol with `IstosError`, `ErrorResponse`, and `@exception_handler`
 - Middleware pipeline (`add_middleware`) with logging and correlation ID support
@@ -23,11 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docker Compose with Zenoh router, Redis, and Postgres
 - Deployment and testing documentation
 - `SECURITY.md` and `py.typed` marker
+- Wire-protocol reference for polyglot peers
 
 ### Changed
 - Replaced `print()` statements with structured logging throughout
 - Handler errors now return standardized JSON error responses on the wire
 - Version bumped to 0.2.0
+
+### Optional extras
+- `istos[all]` now includes `redis`, `sqlalchemy`, `otel`, `s3`, and `jwt`
 
 ## [0.1.0] - 2025
 
