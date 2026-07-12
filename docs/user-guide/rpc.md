@@ -317,8 +317,9 @@ async for token in app.stream_query("llm/generate", prompt="hello"):
 
 Under the hood this is a Zenoh multi-reply queryable read with
 `consolidation=NONE`, so chunks stream incrementally rather than being buffered.
-Middleware does not wrap streams (a stream has no single return value); authorization
-still runs.
+Middleware wraps the stream **once** at open and once at close (not per chunk);
+authorization still runs on the first reply path. If the consumer breaks out of
+`async for` early, `stream_query` cancels the underlying Zenoh get.
 
 For the client decorator form (`@stream_client`), duplex agents (`@channel`),
 and resumable sessions, see [Channels & Agent Sessions](channels.md).

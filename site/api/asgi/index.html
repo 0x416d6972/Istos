@@ -698,6 +698,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../user-guide/work-queues/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Queues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../user-guide/http-gateway/" class="md-nav__link">
         
   
@@ -706,6 +734,34 @@
     
   
     HTTP Gateway & Probes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Tools
   
 
     
@@ -2102,6 +2158,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../core/queue/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Queue
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../core/publish/" class="md-nav__link">
         
   
@@ -2930,6 +3014,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../middleware/ratelimit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RateLimitMiddleware
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../context/" class="md-nav__link">
         
   
@@ -3032,10 +3144,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_17" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_18" >
         
           
-          <label class="md-nav__link" for="__nav_6_17" id="__nav_6_17_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6_18" id="__nav_6_18_label" tabindex="">
             
   
   
@@ -3053,8 +3165,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_17_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_17">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_18_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_18">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3288,6 +3400,9 @@
 <p>Run an Istos mesh inside FastAPI or Starlette. The ASGI server owns the HTTP
 port; Istos rides the lifespan (<code>serving()</code> with HTTP off).</p>
 <p>Details: <a href="../../user-guide/http-gateway/">HTTP Gateway — co-hosting</a>.</p>
+<p><code>Istos.serving(serve_http=False)</code> (the default under <code>lifespan</code>) leaves HTTP to
+the ASGI host. Pass <code>serve_http=True</code> only if you also want the embedded
+aiohttp surface in the same process.</p>
 
 
 <div class="doc doc-object doc-module">

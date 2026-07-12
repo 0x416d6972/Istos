@@ -698,6 +698,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../user-guide/work-queues/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Queues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../user-guide/http-gateway/" class="md-nav__link">
         
   
@@ -706,6 +734,34 @@
     
   
     HTTP Gateway & Probes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user-guide/mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Tools
   
 
     
@@ -2033,6 +2089,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../queue/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Queue
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../publish/" class="md-nav__link">
         
   
@@ -2969,6 +3053,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../middleware/ratelimit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RateLimitMiddleware
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../context/" class="md-nav__link">
         
   
@@ -3071,10 +3183,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_17" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_18" >
         
           
-          <label class="md-nav__link" for="__nav_6_17" id="__nav_6_17_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6_18" id="__nav_6_18_label" tabindex="">
             
   
   
@@ -3092,8 +3204,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_17_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_17">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_18_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_18">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3557,9 +3669,55 @@
 <span class="normal"><a href="#__codelineno-0-219">219</a></span>
 <span class="normal"><a href="#__codelineno-0-220">220</a></span>
 <span class="normal"><a href="#__codelineno-0-221">221</a></span>
-<span class="normal"><a href="#__codelineno-0-222">222</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="k">class</span><span class="w"> </span><span class="nc">AsyncApiGenerator</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-222">222</a></span>
+<span class="normal"><a href="#__codelineno-0-223">223</a></span>
+<span class="normal"><a href="#__codelineno-0-224">224</a></span>
+<span class="normal"><a href="#__codelineno-0-225">225</a></span>
+<span class="normal"><a href="#__codelineno-0-226">226</a></span>
+<span class="normal"><a href="#__codelineno-0-227">227</a></span>
+<span class="normal"><a href="#__codelineno-0-228">228</a></span>
+<span class="normal"><a href="#__codelineno-0-229">229</a></span>
+<span class="normal"><a href="#__codelineno-0-230">230</a></span>
+<span class="normal"><a href="#__codelineno-0-231">231</a></span>
+<span class="normal"><a href="#__codelineno-0-232">232</a></span>
+<span class="normal"><a href="#__codelineno-0-233">233</a></span>
+<span class="normal"><a href="#__codelineno-0-234">234</a></span>
+<span class="normal"><a href="#__codelineno-0-235">235</a></span>
+<span class="normal"><a href="#__codelineno-0-236">236</a></span>
+<span class="normal"><a href="#__codelineno-0-237">237</a></span>
+<span class="normal"><a href="#__codelineno-0-238">238</a></span>
+<span class="normal"><a href="#__codelineno-0-239">239</a></span>
+<span class="normal"><a href="#__codelineno-0-240">240</a></span>
+<span class="normal"><a href="#__codelineno-0-241">241</a></span>
+<span class="normal"><a href="#__codelineno-0-242">242</a></span>
+<span class="normal"><a href="#__codelineno-0-243">243</a></span>
+<span class="normal"><a href="#__codelineno-0-244">244</a></span>
+<span class="normal"><a href="#__codelineno-0-245">245</a></span>
+<span class="normal"><a href="#__codelineno-0-246">246</a></span>
+<span class="normal"><a href="#__codelineno-0-247">247</a></span>
+<span class="normal"><a href="#__codelineno-0-248">248</a></span>
+<span class="normal"><a href="#__codelineno-0-249">249</a></span>
+<span class="normal"><a href="#__codelineno-0-250">250</a></span>
+<span class="normal"><a href="#__codelineno-0-251">251</a></span>
+<span class="normal"><a href="#__codelineno-0-252">252</a></span>
+<span class="normal"><a href="#__codelineno-0-253">253</a></span>
+<span class="normal"><a href="#__codelineno-0-254">254</a></span>
+<span class="normal"><a href="#__codelineno-0-255">255</a></span>
+<span class="normal"><a href="#__codelineno-0-256">256</a></span>
+<span class="normal"><a href="#__codelineno-0-257">257</a></span>
+<span class="normal"><a href="#__codelineno-0-258">258</a></span>
+<span class="normal"><a href="#__codelineno-0-259">259</a></span>
+<span class="normal"><a href="#__codelineno-0-260">260</a></span>
+<span class="normal"><a href="#__codelineno-0-261">261</a></span>
+<span class="normal"><a href="#__codelineno-0-262">262</a></span>
+<span class="normal"><a href="#__codelineno-0-263">263</a></span>
+<span class="normal"><a href="#__codelineno-0-264">264</a></span>
+<span class="normal"><a href="#__codelineno-0-265">265</a></span>
+<span class="normal"><a href="#__codelineno-0-266">266</a></span>
+<span class="normal"><a href="#__codelineno-0-267">267</a></span>
+<span class="normal"><a href="#__codelineno-0-268">268</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="k">class</span><span class="w"> </span><span class="nc">AsyncApiGenerator</span><span class="p">:</span>
 <a id="__codelineno-0-82" name="__codelineno-0-82"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Istos Network&quot;</span><span class="p">,</span> <span class="n">version</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;1.0.0&quot;</span><span class="p">):</span>
-<a id="__codelineno-0-83" name="__codelineno-0-83"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">doc</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
 <a id="__codelineno-0-84" name="__codelineno-0-84"></a>            <span class="s2">&quot;asyncapi&quot;</span><span class="p">:</span> <span class="s2">&quot;3.0.0&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-85" name="__codelineno-0-85"></a>            <span class="s2">&quot;info&quot;</span><span class="p">:</span> <span class="p">{</span>
 <a id="__codelineno-0-86" name="__codelineno-0-86"></a>                <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="n">title</span><span class="p">,</span>
@@ -3676,7 +3834,7 @@
 <a id="__codelineno-0-197" name="__codelineno-0-197"></a>            <span class="n">_ensure_channel</span><span class="p">(</span><span class="n">ch_name</span><span class="p">,</span> <span class="n">query</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Query: </span><span class="si">{</span><span class="n">query</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getdoc</span><span class="p">(</span><span class="n">query</span><span class="o">.</span><span class="n">func</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
 <a id="__codelineno-0-198" name="__codelineno-0-198"></a>
 <a id="__codelineno-0-199" name="__codelineno-0-199"></a>            <span class="n">op_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;query_</span><span class="si">{</span><span class="n">query</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
-<a id="__codelineno-0-200" name="__codelineno-0-200"></a>            <span class="n">op</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-200" name="__codelineno-0-200"></a>            <span class="n">op</span> <span class="o">=</span> <span class="p">{</span>
 <a id="__codelineno-0-201" name="__codelineno-0-201"></a>                <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;send&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-202" name="__codelineno-0-202"></a>                <span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;#/channels/</span><span class="si">{</span><span class="n">ch_name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">},</span>
 <a id="__codelineno-0-203" name="__codelineno-0-203"></a>                <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;@query&quot;</span><span class="p">},</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;RPC&quot;</span><span class="p">}]</span>
@@ -3698,7 +3856,53 @@
 <a id="__codelineno-0-219" name="__codelineno-0-219"></a>
 <a id="__codelineno-0-220" name="__codelineno-0-220"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;operations&quot;</span><span class="p">][</span><span class="n">op_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">op</span>
 <a id="__codelineno-0-221" name="__codelineno-0-221"></a>
-<a id="__codelineno-0-222" name="__codelineno-0-222"></a>        <span class="k">return</span> <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-0-222" name="__codelineno-0-222"></a>        <span class="k">def</span><span class="w"> </span><span class="nf">_safe_schemas</span><span class="p">(</span><span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-223" name="__codelineno-0-223"></a>            <span class="c1"># A @channel handler takes a ChannelSession, which has no JSON Schema;</span>
+<a id="__codelineno-0-224" name="__codelineno-0-224"></a>            <span class="c1"># never let an unrepresentable parameter sink the whole document.</span>
+<a id="__codelineno-0-225" name="__codelineno-0-225"></a>            <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-226" name="__codelineno-0-226"></a>                <span class="k">return</span> <span class="n">get_function_schemas</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+<a id="__codelineno-0-227" name="__codelineno-0-227"></a>            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+<a id="__codelineno-0-228" name="__codelineno-0-228"></a>                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;payload_schema&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;return_schema&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+<a id="__codelineno-0-229" name="__codelineno-0-229"></a>
+<a id="__codelineno-0-230" name="__codelineno-0-230"></a>        <span class="c1"># 5. Streams (RPC - one request, many reply chunks)</span>
+<a id="__codelineno-0-231" name="__codelineno-0-231"></a>        <span class="k">for</span> <span class="n">stream</span> <span class="ow">in</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">istos_instance</span><span class="p">,</span> <span class="s2">&quot;_streams&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+<a id="__codelineno-0-232" name="__codelineno-0-232"></a>            <span class="n">schemas</span> <span class="o">=</span> <span class="n">_safe_schemas</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">func</span><span class="p">)</span>
+<a id="__codelineno-0-233" name="__codelineno-0-233"></a>            <span class="n">ch_name</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">prefix</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="s1">&#39;_&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="s1">&#39;star&#39;</span><span class="p">)</span>
+<a id="__codelineno-0-234" name="__codelineno-0-234"></a>            <span class="n">_ensure_channel</span><span class="p">(</span><span class="n">ch_name</span><span class="p">,</span> <span class="n">stream</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Stream: </span><span class="si">{</span><span class="n">stream</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getdoc</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">func</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-235" name="__codelineno-0-235"></a>
+<a id="__codelineno-0-236" name="__codelineno-0-236"></a>            <span class="n">op_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;stream_</span><span class="si">{</span><span class="n">stream</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-237" name="__codelineno-0-237"></a>            <span class="n">op</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-238" name="__codelineno-0-238"></a>                <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;receive&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-239" name="__codelineno-0-239"></a>                <span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;#/channels/</span><span class="si">{</span><span class="n">ch_name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">},</span>
+<a id="__codelineno-0-240" name="__codelineno-0-240"></a>                <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;@stream&quot;</span><span class="p">},</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Streaming&quot;</span><span class="p">}]</span>
+<a id="__codelineno-0-241" name="__codelineno-0-241"></a>            <span class="p">}</span>
+<a id="__codelineno-0-242" name="__codelineno-0-242"></a>            <span class="k">if</span> <span class="n">schemas</span><span class="p">[</span><span class="s2">&quot;payload_schema&quot;</span><span class="p">]:</span>
+<a id="__codelineno-0-243" name="__codelineno-0-243"></a>                <span class="n">msg_key</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">+</span> <span class="s2">&quot;_req&quot;</span>
+<a id="__codelineno-0-244" name="__codelineno-0-244"></a>                <span class="n">msg_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_register_message</span><span class="p">(</span><span class="n">msg_key</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="s2">&quot;payload_schema&quot;</span><span class="p">])</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>                <span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;channels&quot;</span><span class="p">][</span><span class="n">ch_name</span><span class="p">][</span><span class="s2">&quot;messages&quot;</span><span class="p">][</span><span class="n">msg_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span> <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="n">msg_ref</span> <span class="p">}</span>
+<a id="__codelineno-0-246" name="__codelineno-0-246"></a>                <span class="n">op</span><span class="p">[</span><span class="s2">&quot;messages&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[{</span> <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;#/channels/</span><span class="si">{</span><span class="n">ch_name</span><span class="si">}</span><span class="s2">/messages/</span><span class="si">{</span><span class="n">msg_key</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">}]</span>
+<a id="__codelineno-0-247" name="__codelineno-0-247"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;operations&quot;</span><span class="p">][</span><span class="n">op_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">op</span>
+<a id="__codelineno-0-248" name="__codelineno-0-248"></a>
+<a id="__codelineno-0-249" name="__codelineno-0-249"></a>        <span class="c1"># 6. Channels (bidirectional - full-duplex session)</span>
+<a id="__codelineno-0-250" name="__codelineno-0-250"></a>        <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">istos_instance</span><span class="p">,</span> <span class="s2">&quot;_channels&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+<a id="__codelineno-0-251" name="__codelineno-0-251"></a>            <span class="n">schemas</span> <span class="o">=</span> <span class="n">_safe_schemas</span><span class="p">(</span><span class="n">channel</span><span class="o">.</span><span class="n">func</span><span class="p">)</span>
+<a id="__codelineno-0-252" name="__codelineno-0-252"></a>            <span class="n">ch_name</span> <span class="o">=</span> <span class="n">channel</span><span class="o">.</span><span class="n">prefix</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="s1">&#39;_&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="s1">&#39;star&#39;</span><span class="p">)</span>
+<a id="__codelineno-0-253" name="__codelineno-0-253"></a>            <span class="n">_ensure_channel</span><span class="p">(</span><span class="n">ch_name</span><span class="p">,</span> <span class="n">channel</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Channel: </span><span class="si">{</span><span class="n">channel</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getdoc</span><span class="p">(</span><span class="n">channel</span><span class="o">.</span><span class="n">func</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-254" name="__codelineno-0-254"></a>
+<a id="__codelineno-0-255" name="__codelineno-0-255"></a>            <span class="n">op_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;channel_</span><span class="si">{</span><span class="n">channel</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-256" name="__codelineno-0-256"></a>            <span class="n">op</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a>                <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;receive&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a>                <span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;#/channels/</span><span class="si">{</span><span class="n">ch_name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">},</span>
+<a id="__codelineno-0-259" name="__codelineno-0-259"></a>                <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;@channel&quot;</span><span class="p">},</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Bidirectional&quot;</span><span class="p">}]</span>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a>            <span class="p">}</span>
+<a id="__codelineno-0-261" name="__codelineno-0-261"></a>            <span class="k">if</span> <span class="n">schemas</span><span class="p">[</span><span class="s2">&quot;payload_schema&quot;</span><span class="p">]:</span>
+<a id="__codelineno-0-262" name="__codelineno-0-262"></a>                <span class="n">msg_key</span> <span class="o">=</span> <span class="n">channel</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">+</span> <span class="s2">&quot;_open&quot;</span>
+<a id="__codelineno-0-263" name="__codelineno-0-263"></a>                <span class="n">msg_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_register_message</span><span class="p">(</span><span class="n">msg_key</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="s2">&quot;payload_schema&quot;</span><span class="p">])</span>
+<a id="__codelineno-0-264" name="__codelineno-0-264"></a>                <span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;channels&quot;</span><span class="p">][</span><span class="n">ch_name</span><span class="p">][</span><span class="s2">&quot;messages&quot;</span><span class="p">][</span><span class="n">msg_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span> <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="n">msg_ref</span> <span class="p">}</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a>                <span class="n">op</span><span class="p">[</span><span class="s2">&quot;messages&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[{</span> <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;#/channels/</span><span class="si">{</span><span class="n">ch_name</span><span class="si">}</span><span class="s2">/messages/</span><span class="si">{</span><span class="n">msg_key</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">}]</span>
+<a id="__codelineno-0-266" name="__codelineno-0-266"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;operations&quot;</span><span class="p">][</span><span class="n">op_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">op</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a>        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -3847,7 +4051,53 @@
 <span class="normal"><a href="#__codelineno-0-219">219</a></span>
 <span class="normal"><a href="#__codelineno-0-220">220</a></span>
 <span class="normal"><a href="#__codelineno-0-221">221</a></span>
-<span class="normal"><a href="#__codelineno-0-222">222</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">istos_instance</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-222">222</a></span>
+<span class="normal"><a href="#__codelineno-0-223">223</a></span>
+<span class="normal"><a href="#__codelineno-0-224">224</a></span>
+<span class="normal"><a href="#__codelineno-0-225">225</a></span>
+<span class="normal"><a href="#__codelineno-0-226">226</a></span>
+<span class="normal"><a href="#__codelineno-0-227">227</a></span>
+<span class="normal"><a href="#__codelineno-0-228">228</a></span>
+<span class="normal"><a href="#__codelineno-0-229">229</a></span>
+<span class="normal"><a href="#__codelineno-0-230">230</a></span>
+<span class="normal"><a href="#__codelineno-0-231">231</a></span>
+<span class="normal"><a href="#__codelineno-0-232">232</a></span>
+<span class="normal"><a href="#__codelineno-0-233">233</a></span>
+<span class="normal"><a href="#__codelineno-0-234">234</a></span>
+<span class="normal"><a href="#__codelineno-0-235">235</a></span>
+<span class="normal"><a href="#__codelineno-0-236">236</a></span>
+<span class="normal"><a href="#__codelineno-0-237">237</a></span>
+<span class="normal"><a href="#__codelineno-0-238">238</a></span>
+<span class="normal"><a href="#__codelineno-0-239">239</a></span>
+<span class="normal"><a href="#__codelineno-0-240">240</a></span>
+<span class="normal"><a href="#__codelineno-0-241">241</a></span>
+<span class="normal"><a href="#__codelineno-0-242">242</a></span>
+<span class="normal"><a href="#__codelineno-0-243">243</a></span>
+<span class="normal"><a href="#__codelineno-0-244">244</a></span>
+<span class="normal"><a href="#__codelineno-0-245">245</a></span>
+<span class="normal"><a href="#__codelineno-0-246">246</a></span>
+<span class="normal"><a href="#__codelineno-0-247">247</a></span>
+<span class="normal"><a href="#__codelineno-0-248">248</a></span>
+<span class="normal"><a href="#__codelineno-0-249">249</a></span>
+<span class="normal"><a href="#__codelineno-0-250">250</a></span>
+<span class="normal"><a href="#__codelineno-0-251">251</a></span>
+<span class="normal"><a href="#__codelineno-0-252">252</a></span>
+<span class="normal"><a href="#__codelineno-0-253">253</a></span>
+<span class="normal"><a href="#__codelineno-0-254">254</a></span>
+<span class="normal"><a href="#__codelineno-0-255">255</a></span>
+<span class="normal"><a href="#__codelineno-0-256">256</a></span>
+<span class="normal"><a href="#__codelineno-0-257">257</a></span>
+<span class="normal"><a href="#__codelineno-0-258">258</a></span>
+<span class="normal"><a href="#__codelineno-0-259">259</a></span>
+<span class="normal"><a href="#__codelineno-0-260">260</a></span>
+<span class="normal"><a href="#__codelineno-0-261">261</a></span>
+<span class="normal"><a href="#__codelineno-0-262">262</a></span>
+<span class="normal"><a href="#__codelineno-0-263">263</a></span>
+<span class="normal"><a href="#__codelineno-0-264">264</a></span>
+<span class="normal"><a href="#__codelineno-0-265">265</a></span>
+<span class="normal"><a href="#__codelineno-0-266">266</a></span>
+<span class="normal"><a href="#__codelineno-0-267">267</a></span>
+<span class="normal"><a href="#__codelineno-0-268">268</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">istos_instance</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Generates the AsyncAPI YAML specification.&quot;&quot;&quot;</span>
 <a id="__codelineno-0-108" name="__codelineno-0-108"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;asyncapi&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;3.0.0&quot;</span>
 <a id="__codelineno-0-109" name="__codelineno-0-109"></a>    <span class="k">if</span> <span class="s2">&quot;operations&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">:</span>
@@ -3941,7 +4191,7 @@
 <a id="__codelineno-0-197" name="__codelineno-0-197"></a>        <span class="n">_ensure_channel</span><span class="p">(</span><span class="n">ch_name</span><span class="p">,</span> <span class="n">query</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Query: </span><span class="si">{</span><span class="n">query</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getdoc</span><span class="p">(</span><span class="n">query</span><span class="o">.</span><span class="n">func</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
 <a id="__codelineno-0-198" name="__codelineno-0-198"></a>
 <a id="__codelineno-0-199" name="__codelineno-0-199"></a>        <span class="n">op_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;query_</span><span class="si">{</span><span class="n">query</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
-<a id="__codelineno-0-200" name="__codelineno-0-200"></a>        <span class="n">op</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-200" name="__codelineno-0-200"></a>        <span class="n">op</span> <span class="o">=</span> <span class="p">{</span>
 <a id="__codelineno-0-201" name="__codelineno-0-201"></a>            <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;send&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-202" name="__codelineno-0-202"></a>            <span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;#/channels/</span><span class="si">{</span><span class="n">ch_name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">},</span>
 <a id="__codelineno-0-203" name="__codelineno-0-203"></a>            <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;@query&quot;</span><span class="p">},</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;RPC&quot;</span><span class="p">}]</span>
@@ -3963,7 +4213,53 @@
 <a id="__codelineno-0-219" name="__codelineno-0-219"></a>
 <a id="__codelineno-0-220" name="__codelineno-0-220"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;operations&quot;</span><span class="p">][</span><span class="n">op_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">op</span>
 <a id="__codelineno-0-221" name="__codelineno-0-221"></a>
-<a id="__codelineno-0-222" name="__codelineno-0-222"></a>    <span class="k">return</span> <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-0-222" name="__codelineno-0-222"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_safe_schemas</span><span class="p">(</span><span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-223" name="__codelineno-0-223"></a>        <span class="c1"># A @channel handler takes a ChannelSession, which has no JSON Schema;</span>
+<a id="__codelineno-0-224" name="__codelineno-0-224"></a>        <span class="c1"># never let an unrepresentable parameter sink the whole document.</span>
+<a id="__codelineno-0-225" name="__codelineno-0-225"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-226" name="__codelineno-0-226"></a>            <span class="k">return</span> <span class="n">get_function_schemas</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+<a id="__codelineno-0-227" name="__codelineno-0-227"></a>        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+<a id="__codelineno-0-228" name="__codelineno-0-228"></a>            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;payload_schema&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;return_schema&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+<a id="__codelineno-0-229" name="__codelineno-0-229"></a>
+<a id="__codelineno-0-230" name="__codelineno-0-230"></a>    <span class="c1"># 5. Streams (RPC - one request, many reply chunks)</span>
+<a id="__codelineno-0-231" name="__codelineno-0-231"></a>    <span class="k">for</span> <span class="n">stream</span> <span class="ow">in</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">istos_instance</span><span class="p">,</span> <span class="s2">&quot;_streams&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+<a id="__codelineno-0-232" name="__codelineno-0-232"></a>        <span class="n">schemas</span> <span class="o">=</span> <span class="n">_safe_schemas</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">func</span><span class="p">)</span>
+<a id="__codelineno-0-233" name="__codelineno-0-233"></a>        <span class="n">ch_name</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">prefix</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="s1">&#39;_&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="s1">&#39;star&#39;</span><span class="p">)</span>
+<a id="__codelineno-0-234" name="__codelineno-0-234"></a>        <span class="n">_ensure_channel</span><span class="p">(</span><span class="n">ch_name</span><span class="p">,</span> <span class="n">stream</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Stream: </span><span class="si">{</span><span class="n">stream</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getdoc</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">func</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-235" name="__codelineno-0-235"></a>
+<a id="__codelineno-0-236" name="__codelineno-0-236"></a>        <span class="n">op_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;stream_</span><span class="si">{</span><span class="n">stream</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-237" name="__codelineno-0-237"></a>        <span class="n">op</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-238" name="__codelineno-0-238"></a>            <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;receive&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-239" name="__codelineno-0-239"></a>            <span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;#/channels/</span><span class="si">{</span><span class="n">ch_name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">},</span>
+<a id="__codelineno-0-240" name="__codelineno-0-240"></a>            <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;@stream&quot;</span><span class="p">},</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Streaming&quot;</span><span class="p">}]</span>
+<a id="__codelineno-0-241" name="__codelineno-0-241"></a>        <span class="p">}</span>
+<a id="__codelineno-0-242" name="__codelineno-0-242"></a>        <span class="k">if</span> <span class="n">schemas</span><span class="p">[</span><span class="s2">&quot;payload_schema&quot;</span><span class="p">]:</span>
+<a id="__codelineno-0-243" name="__codelineno-0-243"></a>            <span class="n">msg_key</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">+</span> <span class="s2">&quot;_req&quot;</span>
+<a id="__codelineno-0-244" name="__codelineno-0-244"></a>            <span class="n">msg_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_register_message</span><span class="p">(</span><span class="n">msg_key</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="s2">&quot;payload_schema&quot;</span><span class="p">])</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;channels&quot;</span><span class="p">][</span><span class="n">ch_name</span><span class="p">][</span><span class="s2">&quot;messages&quot;</span><span class="p">][</span><span class="n">msg_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span> <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="n">msg_ref</span> <span class="p">}</span>
+<a id="__codelineno-0-246" name="__codelineno-0-246"></a>            <span class="n">op</span><span class="p">[</span><span class="s2">&quot;messages&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[{</span> <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;#/channels/</span><span class="si">{</span><span class="n">ch_name</span><span class="si">}</span><span class="s2">/messages/</span><span class="si">{</span><span class="n">msg_key</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">}]</span>
+<a id="__codelineno-0-247" name="__codelineno-0-247"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;operations&quot;</span><span class="p">][</span><span class="n">op_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">op</span>
+<a id="__codelineno-0-248" name="__codelineno-0-248"></a>
+<a id="__codelineno-0-249" name="__codelineno-0-249"></a>    <span class="c1"># 6. Channels (bidirectional - full-duplex session)</span>
+<a id="__codelineno-0-250" name="__codelineno-0-250"></a>    <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">istos_instance</span><span class="p">,</span> <span class="s2">&quot;_channels&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+<a id="__codelineno-0-251" name="__codelineno-0-251"></a>        <span class="n">schemas</span> <span class="o">=</span> <span class="n">_safe_schemas</span><span class="p">(</span><span class="n">channel</span><span class="o">.</span><span class="n">func</span><span class="p">)</span>
+<a id="__codelineno-0-252" name="__codelineno-0-252"></a>        <span class="n">ch_name</span> <span class="o">=</span> <span class="n">channel</span><span class="o">.</span><span class="n">prefix</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="s1">&#39;_&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="s1">&#39;star&#39;</span><span class="p">)</span>
+<a id="__codelineno-0-253" name="__codelineno-0-253"></a>        <span class="n">_ensure_channel</span><span class="p">(</span><span class="n">ch_name</span><span class="p">,</span> <span class="n">channel</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Channel: </span><span class="si">{</span><span class="n">channel</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getdoc</span><span class="p">(</span><span class="n">channel</span><span class="o">.</span><span class="n">func</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-254" name="__codelineno-0-254"></a>
+<a id="__codelineno-0-255" name="__codelineno-0-255"></a>        <span class="n">op_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;channel_</span><span class="si">{</span><span class="n">channel</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-256" name="__codelineno-0-256"></a>        <span class="n">op</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a>            <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;receive&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a>            <span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;#/channels/</span><span class="si">{</span><span class="n">ch_name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">},</span>
+<a id="__codelineno-0-259" name="__codelineno-0-259"></a>            <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;@channel&quot;</span><span class="p">},</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Bidirectional&quot;</span><span class="p">}]</span>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a>        <span class="p">}</span>
+<a id="__codelineno-0-261" name="__codelineno-0-261"></a>        <span class="k">if</span> <span class="n">schemas</span><span class="p">[</span><span class="s2">&quot;payload_schema&quot;</span><span class="p">]:</span>
+<a id="__codelineno-0-262" name="__codelineno-0-262"></a>            <span class="n">msg_key</span> <span class="o">=</span> <span class="n">channel</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">+</span> <span class="s2">&quot;_open&quot;</span>
+<a id="__codelineno-0-263" name="__codelineno-0-263"></a>            <span class="n">msg_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_register_message</span><span class="p">(</span><span class="n">msg_key</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="s2">&quot;payload_schema&quot;</span><span class="p">])</span>
+<a id="__codelineno-0-264" name="__codelineno-0-264"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;channels&quot;</span><span class="p">][</span><span class="n">ch_name</span><span class="p">][</span><span class="s2">&quot;messages&quot;</span><span class="p">][</span><span class="n">msg_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span> <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="n">msg_ref</span> <span class="p">}</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a>            <span class="n">op</span><span class="p">[</span><span class="s2">&quot;messages&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[{</span> <span class="s2">&quot;$ref&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;#/channels/</span><span class="si">{</span><span class="n">ch_name</span><span class="si">}</span><span class="s2">/messages/</span><span class="si">{</span><span class="n">msg_key</span><span class="si">}</span><span class="s2">&quot;</span> <span class="p">}]</span>
+<a id="__codelineno-0-266" name="__codelineno-0-266"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;operations&quot;</span><span class="p">][</span><span class="n">op_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">op</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a>    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3995,57 +4291,57 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/istos/core/asyncapi.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-224">224</a></span>
-<span class="normal"><a href="#__codelineno-0-225">225</a></span>
-<span class="normal"><a href="#__codelineno-0-226">226</a></span>
-<span class="normal"><a href="#__codelineno-0-227">227</a></span>
-<span class="normal"><a href="#__codelineno-0-228">228</a></span>
-<span class="normal"><a href="#__codelineno-0-229">229</a></span>
-<span class="normal"><a href="#__codelineno-0-230">230</a></span>
-<span class="normal"><a href="#__codelineno-0-231">231</a></span>
-<span class="normal"><a href="#__codelineno-0-232">232</a></span>
-<span class="normal"><a href="#__codelineno-0-233">233</a></span>
-<span class="normal"><a href="#__codelineno-0-234">234</a></span>
-<span class="normal"><a href="#__codelineno-0-235">235</a></span>
-<span class="normal"><a href="#__codelineno-0-236">236</a></span>
-<span class="normal"><a href="#__codelineno-0-237">237</a></span>
-<span class="normal"><a href="#__codelineno-0-238">238</a></span>
-<span class="normal"><a href="#__codelineno-0-239">239</a></span>
-<span class="normal"><a href="#__codelineno-0-240">240</a></span>
-<span class="normal"><a href="#__codelineno-0-241">241</a></span>
-<span class="normal"><a href="#__codelineno-0-242">242</a></span>
-<span class="normal"><a href="#__codelineno-0-243">243</a></span>
-<span class="normal"><a href="#__codelineno-0-244">244</a></span>
-<span class="normal"><a href="#__codelineno-0-245">245</a></span>
-<span class="normal"><a href="#__codelineno-0-246">246</a></span>
-<span class="normal"><a href="#__codelineno-0-247">247</a></span>
-<span class="normal"><a href="#__codelineno-0-248">248</a></span>
-<span class="normal"><a href="#__codelineno-0-249">249</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_asyncapi_ui_html</span><span class="p">(</span><span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Istos Network Docs&quot;</span><span class="p">,</span> <span class="n">schema_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;/asyncapi.yaml&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns the HTML string for the AsyncAPI Standalone React UI.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-226" name="__codelineno-0-226"></a>    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;&lt;!DOCTYPE html&gt;</span>
-<a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="s2">&lt;html lang=&quot;en&quot;&gt;</span>
-<a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="s2">&lt;head&gt;</span>
-<a id="__codelineno-0-229" name="__codelineno-0-229"></a><span class="s2">    &lt;meta charset=&quot;utf-8&quot; /&gt;</span>
-<a id="__codelineno-0-230" name="__codelineno-0-230"></a><span class="s2">    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot; /&gt;</span>
-<a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="s2">    &lt;title&gt;</span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="s2">&lt;/title&gt;</span>
-<a id="__codelineno-0-232" name="__codelineno-0-232"></a><span class="s2">    &lt;link rel=&quot;stylesheet&quot; href=&quot;https://unpkg.com/@asyncapi/react-component@3.1.2/styles/default.min.css&quot; /&gt;</span>
-<a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="s2">&lt;/head&gt;</span>
-<a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="s2">&lt;body style=&quot;margin: 0; padding: 0; height: 100vh; background: #fafafa;&quot;&gt;</span>
-<a id="__codelineno-0-235" name="__codelineno-0-235"></a><span class="s2">    &lt;div id=&quot;asyncapi&quot; style=&quot;width: 100%; height: 100%;&quot;&gt;&lt;/div&gt;</span>
-<a id="__codelineno-0-236" name="__codelineno-0-236"></a><span class="s2">    &lt;script src=&quot;https://unpkg.com/@asyncapi/react-component@3.1.2/browser/standalone/index.js&quot;&gt;&lt;/script&gt;</span>
-<a id="__codelineno-0-237" name="__codelineno-0-237"></a><span class="s2">    &lt;script&gt;</span>
-<a id="__codelineno-0-238" name="__codelineno-0-238"></a><span class="s2">      fetch(&#39;</span><span class="si">{</span><span class="n">schema_url</span><span class="si">}</span><span class="s2">&#39;)</span>
-<a id="__codelineno-0-239" name="__codelineno-0-239"></a><span class="s2">        .then(response =&gt; response.text())</span>
-<a id="__codelineno-0-240" name="__codelineno-0-240"></a><span class="s2">        .then(schema =&gt; </span><span class="se">{{</span>
-<a id="__codelineno-0-241" name="__codelineno-0-241"></a><span class="s2">          AsyncApiStandalone.render(</span><span class="se">{{</span>
-<a id="__codelineno-0-242" name="__codelineno-0-242"></a><span class="s2">            schema: schema,</span>
-<a id="__codelineno-0-243" name="__codelineno-0-243"></a><span class="s2">            config: </span><span class="se">{{</span><span class="s2"> show: </span><span class="se">{{</span><span class="s2"> sidebar: true, errors: true </span><span class="se">}}</span><span class="s2"> </span><span class="se">}}</span>
-<a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="s2">          </span><span class="se">}}</span><span class="s2">, document.getElementById(&#39;asyncapi&#39;));</span>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a><span class="s2">        </span><span class="se">}}</span><span class="s2">)</span>
-<a id="__codelineno-0-246" name="__codelineno-0-246"></a><span class="s2">        .catch(err =&gt; console.error(&quot;Failed to load schema&quot;, err));</span>
-<a id="__codelineno-0-247" name="__codelineno-0-247"></a><span class="s2">    &lt;/script&gt;</span>
-<a id="__codelineno-0-248" name="__codelineno-0-248"></a><span class="s2">&lt;/body&gt;</span>
-<a id="__codelineno-0-249" name="__codelineno-0-249"></a><span class="s2">&lt;/html&gt;&quot;&quot;&quot;</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-270">270</a></span>
+<span class="normal"><a href="#__codelineno-0-271">271</a></span>
+<span class="normal"><a href="#__codelineno-0-272">272</a></span>
+<span class="normal"><a href="#__codelineno-0-273">273</a></span>
+<span class="normal"><a href="#__codelineno-0-274">274</a></span>
+<span class="normal"><a href="#__codelineno-0-275">275</a></span>
+<span class="normal"><a href="#__codelineno-0-276">276</a></span>
+<span class="normal"><a href="#__codelineno-0-277">277</a></span>
+<span class="normal"><a href="#__codelineno-0-278">278</a></span>
+<span class="normal"><a href="#__codelineno-0-279">279</a></span>
+<span class="normal"><a href="#__codelineno-0-280">280</a></span>
+<span class="normal"><a href="#__codelineno-0-281">281</a></span>
+<span class="normal"><a href="#__codelineno-0-282">282</a></span>
+<span class="normal"><a href="#__codelineno-0-283">283</a></span>
+<span class="normal"><a href="#__codelineno-0-284">284</a></span>
+<span class="normal"><a href="#__codelineno-0-285">285</a></span>
+<span class="normal"><a href="#__codelineno-0-286">286</a></span>
+<span class="normal"><a href="#__codelineno-0-287">287</a></span>
+<span class="normal"><a href="#__codelineno-0-288">288</a></span>
+<span class="normal"><a href="#__codelineno-0-289">289</a></span>
+<span class="normal"><a href="#__codelineno-0-290">290</a></span>
+<span class="normal"><a href="#__codelineno-0-291">291</a></span>
+<span class="normal"><a href="#__codelineno-0-292">292</a></span>
+<span class="normal"><a href="#__codelineno-0-293">293</a></span>
+<span class="normal"><a href="#__codelineno-0-294">294</a></span>
+<span class="normal"><a href="#__codelineno-0-295">295</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_asyncapi_ui_html</span><span class="p">(</span><span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Istos Network Docs&quot;</span><span class="p">,</span> <span class="n">schema_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;/asyncapi.yaml&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns the HTML string for the AsyncAPI Standalone React UI.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a>    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;&lt;!DOCTYPE html&gt;</span>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="s2">&lt;html lang=&quot;en&quot;&gt;</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="s2">&lt;head&gt;</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="s2">    &lt;meta charset=&quot;utf-8&quot; /&gt;</span>
+<a id="__codelineno-0-276" name="__codelineno-0-276"></a><span class="s2">    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot; /&gt;</span>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="s2">    &lt;title&gt;</span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="s2">&lt;/title&gt;</span>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="s2">    &lt;link rel=&quot;stylesheet&quot; href=&quot;https://unpkg.com/@asyncapi/react-component@3.1.2/styles/default.min.css&quot; /&gt;</span>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="s2">&lt;/head&gt;</span>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="s2">&lt;body style=&quot;margin: 0; padding: 0; height: 100vh; background: #fafafa;&quot;&gt;</span>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="s2">    &lt;div id=&quot;asyncapi&quot; style=&quot;width: 100%; height: 100%;&quot;&gt;&lt;/div&gt;</span>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="s2">    &lt;script src=&quot;https://unpkg.com/@asyncapi/react-component@3.1.2/browser/standalone/index.js&quot;&gt;&lt;/script&gt;</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="s2">    &lt;script&gt;</span>
+<a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="s2">      fetch(&#39;</span><span class="si">{</span><span class="n">schema_url</span><span class="si">}</span><span class="s2">&#39;)</span>
+<a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="s2">        .then(response =&gt; response.text())</span>
+<a id="__codelineno-0-286" name="__codelineno-0-286"></a><span class="s2">        .then(schema =&gt; </span><span class="se">{{</span>
+<a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="s2">          AsyncApiStandalone.render(</span><span class="se">{{</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="s2">            schema: schema,</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a><span class="s2">            config: </span><span class="se">{{</span><span class="s2"> show: </span><span class="se">{{</span><span class="s2"> sidebar: true, errors: true </span><span class="se">}}</span><span class="s2"> </span><span class="se">}}</span>
+<a id="__codelineno-0-290" name="__codelineno-0-290"></a><span class="s2">          </span><span class="se">}}</span><span class="s2">, document.getElementById(&#39;asyncapi&#39;));</span>
+<a id="__codelineno-0-291" name="__codelineno-0-291"></a><span class="s2">        </span><span class="se">}}</span><span class="s2">)</span>
+<a id="__codelineno-0-292" name="__codelineno-0-292"></a><span class="s2">        .catch(err =&gt; console.error(&quot;Failed to load schema&quot;, err));</span>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a><span class="s2">    &lt;/script&gt;</span>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="s2">&lt;/body&gt;</span>
+<a id="__codelineno-0-295" name="__codelineno-0-295"></a><span class="s2">&lt;/html&gt;&quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4180,7 +4476,7 @@ Returns:
 <a id="__codelineno-0-53" name="__codelineno-0-53"></a>                <span class="n">field_definitions</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">annotation</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
 <a id="__codelineno-0-54" name="__codelineno-0-54"></a>
 <a id="__codelineno-0-55" name="__codelineno-0-55"></a>        <span class="k">if</span> <span class="n">field_definitions</span><span class="p">:</span>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a>            <span class="n">DynamicModel</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">_Payload&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">field_definitions</span><span class="p">)</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56"></a>            <span class="n">DynamicModel</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">_Payload&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">field_definitions</span><span class="p">)</span>  <span class="c1"># type: ignore[call-overload]</span>
 <a id="__codelineno-0-57" name="__codelineno-0-57"></a>            <span class="n">payload_schema</span> <span class="o">=</span> <span class="n">DynamicModel</span><span class="o">.</span><span class="n">model_json_schema</span><span class="p">()</span>
 <a id="__codelineno-0-58" name="__codelineno-0-58"></a>
 <a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="c1"># Return Schema</span>

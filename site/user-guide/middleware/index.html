@@ -701,6 +701,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../work-queues/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Queues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../http-gateway/" class="md-nav__link">
         
   
@@ -709,6 +737,34 @@
     
   
     HTTP Gateway & Probes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Tools
   
 
     
@@ -2154,6 +2210,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../api/core/queue/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Queue
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../api/core/publish/" class="md-nav__link">
         
   
@@ -2970,6 +3054,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../api/middleware/ratelimit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RateLimitMiddleware
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../api/context/" class="md-nav__link">
         
   
@@ -3069,10 +3181,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_17" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_18" >
         
           
-          <label class="md-nav__link" for="__nav_6_17" id="__nav_6_17_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_18" id="__nav_6_18_label" tabindex="0">
             
   
   
@@ -3090,8 +3202,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_17_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_17">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_18_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_18">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3377,8 +3489,11 @@
 
 
 <h1 id="middleware">Middleware<a class="headerlink" href="#middleware" title="Permanent link">&para;</a></h1>
-<p>Middleware wraps <code>@handle</code> invocations for cross-cutting concerns: logging, correlation IDs, metrics, tracing, and custom logic.</p>
-<p>Istos installs a default stack (correlation ID + logging). When enabled, Prometheus and OpenTelemetry middleware are added automatically.</p>
+<p>Middleware wraps <code>@handle</code>, <code>@stream</code>, <code>@channel</code>, and <code>@subscribe</code> for
+cross-cutting concerns: logging, correlation IDs, metrics, tracing, rate limits,
+and custom logic.</p>
+<p>Istos installs a default stack (correlation ID + logging). When enabled,
+Prometheus and OpenTelemetry middleware are added automatically.</p>
 <h2 id="adding-middleware">Adding middleware<a class="headerlink" href="#adding-middleware" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">RequestScope</span>
@@ -3396,6 +3511,8 @@
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="n">istos</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">TimingMiddleware</span><span class="p">())</span>
 </code></pre></div>
 <p>Middleware runs outermost-first for the request path (last added is outermost).</p>
+<p>For <code>@stream</code> and <code>@channel</code>, the stack runs <strong>once</strong> around the whole stream
+or session (open → body → close), not once per chunk or message.</p>
 <h2 id="request-scope">Request scope<a class="headerlink" href="#request-scope" title="Permanent link">&para;</a></h2>
 <p>Each invocation receives a <code>RequestScope</code>:</p>
 <table>
@@ -3412,7 +3529,7 @@
 </tr>
 <tr>
 <td><code>operation</code></td>
-<td><code>"handle"</code>, <code>"subscribe"</code>, <code>"publish"</code>, or <code>"query"</code></td>
+<td><code>"handle"</code>, <code>"stream"</code>, <code>"channel"</code>, <code>"subscribe"</code>, <code>"publish"</code>, or <code>"query"</code></td>
 </tr>
 <tr>
 <td><code>params</code></td>
@@ -3469,11 +3586,15 @@ globally. <code>burst</code> (default <code>rate</code>) sets how many requests 
 before the steady rate applies. The raised error carries <code>details.retry_after</code>,
 and over the HTTP gateway it maps to a 429.</p>
 <h2 id="scope-note">Scope note<a class="headerlink" href="#scope-note" title="Permanent link">&para;</a></h2>
-<p>Built-in middleware focuses on <strong>handlers</strong> (<code>@handle</code>). For pub/sub, prefer dependencies, lifespan resources, or logic inside the subscriber/publisher.</p>
+<p>Middleware runs on <strong><code>@handle</code></strong>, <strong><code>@stream</code></strong>, <strong><code>@channel</code></strong>, and
+<strong><code>@subscribe</code></strong>. The publish side (<code>@publish</code> / <code>publish_once</code>) does not go
+through the stack — put cross-cutting logic in the publisher body or a
+subscriber downstream.</p>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../observability/">Observability</a> — metrics and tracing middleware</li>
 <li><a href="../../recipes/custom-middleware/">Recipe: Custom middleware</a></li>
+<li><a href="../../api/middleware/ratelimit/">API: RateLimitMiddleware</a></li>
 </ul>
 
 

@@ -701,6 +701,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../work-queues/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Queues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../http-gateway/" class="md-nav__link">
         
   
@@ -709,6 +737,34 @@
     
   
     HTTP Gateway & Probes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Tools
   
 
     
@@ -2243,6 +2299,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../api/core/queue/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Queue
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../api/core/publish/" class="md-nav__link">
         
   
@@ -3059,6 +3143,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../api/middleware/ratelimit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RateLimitMiddleware
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../api/context/" class="md-nav__link">
         
   
@@ -3158,10 +3270,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_17" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_18" >
         
           
-          <label class="md-nav__link" for="__nav_6_17" id="__nav_6_17_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_18" id="__nav_6_18_label" tabindex="0">
             
   
   
@@ -3179,8 +3291,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_17_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_17">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_18_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_18">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3806,7 +3918,8 @@ right for authenticating <em>services</em>, not for authenticating <em>users</em
 identity, use <code>JWTAuthorizer</code> (below).</p>
 </div>
 <hr />
-<h2 id="jwtauthorizer-verified-identity-roles"><code>JWTAuthorizer</code> — verified identity + roles<a class="headerlink" href="#jwtauthorizer-verified-identity-roles" title="Permanent link">&para;</a></h2>
+<p><a id="jwtauthorizer"></a></p>
+<h2 id="jwtauthorizer-verified-identity-roles">JWTAuthorizer — verified identity + roles<a class="headerlink" href="#jwtauthorizer-verified-identity-roles" title="Permanent link">&para;</a></h2>
 <p>For real user identity — signed, expiring, role-carrying tokens — use the
 built-in <code>JWTAuthorizer</code> (the <code>istos[jwt]</code> extra, backed by PyJWT). It verifies
 the token from the request attachment and maps it to a <a href="#resolving-an-identity-the-principal"><code>Principal</code></a>:</p>
@@ -3984,7 +4097,7 @@ API surface to every peer.</p>
   already on the fabric. Always pair it with TLS + Zenoh credentials — an open,
   unencrypted transport with a great authorizer is still wide open at the link level.</li>
 <li><strong>The attachment token is a bearer.</strong> <code>TokenAuthorizer</code> is an API key. For
-  signed identity use <a href="#jwtauthorizer--verified-identity--roles"><code>JWTAuthorizer</code></a>
+  signed identity use <a href="#jwtauthorizer"><code>JWTAuthorizer</code></a>
   (<code>istos[jwt]</code>).</li>
 <li><strong>One credential per request.</strong> The attachment carries a single token, so you can
   authenticate-then-authorize on one identity, but you cannot layer two <em>independent</em>

@@ -56,8 +56,10 @@ curl -X POST http://localhost:8080/robot/move \
 
 Under the hood the request is translated into a **Zenoh query** against
 `robot/move`, so it runs through the *entire* handler pipeline — authorization,
-validation, DI, middleware — with nothing bypassed. The request body and query
-string become the handler's params; the reply becomes the JSON response.
+validation, DI, middleware — with nothing bypassed. Query-string params and a
+JSON body are **merged** into the handler kwargs (body wins on key clashes).
+JSON replies go out as `application/json`; non-JSON payloads use
+`application/octet-stream`.
 
 `http=` forms:
 
@@ -73,9 +75,18 @@ So your authorizer gate and `Principal` work across the HTTP boundary: a request
 with no/invalid token is denied with the mapped HTTP status, and a valid one
 injects the resolved identity into the handler.
 
-Istos error codes map to HTTP status: `unauthorized`→401, `not_found`→404,
-`validation_error`→400, `rate_limit_exceeded`→429, other errors→500. A handler
-that never replies yields 504.
+Error / miss → HTTP status:
+
+| Situation | Status |
+|-----------|--------|
+| `unauthorized` | 401 |
+| `forbidden` | 403 |
+| `not_found` | 404 |
+| `validation_error` / `bad_request` | 400 |
+| `rate_limit_exceeded` | 429 |
+| Upstream query raised (`gateway_error`) | 502 |
+| Handler never replied / empty get | 504 |
+| Other error envelopes | 500 |
 
 ### Calling Istos from FastAPI
 
@@ -137,8 +148,12 @@ async def generate(prompt: str):
 ```
 
 Here FastAPI authenticates the north-south HTTP request, and the mesh call is
-in-process. If you already have your own lifespan, wrap `async with
-mesh.serving():` around your `yield` instead of using the helper.
+in-process. `lifespan(mesh)` uses `mesh.serving()` with **`serve_http=False`**
+so uvicorn owns the port. If you already have your own lifespan, wrap
+`async with mesh.serving():` around your `yield` instead of using the helper.
+
+Pass `serve_http=True` only when you deliberately want the embedded aiohttp
+surface *and* ASGI in the same process (two HTTP servers — usually a mistake).
 
 !!! warning "Edge auth does not secure the fabric"
     Authenticating at the FastAPI edge only controls who reaches your HTTP
@@ -180,7 +195,8 @@ es.addEventListener("error", (e) => es.close());
 The `Authorization` header and W3C trace headers (`traceparent`,
 `X-Correlation-ID`) cross into the Zenoh envelope just as for one-shot routes, so
 the stream's authorizer gate runs and correlation/trace propagate from the HTTP
-edge. Consuming a stream **inside** the fabric (Python peer) still uses
+edge. Responses include `X-Accel-Buffering: no` so nginx does not buffer the
+stream. Consuming a stream **inside** the fabric (Python peer) still uses
 [`stream_query`](rpc.md); SSE is the external-caller path.
 
 ## Kubernetes health probes
@@ -207,39 +223,14 @@ directly — no extra dependency required.
 
 ## MCP tools
 
-`Istos(enable_mcp=True)` serves the node's **`@handle`** endpoints as
-[Model Context Protocol](https://modelcontextprotocol.io) tools, so an LLM
-client can discover and call them. It's a JSON-RPC endpoint at `/mcp` (change
-with `mcp_path=`) on the same HTTP surface:
-
-```python
-app = Istos(http_port=8080, enable_mcp=True, authorizer=jwt)
-
-@app.handle("math/add")
-async def add(a: int, b: int) -> int:
-    """Add two integers."""
-    return a + b
-```
-
-`tools/list` builds each tool from the handler's name, docstring, and parameter
-schema (`math/add` → tool `math-add`). `tools/call` routes through the mesh via
-`query_once`, forwarding the `Authorization` bearer token so the authorizer
-still runs. Plumbing endpoints (`.istos/*`) are hidden. The tool result is the
-handler's reply as text content, with `isError` set when the reply is an error
-envelope.
-
-!!! warning "Handle-only"
-    MCP lists and calls `@handle` only. `@stream` and `@channel` are not
-    exposed as tools — use SSE / WebSocket / `stream_query` / `open_channel`
-    for those. Capability discovery (`.istos/capabilities`) is broader than
-    MCP; don't assume the two catalogs match.
-
-Point an MCP-capable client at `http://host:8080/mcp` (or your `mcp_path`)
-with a bearer token if the app has an authorizer.
+`Istos(enable_mcp=True)` exposes `@handle` endpoints as MCP tools at `/mcp`.
+Full details (batch JSON-RPC, 202 notifications, protocol version, handle-only
+limits): [MCP tools](mcp.md).
 
 ## Next steps
 
 - [Channels & Agent Sessions](channels.md) — WebSocket agents, FastAPI bridge
+- [MCP tools](mcp.md)
 - [Authorization](authorization.md) — the gate the gateway forwards tokens to
 - [Observability](observability.md) — tracing and metrics
 - [Deployment](deployment.md)

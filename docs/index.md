@@ -118,7 +118,7 @@ Other guides: [capabilities](user-guide/capabilities.md), [liveliness](user-guid
 | Durable + S3 persist / `replay()` | [Durable messaging](user-guide/durable-messaging.md) | [Durable](api/communication/durable.md), [Persist](api/communication/persist.md) |
 | Liveliness | [Liveliness](user-guide/liveliness.md) | [Liveliness](api/core/liveliness.md) |
 | Capabilities | [Capabilities](user-guide/capabilities.md) | [Istos](api/istos.md) |
-| HTTP / SSE / WS / MCP / ASGI | [HTTP Gateway](user-guide/http-gateway.md) | [Istos](api/istos.md), [ASGI](api/asgi.md), [MCP](api/mcp.md) |
+| HTTP / SSE / WS / MCP / ASGI | [HTTP Gateway](user-guide/http-gateway.md), [MCP](user-guide/mcp.md) | [Istos](api/istos.md), [ASGI](api/asgi.md), [MCP](api/mcp.md) |
 | Validation | [Validation](user-guide/validation.md) | [Validation](api/core/validation.md) |
 | Retry | [Retry](user-guide/retry.md) | [Retry](api/core/retry.md) |
 | TLS / authz | [Security](user-guide/security.md), [Authorization](user-guide/authorization.md) | [Config](api/communication/config.md), [Authz](api/core/authz.md) |

@@ -205,7 +205,8 @@ istos = Istos(authorizer=TokenAuthorizer({"old-token", "new-token"}))
 
 ---
 
-## `JWTAuthorizer` — verified identity + roles
+<a id="jwtauthorizer"></a>
+## JWTAuthorizer — verified identity + roles
 
 For real user identity — signed, expiring, role-carrying tokens — use the
 built-in `JWTAuthorizer` (the `istos[jwt]` extra, backed by PyJWT). It verifies
@@ -407,7 +408,7 @@ API surface to every peer.
   already on the fabric. Always pair it with TLS + Zenoh credentials — an open,
   unencrypted transport with a great authorizer is still wide open at the link level.
 - **The attachment token is a bearer.** `TokenAuthorizer` is an API key. For
-  signed identity use [`JWTAuthorizer`](#jwtauthorizer--verified-identity--roles)
+  signed identity use [`JWTAuthorizer`](#jwtauthorizer)
   (`istos[jwt]`).
 - **One credential per request.** The attachment carries a single token, so you can
   authenticate-then-authorize on one identity, but you cannot layer two *independent*

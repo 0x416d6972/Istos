@@ -698,6 +698,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../user-guide/work-queues/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Queues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../user-guide/http-gateway/" class="md-nav__link">
         
   
@@ -706,6 +734,34 @@
     
   
     HTTP Gateway & Probes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Tools
   
 
     
@@ -1793,6 +1849,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#10-bidirectional-channels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Bidirectional channels
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Bidirectional channels">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#open-handshake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open handshake
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2240,6 +2335,34 @@
     
   
     SessionStore
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/core/queue/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Queue
   
 
     
@@ -3076,6 +3199,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../api/middleware/ratelimit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RateLimitMiddleware
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../api/context/" class="md-nav__link">
         
   
@@ -3175,10 +3326,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_17" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_18" >
         
           
-          <label class="md-nav__link" for="__nav_6_17" id="__nav_6_17_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_18" id="__nav_6_18_label" tabindex="0">
             
   
   
@@ -3196,8 +3347,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_17_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_17">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_18_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_18">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3568,6 +3719,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#10-bidirectional-channels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Bidirectional channels
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Bidirectional channels">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#open-handshake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open handshake
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3703,7 +3893,7 @@ choose it unless you control both sides.</p>
   percent-encoded. Example: <code>robot/move?distance=5;speed=fast</code>.
   The handler coerces each string value to its declared parameter type
   (ints, floats, bools, and Pydantic model fields).</li>
-<li><strong>Attachment</strong> = the auth token, if any (see <a href="#5-authentication">§5</a>).</li>
+<li><strong>Attachment</strong> = the auth token, if any (see <a href="#attachment-envelope">§5 Attachment envelope</a>).</li>
 </ul>
 <p><strong>Response:</strong> a single reply whose <strong>payload</strong> is the serialized return value.</p>
 <p><strong>Example (Rust):</strong></p>
@@ -3746,6 +3936,7 @@ queryable. To fetch history from another language, <strong>get the wildcard</str
 </code></pre></div>
 <p>Query the wildcard, not the bare key — replies carry distinct per-sample keys so
 Zenoh's reply consolidation does not collapse the stream.</p>
+<p><a id="attachment-envelope"></a></p>
 <h2 id="5-attachment-envelope-auth-correlation-tracing">5. Attachment envelope (auth + correlation + tracing)<a class="headerlink" href="#5-attachment-envelope-auth-correlation-tracing" title="Permanent link">&para;</a></h2>
 <p>Istos uses the Zenoh <strong>attachment</strong> — on the query (RPC) or sample (pub/sub) — as
 its per-request out-of-band channel. It carries the auth token and, across hops,
@@ -3867,16 +4058,64 @@ it can do — for agents that discover tools at runtime rather than hard-coding 
 <a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">  </span><span class="p">]</span>
 <a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="p">}</span>
 </code></pre></div>
-<p><code>kind</code> is <code>handle</code> / <code>stream</code> / <code>publish</code> / <code>subscribe</code>; <code>params_schema</code> /
-<code>return_schema</code> are JSON Schema. Fan out with a wildcard selector
+<p><code>kind</code> is <code>handle</code> / <code>stream</code> / <code>channel</code> / <code>publish</code> / <code>subscribe</code>;
+<code>params_schema</code> / <code>return_schema</code> are JSON Schema. Channel entries may include
+<code>websocket</code> when <code>ws=</code> is set. Fan out with a wildcard selector
 (<code>**/.istos/capabilities</code> or query each node) to build a fleet-wide tool catalog,
-then invoke tools using the RPC/stream conventions above. The endpoint inherits
+then invoke tools using the RPC/stream/channel conventions. The endpoint inherits
 the app-wide authorizer; disable it with <code>Istos(enable_discovery=False)</code>.</p>
 <h2 id="9-not-on-the-fabric">9. Not on the fabric?<a class="headerlink" href="#9-not-on-the-fabric" title="Permanent link">&para;</a></h2>
 <p>If a service cannot speak Zenoh (a browser, a managed platform, an existing HTTP
 system), use the <a href="../../user-guide/http-gateway/">HTTP gateway</a> instead: it bridges
 HTTP → the same Zenoh queries described here, forwarding the <code>Authorization</code>
-header as the attachment token.</p>
+header as the attachment token. For duplex agents, use WebSocket
+(<code>@channel(..., ws=…)</code>) or bridge via FastAPI + <code>open_channel</code> — see
+<a href="../../user-guide/channels/">Channels</a>.</p>
+<h2 id="10-bidirectional-channels">10. Bidirectional channels<a class="headerlink" href="#10-bidirectional-channels" title="Permanent link">&para;</a></h2>
+<p>An Istos <code>@channel</code> is a duplex session over Zenoh (HTTP WebSocket is an
+optional edge transport for the same handler).</p>
+<h3 id="open-handshake">Open handshake<a class="headerlink" href="#open-handshake" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Client picks a session id <code>S</code> (hex UUID) and optionally a <code>conversation_id</code>
+   for durable resume.</li>
+<li>Client declares a subscriber on <code>{P}/{S}/down</code> and a liveliness token at
+   <code>{P}/{S}</code> <strong>before</strong> opening (so early replies are not lost).</li>
+<li>Client <code>get</code>s <code>{P}/{S}/open?conversation_id=…</code> with the attachment envelope
+   (auth). Consolidation does not matter for a single reply.</li>
+<li>Server authorizes, then replies <code>{"ok": true, "sid": "&lt;S&gt;"}</code> and starts the
+   handler with a <code>ChannelSession</code>.</li>
+</ol>
+<h3 id="session-keys">Session keys<a class="headerlink" href="#session-keys" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Direction</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{P}/{S}/up</code></td>
+<td>client → server</td>
+<td>inbound messages to the handler</td>
+</tr>
+<tr>
+<td><code>{P}/{S}/down</code></td>
+<td>server → client</td>
+<td>outbound messages from <code>session.send</code></td>
+</tr>
+<tr>
+<td><code>{P}/{S}</code></td>
+<td>liveliness</td>
+<td>client presence; drop → server closes</td>
+</tr>
+</tbody>
+</table>
+<p>Payloads are the channel serializer's bytes (JSON UTF-8 by default). Closing:
+drop the liveliness token / unsubscribe; the peer's <code>receive</code> / <code>async for</code>
+ends with a closed session.</p>
+<p>Wire details and Python helpers live in <code>istos.core.channel_fabric</code>.</p>
 
 
 

@@ -71,7 +71,9 @@ nav:
     - Channels & Agent Sessions: user-guide/channels.md
     - Publish & Subscribe: user-guide/pubsub.md
     - Brokerless Durable Messaging: user-guide/durable-messaging.md
+    - Work Queues: user-guide/work-queues.md
     - HTTP Gateway & Probes: user-guide/http-gateway.md
+    - MCP Tools: user-guide/mcp.md
     - Capability Discovery: user-guide/capabilities.md
     - Security & TLS: user-guide/security.md
     - Authorization: user-guide/authorization.md
@@ -114,6 +116,7 @@ nav:
       - Stream: api/core/stream.md
       - Channel: api/core/channel.md
       - SessionStore: api/core/session_store.md
+      - Work Queue: api/core/queue.md
       - Publish: api/core/publish.md
       - Subscribe: api/core/subscribe.md
       - Liveliness: api/core/liveliness.md
@@ -138,6 +141,7 @@ nav:
     - Dependency Injection:
       - Depends: api/di/depends.md
     - Middleware: api/middleware/base.md
+    - RateLimitMiddleware: api/middleware/ratelimit.md
     - Context: api/context.md
     - Health: api/health.md
     - Logging: api/logging.md

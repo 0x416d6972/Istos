@@ -115,6 +115,16 @@ class IstosRouter:
             return proxy
         return decorator
 
+    def worker(self, prefix: str, concurrency: int = 1, poll_interval_s: float = 1.0, serializer: Optional[Serialize] = None, token: Optional[Union[bytes, str]] = None) -> Callable:
+        full_prefix = self._apply_prefix(prefix)
+        def decorator(func: Callable) -> Callable:
+            proxy = RouterProxy(func.__name__)
+            def action(app: "Istos"):
+                proxy._real_wrapper = app.worker(full_prefix, concurrency=concurrency, poll_interval_s=poll_interval_s, serializer=serializer, token=token)(func)
+            self._actions.append(action)
+            return proxy
+        return decorator
+
     def publish(self, prefix: str, use_shm: bool = False, serializer: Optional[Serialize] = None, durable: bool = False, cache: int = 1000, heartbeat: float = 1.0, persist: Optional[str] = None) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:

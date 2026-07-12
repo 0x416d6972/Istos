@@ -31,8 +31,9 @@ Work through these guides in order:
 | 4 | [Publish & Subscribe](pubsub.md) | Event streaming |
 | 5 | [Brokerless Durable Messaging](durable-messaging.md) | Late-join replay without a broker |
 | 6 | [HTTP Gateway](http-gateway.md) | HTTP / SSE / MCP / FastAPI co-host |
-| 7 | [Security & TLS](security.md) | Transport auth + handler authorization |
-| 8 | [Deployment](deployment.md) | Docker, health, metrics, production config |
+| 7 | [MCP Tools](mcp.md) | Expose `@handle` as LLM tools |
+| 8 | [Security & TLS](security.md) | Transport auth + handler authorization |
+| 9 | [Deployment](deployment.md) | Docker, health, metrics, production config |
 
 Supporting topics (any time after step 1): [Validation](validation.md), [Dependency Injection](dependency-injection.md), [Application Databases](application-databases.md), [Middleware](middleware.md), [Observability](observability.md), [Storage](storage.md), [Testing](testing.md), [CLI](cli.md), [Recipes](../recipes/index.md).
 

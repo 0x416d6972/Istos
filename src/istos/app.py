@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import inspect
+import json
 import signal
 import uuid
 import warnings
@@ -25,6 +26,7 @@ from istos.core.channel import ChannelSession, channel_wrapper
 from istos.core.channel_fabric import ChannelClient, FabricChannelServer
 from istos.core.client_decorators import stream_client_wrapper, channel_client_wrapper
 from istos.core.session_store import SessionStore
+from istos.core.queue import QueueRole, QueueStore, worker_wrapper
 from istos.core.liveliness import liveliness_wrapper
 from istos.core.retry import RetryPolicy
 from istos.core.asyncapi import AsyncApiGenerator, get_asyncapi_ui_html
@@ -204,6 +206,8 @@ class Istos:
         self._channels: List[channel_wrapper] = []
         self._ws_channel_routes: List[tuple] = []
         self._channel_servers: List[FabricChannelServer] = []
+        self._queue_roles: List[QueueRole] = []
+        self._workers: List[worker_wrapper] = []
         self._enable_mcp = enable_mcp
         self._mcp_path = mcp_path
 
@@ -762,6 +766,166 @@ class Istos:
         self._persist_roles.append(role)
         return role
 
+    def queue(
+        self,
+        prefix: str,
+        *,
+        lease_s: float = 30.0,
+        max_attempts: int = 5,
+        sweep_interval_s: float = 5.0,
+        authorizer: Optional[Authorizer] = None,
+        store: Optional[QueueStore] = None,
+    ) -> QueueRole:
+        """Own a work queue at ``prefix`` — a job goes to exactly one worker and
+        isn't done until that worker acks it.
+
+            app.queue("jobs/email", lease_s=30, max_attempts=5)
+
+        This node holds the authoritative state and answers enqueue / claim / ack /
+        nack over Zenoh, and reclaims leases whose worker went away. Run it on a
+        node of its own for a dedicated queue, or alongside the producer. Workers
+        (see :meth:`worker`) may live anywhere on the mesh.
+
+        State is kept in memory and written through to the app's storage, so with
+        the in-memory default the queue is volatile and with Redis/SQLAlchemy it
+        survives an owner restart. ``lease_s`` is how long a claimed job may run
+        before it is considered lost; ``max_attempts`` is how many deliveries a job
+        gets before it is dead-lettered.
+        """
+        role = QueueRole(
+            prefix,
+            store or QueueStore(prefix.rstrip("/"), self._storage),
+            lease_s=lease_s, max_attempts=max_attempts,
+            sweep_interval_s=sweep_interval_s,
+            authorizer=combine_authorizers(self._authorizer, authorizer),
+            logger=self._logger,
+        )
+        self._queue_roles.append(role)
+        return role
+
+    def worker(
+        self,
+        prefix: str,
+        *,
+        concurrency: int = 1,
+        poll_interval_s: float = 1.0,
+        serializer: Optional[Serialize] = None,
+        token: Optional[Union[bytes, str]] = None,
+    ) -> Callable:
+        """Consume a work queue. The body takes the decoded job; returning acks it,
+        raising nacks it (redelivered until ``max_attempts``, then dead-lettered)::
+
+            @app.worker("jobs/email", concurrency=4)
+            async def send(job):
+                await smtp.send(job["to"])   # return → ack, raise → retry
+
+        Run ``concurrency`` claim loops per process; run the decorated app on more
+        processes to add competing consumers. The queue owner (see :meth:`queue`)
+        hands each job to one claimer, so a job is never processed twice at once.
+        ``Depends(...)`` parameters are injected like any other handler.
+        """
+        def decorator(func: Callable) -> worker_wrapper:
+            wrapper = worker_wrapper(
+                func, prefix,
+                concurrency=concurrency, poll_interval_s=poll_interval_s,
+                serializer=serializer or JsonSerializer(),
+                token=token, dependency_overrides=self.dependency_overrides,
+            )
+            self._workers.append(wrapper)
+            return wrapper
+        return decorator
+
+    async def enqueue(
+        self,
+        prefix: str,
+        data: Any,
+        *,
+        serializer: Optional[Serialize] = None,
+        token: Optional[Union[bytes, str]] = None,
+        timeout_s: float = 5.0,
+    ) -> str:
+        """Put a job on the queue and return its id. Reaches the queue owner over
+        the mesh, so the producer needn't be the owner."""
+        _serializer = serializer or JsonSerializer()
+        body = _serializer.serialize(data)
+        payload = body.encode("utf-8") if isinstance(body, str) else body
+        reply = await self._queue_get(
+            f"{prefix.rstrip('/')}/enqueue", payload=payload, token=token, timeout_s=timeout_s,
+        )
+        if reply is None:
+            raise IstosError(f"No queue owner answered for {prefix!r}.", code="not_found", status=504)
+        if "error" in reply:
+            raise UnauthorizedError(reply["error"])
+        return str(reply["job_id"])
+
+    async def dead_letters(
+        self,
+        prefix: str,
+        *,
+        serializer: Optional[Serialize] = None,
+        token: Optional[Union[bytes, str]] = None,
+        timeout_s: float = 5.0,
+    ) -> List[dict]:
+        """List the queue's dead-lettered jobs (decoded ``data`` plus ``job_id``,
+        ``attempts`` and ``last_error``) for inspection or manual replay."""
+        _serializer = serializer or JsonSerializer()
+        reply = await self._queue_get(f"{prefix.rstrip('/')}/dead", token=token, timeout_s=timeout_s)
+        if reply is None or "jobs" not in reply:
+            return []
+        import base64 as _b64
+        out = []
+        for job in reply["jobs"]:
+            out.append({
+                "job_id": job["job_id"],
+                "attempts": job["attempts"],
+                "last_error": job["last_error"],
+                "data": _serializer.deserialize(_b64.b64decode(job["data"])),
+            })
+        return out
+
+    async def _queue_get(
+        self, selector: str, *, payload: Optional[bytes] = None,
+        token: Optional[Union[bytes, str]] = None, timeout_s: float = 5.0,
+    ) -> Optional[dict]:
+        session = self._session_manager.session
+        if session is None:
+            raise RuntimeError("No active Zenoh session. Call run()/serving() first.")
+        tok = None
+        if token is not None:
+            tok = token.decode("utf-8") if isinstance(token, bytes) else str(token)
+        ctx = peek_request_context()
+        att = RequestEnvelope(
+            token=tok,
+            correlation_id=ctx.correlation_id if ctx else None,
+            traceparent=ctx.traceparent if ctx else None,
+        ).to_attachment()
+
+        def _do() -> Optional[bytes]:
+            kwargs: dict = {"timeout": timeout_s}
+            if payload is not None:
+                kwargs["payload"] = payload
+            if att is not None:
+                kwargs["attachment"] = att
+            for reply in session.get(selector, **kwargs):
+                if reply.ok is not None:
+                    return bytes(reply.ok.payload)
+            return None
+
+        raw = await asyncio.to_thread(_do)
+        return None if raw is None else json.loads(raw)
+
+    async def _queue_claim(self, prefix: str, *, token: Any = None) -> Optional[dict]:
+        return await self._queue_get(f"{prefix}/claim", token=token)
+
+    async def _queue_ack(self, prefix: str, job_id: str, *, token: Any = None) -> None:
+        await self._queue_get(build_selector(f"{prefix}/ack", {"job_id": job_id}), token=token)
+
+    async def _queue_nack(self, prefix: str, job_id: str, *, error: str = "", token: Any = None) -> None:
+        await self._queue_get(
+            build_selector(f"{prefix}/nack", {"job_id": job_id}),
+            payload=error.encode("utf-8"), token=token,
+        )
+
     async def replay(
         self,
         prefix: str,
@@ -1151,6 +1315,22 @@ class Istos:
 
     async def _unbind_persist(self) -> None:
         for role in self._persist_roles:
+            await role.aclose()
+
+    async def _bind_queues(self, session: zenoh.Session) -> None:
+        """Bind queue owners (enqueue/claim/ack/nack queryables + lease sweeper),
+        then start any workers. Owners come up first so a co-located worker has
+        something to claim from."""
+        loop = asyncio.get_running_loop()
+        for role in self._queue_roles:
+            await role.bind(session, loop)
+        for wrapper in self._workers:
+            wrapper.start(self)
+
+    async def _unbind_queues(self) -> None:
+        for wrapper in self._workers:
+            await wrapper.stop()
+        for role in self._queue_roles:
             await role.aclose()
 
     async def _bind_liveliness(self, session: zenoh.Session) -> None:
@@ -1635,6 +1815,7 @@ class Istos:
         await self._bind_streams(session)
         await self._bind_channels(session)
         await self._bind_persist(session)
+        await self._bind_queues(session)
         await self._bind_publishers(session)
         await self._bind_subscribers(session)
         await self._bind_liveliness(session)
@@ -1663,6 +1844,7 @@ class Istos:
         await self._unbind_liveliness()
         await self._unbind_subscribers()
         await self._unbind_publishers()
+        await self._unbind_queues()
         await self._unbind_persist()
         await self._unbind_channels()
         await self._unbind_handlers()

@@ -68,7 +68,7 @@ An `@handle(...)` handler is a Zenoh **queryable**. To invoke it, issue a Zenoh
   percent-encoded. Example: `robot/move?distance=5;speed=fast`.
   The handler coerces each string value to its declared parameter type
   (ints, floats, bools, and Pydantic model fields).
-- **Attachment** = the auth token, if any (see [§5](#5-authentication)).
+- **Attachment** = the auth token, if any (see [§5 Attachment envelope](#attachment-envelope)).
 
 **Response:** a single reply whose **payload** is the serialized return value.
 
@@ -130,6 +130,7 @@ session.get("drone/telemetry/**")   // each reply payload is one historical samp
 Query the wildcard, not the bare key — replies carry distinct per-sample keys so
 Zenoh's reply consolidation does not collapse the stream.
 
+<a id="attachment-envelope"></a>
 ## 5. Attachment envelope (auth + correlation + tracing)
 
 Istos uses the Zenoh **attachment** — on the query (RPC) or sample (pub/sub) — as
@@ -239,10 +240,11 @@ it can do — for agents that discover tools at runtime rather than hard-coding 
 }
 ```
 
-`kind` is `handle` / `stream` / `publish` / `subscribe`; `params_schema` /
-`return_schema` are JSON Schema. Fan out with a wildcard selector
+`kind` is `handle` / `stream` / `channel` / `publish` / `subscribe`;
+`params_schema` / `return_schema` are JSON Schema. Channel entries may include
+`websocket` when `ws=` is set. Fan out with a wildcard selector
 (`**/.istos/capabilities` or query each node) to build a fleet-wide tool catalog,
-then invoke tools using the RPC/stream conventions above. The endpoint inherits
+then invoke tools using the RPC/stream/channel conventions. The endpoint inherits
 the app-wide authorizer; disable it with `Istos(enable_discovery=False)`.
 
 ## 9. Not on the fabric?
@@ -250,4 +252,36 @@ the app-wide authorizer; disable it with `Istos(enable_discovery=False)`.
 If a service cannot speak Zenoh (a browser, a managed platform, an existing HTTP
 system), use the [HTTP gateway](../user-guide/http-gateway.md) instead: it bridges
 HTTP → the same Zenoh queries described here, forwarding the `Authorization`
-header as the attachment token.
+header as the attachment token. For duplex agents, use WebSocket
+(`@channel(..., ws=…)`) or bridge via FastAPI + `open_channel` — see
+[Channels](../user-guide/channels.md).
+
+## 10. Bidirectional channels
+
+An Istos `@channel` is a duplex session over Zenoh (HTTP WebSocket is an
+optional edge transport for the same handler).
+
+### Open handshake
+
+1. Client picks a session id `S` (hex UUID) and optionally a `conversation_id`
+   for durable resume.
+2. Client declares a subscriber on `{P}/{S}/down` and a liveliness token at
+   `{P}/{S}` **before** opening (so early replies are not lost).
+3. Client `get`s `{P}/{S}/open?conversation_id=…` with the attachment envelope
+   (auth). Consolidation does not matter for a single reply.
+4. Server authorizes, then replies `{"ok": true, "sid": "<S>"}` and starts the
+   handler with a `ChannelSession`.
+
+### Session keys
+
+| Key | Direction | Role |
+|-----|-----------|------|
+| `{P}/{S}/up` | client → server | inbound messages to the handler |
+| `{P}/{S}/down` | server → client | outbound messages from `session.send` |
+| `{P}/{S}` | liveliness | client presence; drop → server closes |
+
+Payloads are the channel serializer's bytes (JSON UTF-8 by default). Closing:
+drop the liveliness token / unsubscribe; the peer's `receive` / `async for`
+ends with a closed session.
+
+Wire details and Python helpers live in `istos.core.channel_fabric`.

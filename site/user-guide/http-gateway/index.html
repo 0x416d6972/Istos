@@ -13,10 +13,10 @@
       
       
       
-        <link rel="prev" href="../durable-messaging/">
+        <link rel="prev" href="../work-queues/">
       
       
-        <link rel="next" href="../capabilities/">
+        <link rel="next" href="../mcp/">
       
       
         
@@ -698,6 +698,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../work-queues/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Queues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -869,6 +897,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2182,6 +2238,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../api/core/queue/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Queue
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../api/core/publish/" class="md-nav__link">
         
   
@@ -2998,6 +3082,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../api/middleware/ratelimit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RateLimitMiddleware
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../api/context/" class="md-nav__link">
         
   
@@ -3097,10 +3209,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_17" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_18" >
         
           
-          <label class="md-nav__link" for="__nav_6_17" id="__nav_6_17_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_18" id="__nav_6_18_label" tabindex="0">
             
   
   
@@ -3118,8 +3230,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_17_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_17">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_18_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_18">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3498,8 +3610,10 @@ scrape endpoint. One embedded server provides all three.</p>
 </code></pre></div>
 <p>Under the hood the request is translated into a <strong>Zenoh query</strong> against
 <code>robot/move</code>, so it runs through the <em>entire</em> handler pipeline — authorization,
-validation, DI, middleware — with nothing bypassed. The request body and query
-string become the handler's params; the reply becomes the JSON response.</p>
+validation, DI, middleware — with nothing bypassed. Query-string params and a
+JSON body are <strong>merged</strong> into the handler kwargs (body wins on key clashes).
+JSON replies go out as <code>application/json</code>; non-JSON payloads use
+<code>application/octet-stream</code>.</p>
 <p><code>http=</code> forms:</p>
 <ul>
 <li><code>http=True</code> → <code>POST /&lt;prefix&gt;</code></li>
@@ -3512,9 +3626,49 @@ string become the handler's params; the reply becomes the JSON response.</p>
 So your authorizer gate and <code>Principal</code> work across the HTTP boundary: a request
 with no/invalid token is denied with the mapped HTTP status, and a valid one
 injects the resolved identity into the handler.</p>
-<p>Istos error codes map to HTTP status: <code>unauthorized</code>→401, <code>not_found</code>→404,
-<code>validation_error</code>→400, <code>rate_limit_exceeded</code>→429, other errors→500. A handler
-that never replies yields 504.</p>
+<p>Error / miss → HTTP status:</p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>unauthorized</code></td>
+<td>401</td>
+</tr>
+<tr>
+<td><code>forbidden</code></td>
+<td>403</td>
+</tr>
+<tr>
+<td><code>not_found</code></td>
+<td>404</td>
+</tr>
+<tr>
+<td><code>validation_error</code> / <code>bad_request</code></td>
+<td>400</td>
+</tr>
+<tr>
+<td><code>rate_limit_exceeded</code></td>
+<td>429</td>
+</tr>
+<tr>
+<td>Upstream query raised (<code>gateway_error</code>)</td>
+<td>502</td>
+</tr>
+<tr>
+<td>Handler never replied / empty get</td>
+<td>504</td>
+</tr>
+<tr>
+<td>Other error envelopes</td>
+<td>500</td>
+</tr>
+</tbody>
+</table>
 <h3 id="calling-istos-from-fastapi">Calling Istos from FastAPI<a class="headerlink" href="#calling-istos-from-fastapi" title="Permanent link">&para;</a></h3>
 <p>Because it's just HTTP, a FastAPI service needs no Zenoh dependency:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># In the FastAPI app — plain HTTP client:</span>
@@ -3568,8 +3722,11 @@ second port:</p>
 <a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>    <span class="k">return</span> <span class="n">StreamingResponse</span><span class="p">(</span><span class="n">tokens</span><span class="p">(),</span> <span class="n">media_type</span><span class="o">=</span><span class="s2">&quot;text/event-stream&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p>Here FastAPI authenticates the north-south HTTP request, and the mesh call is
-in-process. If you already have your own lifespan, wrap <code>async with
-mesh.serving():</code> around your <code>yield</code> instead of using the helper.</p>
+in-process. <code>lifespan(mesh)</code> uses <code>mesh.serving()</code> with <strong><code>serve_http=False</code></strong>
+so uvicorn owns the port. If you already have your own lifespan, wrap
+<code>async with mesh.serving():</code> around your <code>yield</code> instead of using the helper.</p>
+<p>Pass <code>serve_http=True</code> only when you deliberately want the embedded aiohttp
+surface <em>and</em> ASGI in the same process (two HTTP servers — usually a mistake).</p>
 <div class="admonition warning">
 <p class="admonition-title">Edge auth does not secure the fabric</p>
 <p>Authenticating at the FastAPI edge only controls who reaches your HTTP
@@ -3604,7 +3761,8 @@ the whole stream (default 60s for long inference).</p>
 <p>The <code>Authorization</code> header and W3C trace headers (<code>traceparent</code>,
 <code>X-Correlation-ID</code>) cross into the Zenoh envelope just as for one-shot routes, so
 the stream's authorizer gate runs and correlation/trace propagate from the HTTP
-edge. Consuming a stream <strong>inside</strong> the fabric (Python peer) still uses
+edge. Responses include <code>X-Accel-Buffering: no</code> so nginx does not buffer the
+stream. Consuming a stream <strong>inside</strong> the fabric (Python peer) still uses
 <a href="../rpc/"><code>stream_query</code></a>; SSE is the external-caller path.</p>
 <h2 id="kubernetes-health-probes">Kubernetes health probes<a class="headerlink" href="#kubernetes-health-probes" title="Permanent link">&para;</a></h2>
 <p>Point the kubelet at the HTTP probes:</p>
@@ -3622,35 +3780,13 @@ traffic when the node is actually ready. Register custom readiness checks with
 (request counts and latency histograms via the <code>PrometheusMiddleware</code>). Scrape it
 directly — no extra dependency required.</p>
 <h2 id="mcp-tools">MCP tools<a class="headerlink" href="#mcp-tools" title="Permanent link">&para;</a></h2>
-<p><code>Istos(enable_mcp=True)</code> serves the node's <strong><code>@handle</code></strong> endpoints as
-<a href="https://modelcontextprotocol.io">Model Context Protocol</a> tools, so an LLM
-client can discover and call them. It's a JSON-RPC endpoint at <code>/mcp</code> (change
-with <code>mcp_path=</code>) on the same HTTP surface:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">app</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">http_port</span><span class="o">=</span><span class="mi">8080</span><span class="p">,</span> <span class="n">enable_mcp</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">jwt</span><span class="p">)</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nd">@app</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;math/add&quot;</span><span class="p">)</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add two integers.&quot;&quot;&quot;</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
-</code></pre></div>
-<p><code>tools/list</code> builds each tool from the handler's name, docstring, and parameter
-schema (<code>math/add</code> → tool <code>math-add</code>). <code>tools/call</code> routes through the mesh via
-<code>query_once</code>, forwarding the <code>Authorization</code> bearer token so the authorizer
-still runs. Plumbing endpoints (<code>.istos/*</code>) are hidden. The tool result is the
-handler's reply as text content, with <code>isError</code> set when the reply is an error
-envelope.</p>
-<div class="admonition warning">
-<p class="admonition-title">Handle-only</p>
-<p>MCP lists and calls <code>@handle</code> only. <code>@stream</code> and <code>@channel</code> are not
-exposed as tools — use SSE / WebSocket / <code>stream_query</code> / <code>open_channel</code>
-for those. Capability discovery (<code>.istos/capabilities</code>) is broader than
-MCP; don't assume the two catalogs match.</p>
-</div>
-<p>Point an MCP-capable client at <code>http://host:8080/mcp</code> (or your <code>mcp_path</code>)
-with a bearer token if the app has an authorizer.</p>
+<p><code>Istos(enable_mcp=True)</code> exposes <code>@handle</code> endpoints as MCP tools at <code>/mcp</code>.
+Full details (batch JSON-RPC, 202 notifications, protocol version, handle-only
+limits): <a href="../mcp/">MCP tools</a>.</p>
 <h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../channels/">Channels &amp; Agent Sessions</a> — WebSocket agents, FastAPI bridge</li>
+<li><a href="../mcp/">MCP tools</a></li>
 <li><a href="../authorization/">Authorization</a> — the gate the gateway forwards tokens to</li>
 <li><a href="../observability/">Observability</a> — tracing and metrics</li>
 <li><a href="../deployment/">Deployment</a></li>

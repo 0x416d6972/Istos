@@ -1,8 +1,11 @@
 # Middleware
 
-Middleware wraps `@handle` invocations for cross-cutting concerns: logging, correlation IDs, metrics, tracing, and custom logic.
+Middleware wraps `@handle`, `@stream`, `@channel`, and `@subscribe` for
+cross-cutting concerns: logging, correlation IDs, metrics, tracing, rate limits,
+and custom logic.
 
-Istos installs a default stack (correlation ID + logging). When enabled, Prometheus and OpenTelemetry middleware are added automatically.
+Istos installs a default stack (correlation ID + logging). When enabled,
+Prometheus and OpenTelemetry middleware are added automatically.
 
 ## Adding middleware
 
@@ -25,6 +28,9 @@ istos.add_middleware(TimingMiddleware())
 
 Middleware runs outermost-first for the request path (last added is outermost).
 
+For `@stream` and `@channel`, the stack runs **once** around the whole stream
+or session (open → body → close), not once per chunk or message.
+
 ## Request scope
 
 Each invocation receives a `RequestScope`:
@@ -32,7 +38,7 @@ Each invocation receives a `RequestScope`:
 | Field | Meaning |
 |-------|---------|
 | `prefix` | Handler key expression |
-| `operation` | `"handle"`, `"subscribe"`, `"publish"`, or `"query"` |
+| `operation` | `"handle"`, `"stream"`, `"channel"`, `"subscribe"`, `"publish"`, or `"query"` |
 | `params` | Parsed query / call parameters |
 | `context` | Request context (includes `correlation_id`) |
 
@@ -96,9 +102,13 @@ and over the HTTP gateway it maps to a 429.
 
 ## Scope note
 
-Built-in middleware focuses on **handlers** (`@handle`). For pub/sub, prefer dependencies, lifespan resources, or logic inside the subscriber/publisher.
+Middleware runs on **`@handle`**, **`@stream`**, **`@channel`**, and
+**`@subscribe`**. The publish side (`@publish` / `publish_once`) does not go
+through the stack — put cross-cutting logic in the publisher body or a
+subscriber downstream.
 
 ## Next Steps
 
 - [Observability](observability.md) — metrics and tracing middleware
 - [Recipe: Custom middleware](../recipes/custom-middleware.md)
+- [API: RateLimitMiddleware](../api/middleware/ratelimit.md)
