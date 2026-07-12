@@ -66,8 +66,9 @@ from istos.communication.sessions import IstosZenohConfig
 secrets = vault.get_secret("istos/prod")
 
 config = IstosZenohConfig(
-    mode="client",
-    connect_endpoints=["tls/zenoh-router.local:7447"],
+    mode="peer",
+    connect_endpoints=["tls/svc-a.internal:7447"],
+    multicast_scouting=False,
     username=secrets["zenoh_user"],
     password=secrets["zenoh_pass"],
     root_ca_certificate=secrets["raw_ca_pem_string"],  # raw PEM OK
@@ -78,6 +79,61 @@ istos = Istos(config=config)
 
 !!! tip "Raw PEM support"
     Zenoh accepts **raw multiline PEM strings**, so you never need to write certificates to disk.
+
+A production config is just the plain constructor with the security fields set.
+You do **not** need to run a Zenoh router — staying brokerless is the point.
+Lock down a peer directly: keep `mode="peer"`, turn multicast discovery off, dial
+your peers explicitly, and put mTLS on the links so only nodes holding a
+CA-signed cert can join:
+
+```python
+config = IstosZenohConfig(
+    mode="peer",
+    connect_endpoints=["tls/svc-a.internal:7447", "tls/svc-b.internal:7447"],
+    multicast_scouting=False,          # no LAN auto-discovery
+    root_ca_certificate=secrets["raw_ca_pem_string"],
+    listen_certificate=secrets["node_cert_pem"],
+    listen_private_key=secrets["node_key_pem"],
+    enable_mtls=True,                  # every peer must present a signed cert
+)
+istos = Istos(config=config, authorizer=jwt, require_auth=True)
+```
+
+With mTLS, membership *is* the cert: an unauthorized node can't complete the
+handshake, so no router is needed to police who joins. Layer username/password on
+top (`username`/`password`) when you want per-identity credentials — note that in
+peer mode the accepting side also needs Zenoh's credential dictionary
+(`transport.auth.usrpwd.dictionary_file`, via `additional_config`) to *reject*
+unauthenticated peers; mTLS does that on its own.
+
+A `client`-mode config against a shared router is also supported (set
+`mode="client"` and point `connect_endpoints` at the router) — reach for it only
+when you actually want centralized routing or cross-subnet scale, not as a
+security requirement.
+
+Any config with neither auth nor TLS raises an `IstosSecurityWarning` at
+construction, so an insecure deployment is loud.
+
+### Why edge auth isn't enough
+
+Authenticating callers at an HTTP gateway (or FastAPI co-host) secures
+north-south traffic — who reaches your routes. It does nothing for east-west
+traffic on the fabric: an *unsecured* node (the zero-config default: peer mode
+with multicast scouting and no TLS) lets any peer on the same network segment
+join the mesh, discover queryables, and invoke handlers directly, never touching
+your gateway. Two independent layers close this:
+
+- **Transport** — mTLS (or TLS + auth) so an untrusted node can't join at all,
+  plus multicast scouting off. This stays brokerless — it locks down the peer
+  links themselves; no router required.
+- **Application** — an app-wide `authorizer` (with `require_auth=True`) so even a
+  joined peer needs a valid token to invoke anything.
+
+The risk is *unauthenticated* peers, not peer mode itself: a locked-down peer
+mesh (mTLS + auth + no multicast) is a perfectly good production posture. The
+open default is only fine on a genuinely private overlay you control end to end
+(a locked-down namespace, a WireGuard mesh). On any shared network, treat both
+layers as mandatory.
 
 ### Configuration options
 

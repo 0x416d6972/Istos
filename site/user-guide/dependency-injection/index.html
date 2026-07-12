@@ -701,6 +701,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capability Discovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../security/" class="md-nav__link">
         
   
@@ -1899,6 +1927,34 @@
     
   
     Query
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/core/stream/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stream
   
 
     
@@ -3159,7 +3215,7 @@
 
 
 <h1 id="dependency-injection">Dependency Injection<a class="headerlink" href="#dependency-injection" title="Permanent link">&para;</a></h1>
-<p>Istos resolves <code>Depends</code> on <code>@handle</code>, <code>@subscribe</code>, <code>@publish</code>, <code>@query</code>, and <code>@on_liveliness</code>, and supports pluggable serializers, storage, sessions, and routers.</p>
+<p>Istos resolves <code>Depends</code> on <code>@handle</code>, <code>@stream</code>, <code>@subscribe</code>, <code>@publish</code>, <code>@query</code>, and <code>@on_liveliness</code>, and supports pluggable serializers, storage, sessions, and routers.</p>
 <h2 id="depends"><code>Depends</code><a class="headerlink" href="#depends" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span><span class="p">,</span> <span class="n">Depends</span>
@@ -3210,7 +3266,9 @@
 </tbody>
 </table>
 <h3 id="streaming-note">Streaming note<a class="headerlink" href="#streaming-note" title="Permanent link">&para;</a></h3>
-<p>On <code>@subscribe</code> / <code>@publish</code>, dependencies resolve <strong>per message</strong>. For expensive shared resources (DB pool, socket), create them once in <code>lifespan</code> and inject a cheap <code>Depends</code> that returns the shared instance.</p>
+<p><code>@stream</code>: deps live for the whole stream. <code>@subscribe</code> / <code>@publish</code>: one resolve
+per message. Hold expensive things (pools, sockets) in <code>lifespan</code> and inject a
+cheap <code>Depends</code> that returns them.</p>
 <h3 id="named-databases">Named databases<a class="headerlink" href="#named-databases" title="Permanent link">&para;</a></h3>
 <p>For SQLAlchemy app DBs, prefer <code>Depends(istos.db_session("app"))</code> — see <a href="../application-databases/">Application Databases</a>.</p>
 <h2 id="per-decorator-serialization">Per-decorator serialization<a class="headerlink" href="#per-decorator-serialization" title="Permanent link">&para;</a></h2>

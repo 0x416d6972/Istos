@@ -701,6 +701,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capability Discovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../security/" class="md-nav__link">
         
   
@@ -1971,6 +1999,34 @@
     
   
     Query
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/core/stream/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stream
   
 
     
@@ -3370,12 +3426,41 @@
 <td><code>.istos/metrics</code></td>
 <td>Prometheus-format metrics</td>
 </tr>
+<tr>
+<td><code>.istos/capabilities</code></td>
+<td>Tool / handler manifest (when <code>enable_discovery=True</code>)</td>
+</tr>
 </tbody>
 </table>
 <p>Query from any node on the network:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">health</span> <span class="o">=</span> <span class="k">await</span> <span class="n">istos</span><span class="o">.</span><span class="n">query_once</span><span class="p">(</span><span class="s2">&quot;.istos/health&quot;</span><span class="p">)</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">ready</span> <span class="o">=</span> <span class="k">await</span> <span class="n">istos</span><span class="o">.</span><span class="n">query_once</span><span class="p">(</span><span class="s2">&quot;.istos/ready&quot;</span><span class="p">)</span>
 </code></pre></div>
+<p>When <code>Istos(http_port=8080)</code> is set you also get plain HTTP probes (no Zenoh
+client needed on the kubelet side):</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /livez</code>, <code>GET /healthz</code></td>
+<td>liveness</td>
+</tr>
+<tr>
+<td><code>GET /readyz</code></td>
+<td>readiness (503 if not ready)</td>
+</tr>
+<tr>
+<td><code>GET /metrics</code></td>
+<td>Prometheus</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="../http-gateway/">HTTP Gateway</a>.</p>
 <h3 id="custom-readiness-checks">Custom Readiness Checks<a class="headerlink" href="#custom-readiness-checks" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_database</span><span class="p">():</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="c1"># Return {&quot;status&quot;: &quot;ok&quot;} when healthy</span>
@@ -3461,22 +3546,38 @@ async driver in the URL, e.g. <code>postgresql+asyncpg://…</code>, <code>postg
 <a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="w">              </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;client&quot;</span>
 <a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ISTOS_ZENOH_CONNECT_ENDPOINTS</span>
 <a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="w">              </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;[&quot;tcp/zenoh-router:7447&quot;]&#39;</span>
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="w">          </span><span class="nt">livenessProbe</span><span class="p">:</span>
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="w">            </span><span class="nt">exec</span><span class="p">:</span>
-<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="w">              </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;python&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;-c&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;import</span><span class="nv"> </span><span class="s">asyncio;</span><span class="nv"> </span><span class="s">from</span><span class="nv"> </span><span class="s">main</span><span class="nv"> </span><span class="s">import</span><span class="nv"> </span><span class="s">istos;</span><span class="nv"> </span><span class="s">asyncio.run(istos.query_once(&#39;.istos/health&#39;))&quot;</span><span class="p p-Indicator">]</span>
-<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="w">            </span><span class="nt">initialDelaySeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
-<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a><span class="w">            </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="w">          </span><span class="nt">ports</span><span class="p">:</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">containerPort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="w">              </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http</span>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="w">          </span><span class="c1"># With Istos(http_port=8080):</span>
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a><span class="w">          </span><span class="nt">livenessProbe</span><span class="p">:</span>
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a><span class="w">            </span><span class="nt">httpGet</span><span class="p">:</span>
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a><span class="w">              </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/livez</span>
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a><span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http</span>
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a><span class="w">            </span><span class="nt">initialDelaySeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a><span class="w">            </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a><span class="w">          </span><span class="nt">readinessProbe</span><span class="p">:</span>
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a><span class="w">            </span><span class="nt">httpGet</span><span class="p">:</span>
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a><span class="w">              </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/readyz</span>
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a><span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http</span>
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a><span class="w">            </span><span class="nt">initialDelaySeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a><span class="w">            </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
 </code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">No HTTP port?</p>
+<p>Fall back to an <code>exec</code> probe that runs <code>query_once('.istos/health')</code>. Works,
+just clumsier than <code>/livez</code>.</p>
+</div>
 <h2 id="security-checklist">Security Checklist<a class="headerlink" href="#security-checklist" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[ ] Enable TLS on Zenoh router connections</li>
-<li>[ ] Configure authentication (username/password or mTLS)</li>
-<li>[ ] Set an app-wide <code>authorizer</code> (or per-handler rules)</li>
-<li>[ ] Use secret managers for certificates (never write PEM to disk)</li>
-<li>[ ] Run services as non-root in containers</li>
-<li>[ ] Restrict network policies to Zenoh router port only</li>
+<li>[ ] TLS on router connections</li>
+<li>[ ] Zenoh username/password or mTLS</li>
+<li>[ ] <code>require_auth=True</code> + an authorizer (or conscious <code>Public</code> opt-outs)</li>
+<li>[ ] Secrets not on disk as PEM files if you can help it</li>
+<li>[ ] Non-root containers</li>
+<li>[ ] Network policy: Zenoh port (+ HTTP if you opened a gateway)</li>
 </ul>
-<p>See <a href="../security/">Security &amp; TLS</a> for detailed configuration.</p>
+<p>See <a href="../security/">Security &amp; TLS</a>.</p>
 <h2 id="related-guides">Related guides<a class="headerlink" href="#related-guides" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../observability/">Observability</a> — logging, health, metrics, tracing</li>

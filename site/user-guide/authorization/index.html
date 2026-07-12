@@ -701,6 +701,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capability Discovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../security/" class="md-nav__link">
         
   
@@ -821,6 +849,17 @@
     <span class="md-ellipsis">
       
         The AuthContext
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#require_authtrue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        require_auth=True
       
     </span>
   </a>
@@ -1960,6 +1999,34 @@
     
   
     Query
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/core/stream/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stream
   
 
     
@@ -3145,6 +3212,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#require_authtrue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        require_auth=True
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#layered-resolution-app-wide-and-per-handler" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3416,21 +3494,38 @@ edge. Drive a request through the query path if you want to exercise the gate.</
 <tr>
 <td><code>.token</code></td>
 <td><code>str \| None</code></td>
-<td><code>attachment</code> decoded as UTF-8 — <code>None</code> if absent or non-UTF-8.</td>
+<td>Credential from the attachment. Bare UTF-8 string → token. JSON <code>{"tok","cid","tp"}</code> → envelope (see <a href="../../api/context/"><code>RequestEnvelope</code></a>).</td>
 </tr>
 </tbody>
 </table>
 <p>Because the context carries <code>prefix</code>, <code>key_expr</code>, and <code>params</code>, you can authorize on
-<strong>what</strong> is being touched (attribute/resource-based), not only on <strong>who</strong> is calling.</p>
+<strong>what</strong> is being touched, not only on <strong>who</strong> is calling.</p>
 <div class="admonition info">
-<p class="admonition-title">The token is not the Zenoh username</p>
-<p><code>ctx.token</code> is an <strong>application-level</strong> credential that the caller ships in the
-Zenoh attachment — analogous to an <code>Authorization: Bearer &lt;token&gt;</code> header. It is
-unrelated to the Zenoh username/password from <code>IstosZenohConfig</code>. The only
-built-in way to send it is the imperative <a href="../rpc/"><code>query_once</code></a>:</p>
+<p class="admonition-title">Not the Zenoh username</p>
+<p><code>ctx.token</code> is whatever the caller put in the attachment — same idea as
+<code>Authorization: Bearer …</code>. Unrelated to <code>IstosZenohConfig</code> credentials.
+Send it with <code>query_once</code> / <code>@query(..., attachment=…)</code> /
+<code>publish_once(..., attachment=…)</code>, or as Bearer on the <a href="../http-gateway/">gateway</a>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">query_once</span><span class="p">(</span><span class="s2">&quot;fleet/status&quot;</span><span class="p">,</span> <span class="n">attachment</span><span class="o">=</span><span class="s2">&quot;super-secret-token&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nd">@client</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;fleet/status&quot;</span><span class="p">,</span> <span class="n">attachment</span><span class="o">=</span><span class="s2">&quot;super-secret-token&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">status</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div>
 </div>
+<hr />
+<h2 id="require_authtrue"><code>require_auth=True</code><a class="headerlink" href="#require_authtrue" title="Permanent link">&para;</a></h2>
+<p>Default construction stays open (you'll get an <code>IstosSecurityWarning</code> on insecure
+transport). If you want construction itself to fail without an authorizer:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span><span class="p">,</span> <span class="n">JWTAuthorizer</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">require_auth</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">authorizer</span><span class="o">=</span><span class="n">JWTAuthorizer</span><span class="p">(</span><span class="n">secret</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;JWT_SECRET&quot;</span><span class="p">]),</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="p">)</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># missing authorizer → IstosSecurityError</span>
+</code></pre></div>
+<p><code>Public</code> on a handler still opts that one endpoint out of the app-wide gate.</p>
 <hr />
 <h2 id="layered-resolution-app-wide-and-per-handler">Layered resolution: app-wide <strong>and</strong> per-handler<a class="headerlink" href="#layered-resolution-app-wide-and-per-handler" title="Permanent link">&para;</a></h2>
 <p>Istos resolves a handler's effective authorizer by <strong>layering</strong>, exactly like a
@@ -3474,24 +3569,24 @@ global middleware plus a per-route guard:</p>
 <p>The key property: a per-handler rule can only ever <strong>tighten</strong> access, never
 silently loosen it. To open a single handler under an otherwise-protected app you
 must say so explicitly with <code>Public</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span><span class="p">,</span> <span class="n">TokenAuthorizer</span><span class="p">,</span> <span class="n">AuthContext</span><span class="p">,</span> <span class="n">Public</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">TokenAuthorizer</span><span class="p">(</span><span class="s2">&quot;app-token&quot;</span><span class="p">))</span>     <span class="c1"># baseline everywhere</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/status&quot;</span><span class="p">)</span>                              <span class="c1"># inherits the baseline</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">status</span><span class="p">():</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="k">def</span><span class="w"> </span><span class="nf">admins_only</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">AuthContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="k">return</span> <span class="n">ctx</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;role&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;admin&quot;</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/shutdown&quot;</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">admins_only</span><span class="p">)</span>    <span class="c1"># baseline AND admins_only</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">shutdown</span><span class="p">(</span><span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;stopping&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;health/ping&quot;</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">Public</span><span class="p">)</span>            <span class="c1"># explicitly public</span>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ping</span><span class="p">():</span>
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;pong&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span><span class="p">,</span> <span class="n">TokenAuthorizer</span><span class="p">,</span> <span class="n">AuthContext</span><span class="p">,</span> <span class="n">Public</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">TokenAuthorizer</span><span class="p">(</span><span class="s2">&quot;app-token&quot;</span><span class="p">))</span>     <span class="c1"># baseline everywhere</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/status&quot;</span><span class="p">)</span>                              <span class="c1"># inherits the baseline</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">status</span><span class="p">():</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="k">def</span><span class="w"> </span><span class="nf">admins_only</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">AuthContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="k">return</span> <span class="n">ctx</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;role&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;admin&quot;</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/shutdown&quot;</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">admins_only</span><span class="p">)</span>    <span class="c1"># baseline AND admins_only</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">shutdown</span><span class="p">(</span><span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;stopping&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;health/ping&quot;</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">Public</span><span class="p">)</span>            <span class="c1"># explicitly public</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ping</span><span class="p">():</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;pong&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
 </code></pre></div>
 <p>For <code>fleet/shutdown</code> a request is allowed only when it carries a valid <code>app-token</code>
 (app-wide layer) <strong>and</strong> presents <code>role=admin</code> (handler layer). Missing either one is
@@ -3500,12 +3595,12 @@ a denial.</p>
 <h2 id="tokenauthorizer-the-shared-secret-gate"><code>TokenAuthorizer</code> — the shared-secret gate<a class="headerlink" href="#tokenauthorizer-the-shared-secret-gate" title="Permanent link">&para;</a></h2>
 <p>The built-in <code>TokenAuthorizer</code> allows a request only when its token matches one of an
 accepted set. This is the classic <strong>service-to-service API key</strong> pattern.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span><span class="p">,</span> <span class="n">TokenAuthorizer</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">TokenAuthorizer</span><span class="p">(</span><span class="s2">&quot;super-secret-token&quot;</span><span class="p">))</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="c1"># Rotate keys with zero downtime by accepting old and new during rollover:</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">TokenAuthorizer</span><span class="p">({</span><span class="s2">&quot;old-token&quot;</span><span class="p">,</span> <span class="s2">&quot;new-token&quot;</span><span class="p">}))</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span><span class="p">,</span> <span class="n">TokenAuthorizer</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">TokenAuthorizer</span><span class="p">(</span><span class="s2">&quot;super-secret-token&quot;</span><span class="p">))</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="c1"># Rotate keys with zero downtime by accepting old and new during rollover:</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">TokenAuthorizer</span><span class="p">({</span><span class="s2">&quot;old-token&quot;</span><span class="p">,</span> <span class="s2">&quot;new-token&quot;</span><span class="p">}))</span>
 </code></pre></div>
 <div class="admonition warning">
 <p class="admonition-title">A shared secret is not user identity</p>
@@ -3518,19 +3613,19 @@ identity, use <code>JWTAuthorizer</code> (below).</p>
 <p>For real user identity — signed, expiring, role-carrying tokens — use the
 built-in <code>JWTAuthorizer</code> (the <code>istos[jwt]</code> extra, backed by PyJWT). It verifies
 the token from the request attachment and maps it to a <a href="#resolving-an-identity-the-principal"><code>Principal</code></a>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span><span class="p">,</span> <span class="n">JWTAuthorizer</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># HS256 shared secret:</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">JWTAuthorizer</span><span class="p">(</span><span class="n">secret</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;JWT_SECRET&quot;</span><span class="p">]))</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># RS256 with an identity provider&#39;s public key + audience/issuer checks:</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">JWTAuthorizer</span><span class="p">(</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="n">public_key</span><span class="o">=</span><span class="n">PUBLIC_KEY_PEM</span><span class="p">,</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="n">algorithms</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;RS256&quot;</span><span class="p">],</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    <span class="n">audience</span><span class="o">=</span><span class="s2">&quot;my-api&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    <span class="n">issuer</span><span class="o">=</span><span class="s2">&quot;https://idp.example.com&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="p">))</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span><span class="p">,</span> <span class="n">JWTAuthorizer</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># HS256 shared secret:</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">JWTAuthorizer</span><span class="p">(</span><span class="n">secret</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;JWT_SECRET&quot;</span><span class="p">]))</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># RS256 with an identity provider&#39;s public key + audience/issuer checks:</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">JWTAuthorizer</span><span class="p">(</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="n">public_key</span><span class="o">=</span><span class="n">PUBLIC_KEY_PEM</span><span class="p">,</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="n">algorithms</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;RS256&quot;</span><span class="p">],</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="n">audience</span><span class="o">=</span><span class="s2">&quot;my-api&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    <span class="n">issuer</span><span class="o">=</span><span class="s2">&quot;https://idp.example.com&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="p">))</span>
 </code></pre></div>
 <p>It verifies the signature and <code>exp</code> (plus <code>aud</code>/<code>iss</code> when configured), then
 builds <code>Principal(id=&lt;sub&gt;, roles=&lt;roles claim&gt;, claims=&lt;full payload&gt;)</code>. The
@@ -3543,28 +3638,28 @@ string like an OAuth2 <code>scope</code> is split into a set), <code>leeway=</co
 <p>Authenticate app-wide, then guard individual handlers with the roles they need.
 <code>require_roles</code> reads the <code>Principal</code> the authenticator resolved and checks its
 roles:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span><span class="p">,</span> <span class="n">JWTAuthorizer</span><span class="p">,</span> <span class="n">require_roles</span><span class="p">,</span> <span class="n">Principal</span><span class="p">,</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">current_principal</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">JWTAuthorizer</span><span class="p">(</span><span class="n">secret</span><span class="o">=</span><span class="n">SECRET</span><span class="p">))</span>   <span class="c1"># authenticate everything</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/status&quot;</span><span class="p">)</span>                            <span class="c1"># any authenticated caller</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">status</span><span class="p">():</span> <span class="o">...</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/reset&quot;</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">require_roles</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">))</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="n">user</span><span class="p">:</span> <span class="n">Principal</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">current_principal</span><span class="p">)):</span>
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;reset_by&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">id</span><span class="p">}</span>
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/ops&quot;</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">require_roles</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">,</span> <span class="s2">&quot;operator&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;any&quot;</span><span class="p">))</span>
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ops</span><span class="p">():</span> <span class="o">...</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span><span class="p">,</span> <span class="n">JWTAuthorizer</span><span class="p">,</span> <span class="n">require_roles</span><span class="p">,</span> <span class="n">Principal</span><span class="p">,</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">current_principal</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">JWTAuthorizer</span><span class="p">(</span><span class="n">secret</span><span class="o">=</span><span class="n">SECRET</span><span class="p">))</span>   <span class="c1"># authenticate everything</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/status&quot;</span><span class="p">)</span>                            <span class="c1"># any authenticated caller</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">status</span><span class="p">():</span> <span class="o">...</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/reset&quot;</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">require_roles</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">))</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="n">user</span><span class="p">:</span> <span class="n">Principal</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">current_principal</span><span class="p">)):</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;reset_by&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">id</span><span class="p">}</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/ops&quot;</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">require_roles</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">,</span> <span class="s2">&quot;operator&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;any&quot;</span><span class="p">))</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ops</span><span class="p">():</span> <span class="o">...</span>
 </code></pre></div>
 <p><code>mode="all"</code> (default) requires every listed role; <code>mode="any"</code> requires at least
 one. The semantics follow HTTP: <strong>no authenticated identity → 401</strong>, <strong>identity
 without the role → 403</strong>. This is the <a href="#layered-resolution-app-wide-and-per-handler">layered</a>
 model — the app-wide authenticator and the per-handler role guard both run.</p>
 <p>If a handler needs auth <em>without</em> an app-wide authenticator, pass one inline:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;admin/op&quot;</span><span class="p">,</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>              <span class="n">authorizer</span><span class="o">=</span><span class="n">require_roles</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">,</span> <span class="n">authenticator</span><span class="o">=</span><span class="n">JWTAuthorizer</span><span class="p">(</span><span class="n">secret</span><span class="o">=</span><span class="n">SECRET</span><span class="p">)))</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">op</span><span class="p">():</span> <span class="o">...</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;admin/op&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>              <span class="n">authorizer</span><span class="o">=</span><span class="n">require_roles</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">,</span> <span class="n">authenticator</span><span class="o">=</span><span class="n">JWTAuthorizer</span><span class="p">(</span><span class="n">secret</span><span class="o">=</span><span class="n">SECRET</span><span class="p">)))</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">op</span><span class="p">():</span> <span class="o">...</span>
 </code></pre></div>
 <p>Combined with the <a href="../http-gateway/">HTTP gateway</a>, this all works over HTTP too:
 the <code>Authorization: Bearer &lt;jwt&gt;</code> header is forwarded as the token, so
@@ -3573,23 +3668,23 @@ the <code>Authorization: Bearer &lt;jwt&gt;</code> header is forwarded as the to
 <h2 id="custom-authorizers">Custom authorizers<a class="headerlink" href="#custom-authorizers" title="Permanent link">&para;</a></h2>
 <p>Because an authorizer is just a callable, you can express any policy.</p>
 <p><strong>Role-based (RBAC)</strong> — verify the token and check a role:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">require_operator</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">AuthContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">token</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>        <span class="k">raise</span> <span class="n">UnauthorizedError</span><span class="p">(</span><span class="s2">&quot;missing token&quot;</span><span class="p">)</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">role</span> <span class="o">=</span> <span class="k">await</span> <span class="n">lookup_role</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>          <span class="c1"># DB / cache / JWT decode</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="k">return</span> <span class="n">role</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;operator&quot;</span><span class="p">,</span> <span class="s2">&quot;admin&quot;</span><span class="p">}</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/shutdown&quot;</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">require_operator</span><span class="p">)</span>
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">shutdown</span><span class="p">():</span> <span class="o">...</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">require_operator</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">AuthContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">token</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>        <span class="k">raise</span> <span class="n">UnauthorizedError</span><span class="p">(</span><span class="s2">&quot;missing token&quot;</span><span class="p">)</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">role</span> <span class="o">=</span> <span class="k">await</span> <span class="n">lookup_role</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>          <span class="c1"># DB / cache / JWT decode</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="k">return</span> <span class="n">role</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;operator&quot;</span><span class="p">,</span> <span class="s2">&quot;admin&quot;</span><span class="p">}</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/shutdown&quot;</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">require_operator</span><span class="p">)</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">shutdown</span><span class="p">():</span> <span class="o">...</span>
 </code></pre></div>
 <p><strong>Attribute/resource-based (ABAC)</strong> — authorize on the request's target:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">owns_resource</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">AuthContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="n">caller</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">token</span>                           <span class="c1"># e.g. &quot;robot-7&quot;</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="n">target</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;robot_id&quot;</span><span class="p">)</span>          <span class="c1"># from ?robot_id=...</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="k">return</span> <span class="n">caller</span> <span class="o">==</span> <span class="n">target</span> <span class="ow">or</span> <span class="n">ctx</span><span class="o">.</span><span class="n">prefix</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;public/&quot;</span><span class="p">)</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/robot&quot;</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">owns_resource</span><span class="p">)</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">robot_cmd</span><span class="p">(</span><span class="n">robot_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span> <span class="o">...</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">owns_resource</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">AuthContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="n">caller</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">token</span>                           <span class="c1"># e.g. &quot;robot-7&quot;</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="n">target</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;robot_id&quot;</span><span class="p">)</span>          <span class="c1"># from ?robot_id=...</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="k">return</span> <span class="n">caller</span> <span class="o">==</span> <span class="n">target</span> <span class="ow">or</span> <span class="n">ctx</span><span class="o">.</span><span class="n">prefix</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;public/&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/robot&quot;</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">owns_resource</span><span class="p">)</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">robot_cmd</span><span class="p">(</span><span class="n">robot_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span> <span class="o">...</span>
 </code></pre></div>
 <p>When you combine a custom authorizer with an app-wide one, remember they <strong>layer</strong>:
 the app-wide authorizer typically <em>authenticates</em> the caller and the per-handler
@@ -3608,20 +3703,20 @@ may <em>return</em> the identity instead of a bare <code>True</code>:</p>
 <p>Istos stashes that principal on the request context, and you inject it into the handler
 body with <code>Depends(current_principal)</code> — the gate resolves identity once, the body reuses
 it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span><span class="p">,</span> <span class="n">Principal</span><span class="p">,</span> <span class="n">AuthContext</span><span class="p">,</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">current_principal</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">authenticate</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">AuthContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Principal</span><span class="p">:</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">token</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        <span class="k">raise</span> <span class="n">UnauthorizedError</span><span class="p">(</span><span class="s2">&quot;missing token&quot;</span><span class="p">)</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="n">claims</span> <span class="o">=</span> <span class="k">await</span> <span class="n">verify_jwt</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>              <span class="c1"># your identity source</span>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="k">return</span> <span class="n">Principal</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">claims</span><span class="p">[</span><span class="s2">&quot;sub&quot;</span><span class="p">],</span> <span class="n">roles</span><span class="o">=</span><span class="nb">frozenset</span><span class="p">(</span><span class="n">claims</span><span class="p">[</span><span class="s2">&quot;roles&quot;</span><span class="p">]))</span>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">authenticate</span><span class="p">)</span>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/status&quot;</span><span class="p">)</span>
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">status</span><span class="p">(</span><span class="n">user</span><span class="p">:</span> <span class="n">Principal</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">current_principal</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    <span class="c1"># `user` is the exact object `authenticate` returned — no re-parsing.</span>
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;requested_by&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">&quot;is_admin&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">has_role</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">)}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span><span class="p">,</span> <span class="n">Principal</span><span class="p">,</span> <span class="n">AuthContext</span><span class="p">,</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">current_principal</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">authenticate</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">AuthContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Principal</span><span class="p">:</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">token</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        <span class="k">raise</span> <span class="n">UnauthorizedError</span><span class="p">(</span><span class="s2">&quot;missing token&quot;</span><span class="p">)</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">claims</span> <span class="o">=</span> <span class="k">await</span> <span class="n">verify_jwt</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>              <span class="c1"># your identity source</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="k">return</span> <span class="n">Principal</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">claims</span><span class="p">[</span><span class="s2">&quot;sub&quot;</span><span class="p">],</span> <span class="n">roles</span><span class="o">=</span><span class="nb">frozenset</span><span class="p">(</span><span class="n">claims</span><span class="p">[</span><span class="s2">&quot;roles&quot;</span><span class="p">]))</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">authenticate</span><span class="p">)</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="nd">@istos</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;fleet/status&quot;</span><span class="p">)</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">status</span><span class="p">(</span><span class="n">user</span><span class="p">:</span> <span class="n">Principal</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">current_principal</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>    <span class="c1"># `user` is the exact object `authenticate` returned — no re-parsing.</span>
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;requested_by&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">&quot;is_admin&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">has_role</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">)}</span>
 </code></pre></div>
 <p><code>Principal</code> is a default shape (<code>id</code>, <code>roles</code>, <code>claims</code>) with a <code>has_role()</code>
 helper — but the contract is structural, so you can return <strong>your own</strong> user object and
@@ -3672,10 +3767,10 @@ the network gate never runs. When a handler under test needs an identity, overri
 <p><code>.istos/health</code>, <code>.istos/ready</code>, <code>.istos/metrics</code>, and <code>serve_docs()</code> are ordinary
 handlers, so they inherit the <strong>app-wide</strong> authorizer — which is the only way to gate
 them, since you don't register them yourself.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">TokenAuthorizer</span><span class="p">(</span><span class="s2">&quot;ops-token&quot;</span><span class="p">))</span>   <span class="c1"># gates health/ready/metrics</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1"># A docs-specific authorizer layers on top of the app-wide one:</span>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">istos</span><span class="o">.</span><span class="n">serve_docs</span><span class="p">(</span><span class="n">web_port</span><span class="o">=</span><span class="mi">8080</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">TokenAuthorizer</span><span class="p">(</span><span class="s2">&quot;docs-token&quot;</span><span class="p">))</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">istos</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">authorizer</span><span class="o">=</span><span class="n">TokenAuthorizer</span><span class="p">(</span><span class="s2">&quot;ops-token&quot;</span><span class="p">))</span>   <span class="c1"># gates health/ready/metrics</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="c1"># A docs-specific authorizer layers on top of the app-wide one:</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="n">istos</span><span class="o">.</span><span class="n">serve_docs</span><span class="p">(</span><span class="n">web_port</span><span class="o">=</span><span class="mi">8080</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">TokenAuthorizer</span><span class="p">(</span><span class="s2">&quot;docs-token&quot;</span><span class="p">))</span>
 </code></pre></div>
 <p>Istos emits an <code>IstosSecurityWarning</code> if you enable health/metrics or <code>serve_docs()</code>
 with no authorizer at all — the docs endpoint in particular broadcasts your entire
@@ -3691,9 +3786,9 @@ API surface to every peer.</p>
 <li><strong>Authorization is an application layer, not transport.</strong> It runs <em>after</em> a peer is
   already on the fabric. Always pair it with TLS + Zenoh credentials — an open,
   unencrypted transport with a great authorizer is still wide open at the link level.</li>
-<li><strong>The token is a bearer secret in the attachment.</strong> It is not the authenticated
-  Zenoh identity, and (with <code>TokenAuthorizer</code>) not signed or time-bound. Treat it
-  like an API key; use a custom authorizer for JWT/identity.</li>
+<li><strong>The attachment token is a bearer.</strong> <code>TokenAuthorizer</code> is an API key. For
+  signed identity use <a href="#jwtauthorizer--verified-identity--roles"><code>JWTAuthorizer</code></a>
+  (<code>istos[jwt]</code>).</li>
 <li><strong>One credential per request.</strong> The attachment carries a single token, so you can
   authenticate-then-authorize on one identity, but you cannot layer two <em>independent</em>
   shared secrets on the same request.</li>

@@ -96,6 +96,57 @@ async def move_robot(token: str):
     membership (pub/sub, durability), embed the Zenoh client directly instead of
     going through HTTP.
 
+### Co-hosting inside FastAPI (one process)
+
+The gateway above is one process talking to another. For an API gateway that
+*is* the mesh, run Istos inside the FastAPI process and let FastAPI own the HTTP
+port. `istos.asgi.lifespan` opens the Zenoh session on startup and closes it on
+shutdown; your routes then reach the whole mesh in-process — no sidecar, no
+second port:
+
+```python
+from fastapi import FastAPI
+from istos import Istos
+from istos.communication.config import IstosZenohConfig
+from istos.asgi import lifespan
+
+mesh = Istos(
+    config=IstosZenohConfig(
+        mode="peer", connect_endpoints=["tls/svc-a.internal:7447"],
+        multicast_scouting=False, enable_mtls=True,
+        root_ca_certificate="/etc/istos/ca.pem",
+        listen_certificate="/etc/istos/gateway.pem",
+        listen_private_key="/etc/istos/gateway.key",
+    ),
+    authorizer=jwt, require_auth=True,
+)
+api = FastAPI(lifespan=lifespan(mesh))
+
+@api.post("/robot/move")
+async def move(distance: int, principal=Depends(authenticate)):
+    return await mesh.query_once("robot/move", distance=distance)
+
+@api.get("/llm/generate")
+async def generate(prompt: str):
+    async def tokens():
+        async for t in mesh.stream_query("llm/generate", prompt=prompt):
+            yield f"data: {t}\n\n"
+    return StreamingResponse(tokens(), media_type="text/event-stream")
+```
+
+Here FastAPI authenticates the north-south HTTP request, and the mesh call is
+in-process. If you already have your own lifespan, wrap `async with
+mesh.serving():` around your `yield` instead of using the helper.
+
+!!! warning "Edge auth does not secure the fabric"
+    Authenticating at the FastAPI edge only controls who reaches your HTTP
+    routes. It does **not** protect the Zenoh mesh: a co-hosted node in the
+    default `peer` mode with multicast scouting can still be discovered and
+    invoked directly by any other peer on the network segment, bypassing FastAPI
+    entirely. Secure the fabric itself — mTLS + `multicast_scouting=False` on
+    `IstosZenohConfig` (still brokerless, no router) plus an app-wide `authorizer`
+    with `require_auth=True`. See [Security](security.md).
+
 ### Streaming over HTTP (Server-Sent Events)
 
 A `@stream` handler emits many chunks over one call — ideal for SLM/LLM token

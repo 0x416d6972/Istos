@@ -843,6 +843,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#authorizing-subscribers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authorizing subscribers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -905,6 +916,34 @@
     
   
     HTTP Gateway & Probes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capability Discovery
   
 
     
@@ -1982,6 +2021,34 @@
     
   
     Query
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/core/stream/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stream
   
 
     
@@ -3294,6 +3361,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#authorizing-subscribers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authorizing subscribers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3583,6 +3661,11 @@ with <code>durable</code>.</p>
   <code>app.run()</code> / <code>run_async()</code> raises <code>RuntimeError</code>. Publish from a lifespan hook, a
   handler, or after the session is open.</li>
 </ul>
+<h2 id="authorizing-subscribers">Authorizing subscribers<a class="headerlink" href="#authorizing-subscribers" title="Permanent link">&para;</a></h2>
+<p><code>@subscribe(..., authorizer=…)</code> drops samples that fail the gate (no NACK —
+pub/sub has nowhere to reply). Attach a token with <code>publish_once(..., attachment=…)</code>
+or via the request envelope when publishing from an authorized handler. Details
+in <a href="../authorization/">Authorization</a>.</p>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../durable-messaging/">Brokerless Durable Messaging</a></li>

@@ -16,7 +16,7 @@
         <link rel="prev" href="../durable-messaging/">
       
       
-        <link rel="next" href="../security/">
+        <link rel="next" href="../capabilities/">
       
       
         
@@ -766,6 +766,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#co-hosting-inside-fastapi-one-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Co-hosting inside FastAPI (one process)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#streaming-over-http-server-sent-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Streaming over HTTP (Server-Sent Events)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -808,6 +830,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capability Discovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1877,6 +1927,34 @@
     
   
     Query
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/core/stream/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stream
   
 
     
@@ -3056,6 +3134,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#co-hosting-inside-fastapi-one-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Co-hosting inside FastAPI (one process)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#streaming-over-http-server-sent-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Streaming over HTTP (Server-Sent Events)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3207,12 +3307,85 @@ get durable replay. If the other service is Python and you want full fabric
 membership (pub/sub, durability), embed the Zenoh client directly instead of
 going through HTTP.</p>
 </div>
+<h3 id="co-hosting-inside-fastapi-one-process">Co-hosting inside FastAPI (one process)<a class="headerlink" href="#co-hosting-inside-fastapi-one-process" title="Permanent link">&para;</a></h3>
+<p>The gateway above is one process talking to another. For an API gateway that
+<em>is</em> the mesh, run Istos inside the FastAPI process and let FastAPI own the HTTP
+port. <code>istos.asgi.lifespan</code> opens the Zenoh session on startup and closes it on
+shutdown; your routes then reach the whole mesh in-process — no sidecar, no
+second port:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos.communication.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">IstosZenohConfig</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos.asgi</span><span class="w"> </span><span class="kn">import</span> <span class="n">lifespan</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">mesh</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="n">config</span><span class="o">=</span><span class="n">IstosZenohConfig</span><span class="p">(</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;peer&quot;</span><span class="p">,</span> <span class="n">connect_endpoints</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;tls/svc-a.internal:7447&quot;</span><span class="p">],</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        <span class="n">multicast_scouting</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">enable_mtls</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        <span class="n">root_ca_certificate</span><span class="o">=</span><span class="s2">&quot;/etc/istos/ca.pem&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        <span class="n">listen_certificate</span><span class="o">=</span><span class="s2">&quot;/etc/istos/gateway.pem&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>        <span class="n">listen_private_key</span><span class="o">=</span><span class="s2">&quot;/etc/istos/gateway.key&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    <span class="p">),</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    <span class="n">authorizer</span><span class="o">=</span><span class="n">jwt</span><span class="p">,</span> <span class="n">require_auth</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="p">)</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="n">api</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">(</span><span class="n">mesh</span><span class="p">))</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/robot/move&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">move</span><span class="p">(</span><span class="n">distance</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">principal</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">authenticate</span><span class="p">)):</span>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    <span class="k">return</span> <span class="k">await</span> <span class="n">mesh</span><span class="o">.</span><span class="n">query_once</span><span class="p">(</span><span class="s2">&quot;robot/move&quot;</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="n">distance</span><span class="p">)</span>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/llm/generate&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">tokens</span><span class="p">():</span>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>        <span class="k">async</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">mesh</span><span class="o">.</span><span class="n">stream_query</span><span class="p">(</span><span class="s2">&quot;llm/generate&quot;</span><span class="p">,</span> <span class="n">prompt</span><span class="o">=</span><span class="n">prompt</span><span class="p">):</span>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>            <span class="k">yield</span> <span class="sa">f</span><span class="s2">&quot;data: </span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>    <span class="k">return</span> <span class="n">StreamingResponse</span><span class="p">(</span><span class="n">tokens</span><span class="p">(),</span> <span class="n">media_type</span><span class="o">=</span><span class="s2">&quot;text/event-stream&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>Here FastAPI authenticates the north-south HTTP request, and the mesh call is
+in-process. If you already have your own lifespan, wrap <code>async with
+mesh.serving():</code> around your <code>yield</code> instead of using the helper.</p>
+<div class="admonition warning">
+<p class="admonition-title">Edge auth does not secure the fabric</p>
+<p>Authenticating at the FastAPI edge only controls who reaches your HTTP
+routes. It does <strong>not</strong> protect the Zenoh mesh: a co-hosted node in the
+default <code>peer</code> mode with multicast scouting can still be discovered and
+invoked directly by any other peer on the network segment, bypassing FastAPI
+entirely. Secure the fabric itself — mTLS + <code>multicast_scouting=False</code> on
+<code>IstosZenohConfig</code> (still brokerless, no router) plus an app-wide <code>authorizer</code>
+with <code>require_auth=True</code>. See <a href="../security/">Security</a>.</p>
+</div>
+<h3 id="streaming-over-http-server-sent-events">Streaming over HTTP (Server-Sent Events)<a class="headerlink" href="#streaming-over-http-server-sent-events" title="Permanent link">&para;</a></h3>
+<p>A <code>@stream</code> handler emits many chunks over one call — ideal for SLM/LLM token
+streaming. Mark it with <code>http=</code> and the gateway bridges it to
+<code>text/event-stream</code> (SSE), so a browser <code>EventSource</code> or a FastAPI proxy can
+consume the tokens live:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nd">@app</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;llm/generate&quot;</span><span class="p">,</span> <span class="n">http</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>          <span class="c1"># GET /llm/generate</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="k">async</span> <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="n">prompt</span><span class="p">):</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        <span class="k">yield</span> <span class="n">token</span>
+</code></pre></div>
+<p>Each yielded chunk becomes one SSE <code>data:</code> frame; the stream closes with an
+<code>event: end</code> frame, or <code>event: error</code> carrying <code>{code, message}</code> if the handler
+raises. SSE routes default to <strong><code>GET</code></strong> (what <code>EventSource</code> uses); pass an
+explicit method to override (<code>http="POST /generate"</code>). <code>http_timeout_s</code> bounds
+the whole stream (default 60s for long inference).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// In the browser — no Zenoh, no framework:</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kd">const</span><span class="w"> </span><span class="nx">es</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">EventSource</span><span class="p">(</span><span class="s2">&quot;http://istos-node:8080/llm/generate?prompt=hello&quot;</span><span class="p">);</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="nx">es</span><span class="p">.</span><span class="nx">onmessage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">append</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span><span class="w">            </span><span class="c1">// each token</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nx">es</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s2">&quot;end&quot;</span><span class="p">,</span><span class="w">   </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">es</span><span class="p">.</span><span class="nx">close</span><span class="p">());</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="nx">es</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">es</span><span class="p">.</span><span class="nx">close</span><span class="p">());</span>
+</code></pre></div>
+<p>The <code>Authorization</code> header and W3C trace headers (<code>traceparent</code>,
+<code>X-Correlation-ID</code>) cross into the Zenoh envelope just as for one-shot routes, so
+the stream's authorizer gate runs and correlation/trace propagate from the HTTP
+edge. Consuming a stream <strong>inside</strong> the fabric (Python peer) still uses
+<a href="../rpc/"><code>stream_query</code></a>; SSE is the external-caller path.</p>
 <h2 id="kubernetes-health-probes">Kubernetes health probes<a class="headerlink" href="#kubernetes-health-probes" title="Permanent link">&para;</a></h2>
 <p>Point the kubelet at the HTTP probes:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">livenessProbe</span><span class="p">:</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">httpGet</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> path</span><span class="p">:</span><span class="w"> </span><span class="nv">/livez</span><span class="p p-Indicator">,</span><span class="nt"> port</span><span class="p">:</span><span class="w"> </span><span class="nv">8080</span><span class="w"> </span><span class="p p-Indicator">}</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nt">readinessProbe</span><span class="p">:</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">httpGet</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> path</span><span class="p">:</span><span class="w"> </span><span class="nv">/readyz</span><span class="p p-Indicator">,</span><span class="nt"> port</span><span class="p">:</span><span class="w"> </span><span class="nv">8080</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">livenessProbe</span><span class="p">:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">httpGet</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> path</span><span class="p">:</span><span class="w"> </span><span class="nv">/livez</span><span class="p p-Indicator">,</span><span class="nt"> port</span><span class="p">:</span><span class="w"> </span><span class="nv">8080</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nt">readinessProbe</span><span class="p">:</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">httpGet</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> path</span><span class="p">:</span><span class="w"> </span><span class="nv">/readyz</span><span class="p p-Indicator">,</span><span class="nt"> port</span><span class="p">:</span><span class="w"> </span><span class="nv">8080</span><span class="w"> </span><span class="p p-Indicator">}</span>
 </code></pre></div>
 <p><code>/readyz</code> returns 503 until the service has finished binding its handlers and
 subscribers (and returns 503 again during shutdown), so Kubernetes only routes
