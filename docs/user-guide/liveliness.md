@@ -82,7 +82,7 @@ def track_services(key_expr: str, is_alive: bool):
 ```
 
 !!! tip "No Polling Required"
-    Unlike HTTP health checks, Zenoh liveliness is event-driven. You get notified instantly when a node joins or leaves — no polling intervals, no wasted bandwidth.
+    Unlike HTTP health checks, Zenoh liveliness is event-driven: you get notified when a node joins or leaves, with no polling intervals.
 
 ## Next Steps
 

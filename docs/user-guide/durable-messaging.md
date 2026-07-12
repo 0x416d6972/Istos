@@ -88,8 +88,8 @@ Two things make `durable=True` more than a replay cache:
   truly prefer dropping.)
 - **You hear about losses you can't recover.** If history/recovery can't fill a gap,
   the subscriber logs a warning and calls your `on_miss(source, nb)` — `source` is the
-  producer and `nb` the number of samples irrecoverably missed. This is the honest edge
-  of at-least-once: recovered silently when possible, surfaced loudly when not. An async
+  producer and `nb` the number of samples irrecoverably missed. This is the edge
+  of at-least-once: recovered when possible, surfaced when not. An async
   `on_miss` is awaited; a throwing one is logged and swallowed (it never breaks delivery).
 
 ## Guarantees — and honest limits

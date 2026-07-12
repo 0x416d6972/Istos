@@ -7,9 +7,9 @@ so nothing is printed and no "No handlers could be found" warning is raised. All
 output configuration (handlers, formatters, level, text vs JSON) is left to the
 embedding application.
 
-Applications that want batteries-included output can opt in with
+Applications that want Istos to configure output can opt in with
 :func:`configure_logging`. ``Istos.run()`` calls :func:`ensure_configured`, which
-installs a sensible default handler **only** when neither Istos nor the app has
+installs a default handler **only** when neither Istos nor the app has
 already configured one — so a standalone service still prints, while a service
 embedded in a larger app that manages logging is left untouched.
 

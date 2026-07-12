@@ -3338,8 +3338,8 @@ its own buffers).</p>
   truly prefer dropping.)</li>
 <li><strong>You hear about losses you can't recover.</strong> If history/recovery can't fill a gap,
   the subscriber logs a warning and calls your <code>on_miss(source, nb)</code> — <code>source</code> is the
-  producer and <code>nb</code> the number of samples irrecoverably missed. This is the honest edge
-  of at-least-once: recovered silently when possible, surfaced loudly when not. An async
+  producer and <code>nb</code> the number of samples irrecoverably missed. This is the edge
+  of at-least-once: recovered when possible, surfaced when not. An async
   <code>on_miss</code> is awaited; a throwing one is logged and swallowed (it never breaks delivery).</li>
 </ul>
 <h2 id="guarantees-and-honest-limits">Guarantees — and honest limits<a class="headerlink" href="#guarantees-and-honest-limits" title="Permanent link">&para;</a></h2>

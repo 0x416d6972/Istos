@@ -3,6 +3,7 @@ from .routing import IstosRouter
 from .core.errors import (
     IstosError,
     IstosSecurityWarning,
+    IstosSecurityError,
     NotFoundError,
     UnauthorizedError,
     ForbiddenError,
@@ -30,6 +31,7 @@ __all__ = [
     "IstosTestClient",
     "IstosError",
     "IstosSecurityWarning",
+    "IstosSecurityError",
     "NotFoundError",
     "UnauthorizedError",
     "ForbiddenError",

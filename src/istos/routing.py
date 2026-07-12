@@ -65,22 +65,22 @@ class IstosRouter:
             return proxy
         return decorator
 
-    def query(self, prefix: str, timeout_s: float = 5.0, retry: Optional[Union[int, RetryPolicy]] = None, serializer: Optional[Serialize] = None) -> Callable:
+    def query(self, prefix: str, timeout_s: float = 5.0, retry: Optional[Union[int, RetryPolicy]] = None, serializer: Optional[Serialize] = None, attachment: Optional[Union[bytes, str]] = None) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
-                proxy._real_wrapper = app.query(full_prefix, timeout_s=timeout_s, retry=retry, serializer=serializer)(func)
+                proxy._real_wrapper = app.query(full_prefix, timeout_s=timeout_s, retry=retry, serializer=serializer, attachment=attachment)(func)
             self._actions.append(action)
             return proxy
         return decorator
 
-    def stream(self, prefix: str, serializer: Optional[Serialize] = None, authorizer: Optional[Authorizer] = None) -> Callable:
+    def stream(self, prefix: str, serializer: Optional[Serialize] = None, authorizer: Optional[Authorizer] = None, http: Optional[Union[bool, str]] = None, http_timeout_s: float = 60.0) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
-                proxy._real_wrapper = app.stream(full_prefix, serializer=serializer, authorizer=authorizer)(func)
+                proxy._real_wrapper = app.stream(full_prefix, serializer=serializer, authorizer=authorizer, http=http, http_timeout_s=http_timeout_s)(func)
             self._actions.append(action)
             return proxy
         return decorator

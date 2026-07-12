@@ -42,28 +42,44 @@ DEFAULT_ERROR_STATUS = 500
 
 @dataclass
 class HttpRoute:
-    """One HTTP route bridged to a Zenoh handler key expression."""
+    """One HTTP route bridged to a Zenoh handler key expression.
+
+    ``sse=True`` marks a route that bridges to a ``@stream`` handler and streams
+    its chunks back as ``text/event-stream`` (Server-Sent Events) instead of a
+    single JSON reply.
+    """
 
     method: str
     path: str
     key_expr: str
     timeout_s: float = 5.0
+    sse: bool = False
 
 
-def parse_http_spec(spec: Union[bool, str], prefix: str, timeout_s: float = 5.0) -> HttpRoute:
+def parse_http_spec(
+    spec: Union[bool, str],
+    prefix: str,
+    timeout_s: float = 5.0,
+    *,
+    sse: bool = False,
+) -> HttpRoute:
     """Turn a handler's ``http=`` value into an :class:`HttpRoute`.
 
-    * ``True``            → ``POST /<prefix>``
-    * ``"/custom/path"``  → ``POST /custom/path``
+    * ``True``            → ``POST /<prefix>`` (``GET`` for ``sse=True``)
+    * ``"/custom/path"``  → ``POST /custom/path`` (``GET`` for ``sse=True``)
     * ``"GET /things"``   → method + path
+
+    SSE routes default to ``GET`` because that is what the browser ``EventSource``
+    API uses; an explicit method in ``spec`` always wins.
     """
+    default_method = "GET" if sse else "POST"
     default_path = "/" + prefix.lstrip("/")
     if spec is True:
-        return HttpRoute("POST", default_path, prefix, timeout_s)
+        return HttpRoute(default_method, default_path, prefix, timeout_s, sse)
     if isinstance(spec, str):
         parts = spec.split()
         if len(parts) == 1:
-            method, path = "POST", parts[0]
+            method, path = default_method, parts[0]
         elif len(parts) == 2:
             method, path = parts[0], parts[1]
         else:
@@ -72,8 +88,24 @@ def parse_http_spec(spec: Union[bool, str], prefix: str, timeout_s: float = 5.0)
             )
         if not path.startswith("/"):
             path = "/" + path
-        return HttpRoute(method.upper(), path, prefix, timeout_s)
+        return HttpRoute(method.upper(), path, prefix, timeout_s, sse)
     raise ValueError(f"Invalid http spec {spec!r}: expected str or True.")
+
+
+def sse_event(data: str, event: Optional[str] = None, *, id: Optional[str] = None) -> str:
+    """Format one Server-Sent Events frame per the WHATWG spec.
+
+    Multi-line ``data`` is split into successive ``data:`` lines (the browser
+    rejoins them with ``\\n``); the frame is terminated by a blank line.
+    """
+    lines = []
+    if id is not None:
+        lines.append(f"id: {id}")
+    if event is not None:
+        lines.append(f"event: {event}")
+    for line in data.split("\n"):
+        lines.append(f"data: {line}")
+    return "\n".join(lines) + "\n\n"
 
 
 def extract_bearer(auth_header: Optional[str]) -> Optional[str]:

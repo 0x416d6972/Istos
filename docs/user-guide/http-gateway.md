@@ -96,6 +96,40 @@ async def move_robot(token: str):
     membership (pub/sub, durability), embed the Zenoh client directly instead of
     going through HTTP.
 
+### Streaming over HTTP (Server-Sent Events)
+
+A `@stream` handler emits many chunks over one call — ideal for SLM/LLM token
+streaming. Mark it with `http=` and the gateway bridges it to
+`text/event-stream` (SSE), so a browser `EventSource` or a FastAPI proxy can
+consume the tokens live:
+
+```python
+@app.stream("llm/generate", http=True)          # GET /llm/generate
+async def generate(prompt: str):
+    async for token in model.stream(prompt):
+        yield token
+```
+
+Each yielded chunk becomes one SSE `data:` frame; the stream closes with an
+`event: end` frame, or `event: error` carrying `{code, message}` if the handler
+raises. SSE routes default to **`GET`** (what `EventSource` uses); pass an
+explicit method to override (`http="POST /generate"`). `http_timeout_s` bounds
+the whole stream (default 60s for long inference).
+
+```javascript
+// In the browser — no Zenoh, no framework:
+const es = new EventSource("http://istos-node:8080/llm/generate?prompt=hello");
+es.onmessage = (e) => append(e.data);            // each token
+es.addEventListener("end",   () => es.close());
+es.addEventListener("error", (e) => es.close());
+```
+
+The `Authorization` header and W3C trace headers (`traceparent`,
+`X-Correlation-ID`) cross into the Zenoh envelope just as for one-shot routes, so
+the stream's authorizer gate runs and correlation/trace propagate from the HTTP
+edge. Consuming a stream **inside** the fabric (Python peer) still uses
+[`stream_query`](rpc.md); SSE is the external-caller path.
+
 ## Kubernetes health probes
 
 Point the kubelet at the HTTP probes:

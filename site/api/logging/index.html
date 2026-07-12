@@ -3160,9 +3160,9 @@ steal an application's log output. Following the standard-library convention, th
 so nothing is printed and no "No handlers could be found" warning is raised. All
 output configuration (handlers, formatters, level, text vs JSON) is left to the
 embedding application.</p>
-<p>Applications that want batteries-included output can opt in with
+<p>Applications that want Istos to configure output can opt in with
 :func:<code>configure_logging</code>. <code>Istos.run()</code> calls :func:<code>ensure_configured</code>, which
-installs a sensible default handler <strong>only</strong> when neither Istos nor the app has
+installs a default handler <strong>only</strong> when neither Istos nor the app has
 already configured one — so a standalone service still prints, while a service
 embedded in a larger app that manages logging is left untouched.</p>
 <p>Usage in framework code::</p>

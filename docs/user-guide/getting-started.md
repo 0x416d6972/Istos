@@ -44,6 +44,7 @@ Istos provides a decorator-based API that maps directly to network operations:
 |-----------|---------|-----------|-------------|
 | `@handle` | RPC | Receive | Listens for queries and replies |
 | `@query` | RPC | Send | Sends queries and receives replies |
+| `@stream` | RPC | Receive | Streams chunked replies (SLM/LLM tokens) |
 | `@subscribe` | Pub/Sub | Receive | Listens for published events |
 | `@publish` | Pub/Sub | Send | Broadcasts events to the network |
 | `@on_liveliness` | Discovery | Receive | Monitors node health |

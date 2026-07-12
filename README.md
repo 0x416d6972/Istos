@@ -4,7 +4,7 @@
   <em>A unified Python framework for building robust distributed systems and multi-agent applications over the <a href="https://zenoh.io/">Eclipse Zenoh</a> protocol.</em>
 </p>
 
-**Istos** provides a ridiculously simple, decorator-based API that strips away the complexities of networking, serialization, and state distribution. By extending Zenoh's high-performance publish/subscribe and query functionalities, Istos helps you quickly wire up event-driven microservices or distributed agents in native Python.
+**Istos** provides a simple, decorator-based API that strips away the complexities of networking, serialization, and state distribution. By extending Zenoh's publish/subscribe and query functionality, Istos lets you wire up event-driven microservices or distributed agents in native Python.
 
 ---
 
@@ -36,7 +36,7 @@ the whole architecture.
 - **Smart Selectors & RPC**: Automatically map Zenoh query parameters (e.g., `?limit=5&role=admin`) directly to your function's Python arguments.
 - **Schema Validation**: Automatic type coercion and Pydantic model validation at the network boundary — bad data is rejected before your code runs.
 - **Retry Policies**: Built-in exponential backoff retries for queries and subscribers via a simple `retry=5` parameter.
-- **Pub/Sub Made Easy**: Broadcast real-time state changes and react instantly across your network with minimal boilerplate.
+- **Pub/Sub**: Broadcast real-time state changes and react across your network with minimal boilerplate.
 - **Brokerless Durability**: `durable=True` gives you replayable, recoverable streams with **no broker to run** — a late subscriber replays history peer-to-peer from the producer's cache. Built for microservices *and* SLM/agent messaging.
 - **Async & Sync Compatibility**: First-class support for `asyncio` — write `async def` for maximum speed on the main loop, or `def` which gets automatically offloaded to a background thread pool without blocking the network. Clients do not need to import or manage `asyncio` themselves.
 - **Pluggable Architecture**: Inject custom behavior via simple abstractions:
@@ -45,10 +45,11 @@ the whole architecture.
 - **Security**: TLS/mTLS + username/password transport auth, plus per-handler **authorization** hooks (`@istos.handle(authorizer=...)`) to control who can invoke what. Note that Istos is **unauthenticated by default** — see [Security](#10-security-transport-authentication--authorization) before deploying.
 
 ##  The Mental Model
-The framework abstracts network topology into three clear concepts:
-- **`@handle` & `@query`**: 1-to-1 RPC (Request & Reply)
-- **`@publish` & `@subscribe`**: 1-to-Many Streaming (Fire and Forget)
-- **`@on_liveliness`**: Infrastructure Awareness (Node Discovery & Health)
+The framework maps network topology onto a few decorators:
+- **`@handle` & `@query`**: 1-to-1 RPC (request & reply)
+- **`@stream`**: 1-to-1 streaming RPC (chunked replies, e.g. SLM/LLM tokens)
+- **`@publish` & `@subscribe`**: 1-to-many events (fire and forget)
+- **`@on_liveliness`**: node discovery & health
 
 ##  Installation
 
@@ -63,8 +64,8 @@ git clone https://github.com/A111ir/Istos.git
 cd istos
 uv pip install -e .
 
-# Install with optional SQLite support
-uv pip install -e ".[sqlite]"
+# Or with the optional backends (Redis, SQLAlchemy, S3 persistence, JWT, OTel):
+uv pip install -e ".[all]"
 ```
 
 ##  Quick Start
@@ -167,7 +168,7 @@ The producer *is* the log (Zenoh advanced pub/sub); pair it with the idempotency
 ledger for effectively-once processing. See [Brokerless Durable Messaging](docs/user-guide/durable-messaging.md).
 
 ### 4. Liveliness Tracking (Heartbeats)
-Detect instantly when nodes connect or drop off the network without pinging.
+Detect when nodes connect or drop off the network without polling.
 
 ```python
 # Announce that this node is alive on the network
@@ -194,7 +195,7 @@ await istos.delete_once("robot/cache/old_logs")
 ```
 
 ### 6. High-Performance Shared Memory (Zero-Copy)
-When sending massive data arrays (like HD video frames) between handlers residing on the same hardware, drastically improve performance by enabling POSIX shared memory allocations.
+When sending large data arrays (like HD video frames) between handlers on the same hardware, enable POSIX shared memory allocations to avoid copies.
 
 ```python
 @istos.publish("video/feed", use_shm=True)
@@ -332,7 +333,7 @@ async def echo(message):
 > 2. **Authorize handlers** — gate who may invoke them (further below).
 
 #### Transport Security & Authentication
-Secure your distributed system easily without polluting your code. `IstosZenohConfig` instantly loads properties from your environment (`.env` file or environment variables) using `pydantic-settings` under the hood.
+Secure the system without hard-coding secrets. `IstosZenohConfig` loads properties from your environment (`.env` file or environment variables) using `pydantic-settings`.
 
 ```env
 # .env file
@@ -377,10 +378,10 @@ istos = Istos(session_manager=AsyncZenohSession(config.build()))
 ```
 
 #### Advanced Security: Vault & Secret Managers (Programmatic Raw PEM)
-For enterprise zero-trust environments, Zenoh magically accepts **raw multiline PEM strings** natively, meaning you don't need to write files to disk. You can completely bypass `.env` and pull secrets dynamically into `IstosZenohConfig` during startup:
+For zero-trust environments, Zenoh accepts **raw multiline PEM strings** natively, so you don't need to write files to disk. You can bypass `.env` and pull secrets into `IstosZenohConfig` at startup:
 
 ```python
-# 1. Fetch from your favorite Secrets Manager (HashiCorp Vault, AWS, LDAP, etc.)
+# 1. Fetch from your secrets manager (HashiCorp Vault, AWS, LDAP, etc.)
 secrets = vault.get_secret("istos/prod")
 
 # 2. Inject raw strings directly into the config builder
@@ -389,7 +390,7 @@ config = IstosZenohConfig(
     connect_endpoints=["tls/zenoh-router.local:7447"],
     username=secrets["zenoh_user"],
     password=secrets["zenoh_pass"],
-    root_ca_certificate=secrets["raw_ca_pem_string"] # 👈 Raw Multiline PEM!
+    root_ca_certificate=secrets["raw_ca_pem_string"],  # raw multiline PEM
 )
 
 istos = Istos(session_manager=AsyncZenohSession(config.build()))
@@ -479,7 +480,7 @@ istos docs              # Serve documentation locally
 istos version           # Print installed version
 ```
 
-## 👨‍💻 Contributing
+## Contributing
 Contributions and pull requests are welcome! Ensure tests pass and type hints are satisfied.
 
 1. Fork the repository

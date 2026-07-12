@@ -87,7 +87,7 @@ If you want to add a new decorator or core feature:
 2. Write comprehensive docstrings with parameters, return values, and examples.
 3. Add tests for the new functionality under `tests/`.
 4. Update the documentation to include the new feature.
-5. Register the decorator in `Istos.py` and expose it via `__init__.py`.
+5. Register the decorator in `app.py` and expose it via `__init__.py`.
 
 ## License
 

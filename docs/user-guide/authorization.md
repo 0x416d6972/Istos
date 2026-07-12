@@ -319,7 +319,7 @@ async def status(user: Principal = Depends(current_principal)) -> dict:
     return {"requested_by": user.id, "is_admin": user.has_role("admin")}
 ```
 
-`Principal` is a batteries-included shape (`id`, `roles`, `claims`) with a `has_role()`
+`Principal` is a default shape (`id`, `roles`, `claims`) with a `has_role()`
 helper — but the contract is structural, so you can return **your own** user object and
 inject it the same way. It's just "whatever truthy thing the authorizer returned."
 

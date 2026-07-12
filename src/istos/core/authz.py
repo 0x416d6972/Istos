@@ -59,10 +59,9 @@ class Principal:
     """The authenticated identity behind a request.
 
     A convenience shape for the value an authorizer may return to say "allowed,
-    and here is *who*". Istos treats **any** non-``bool`` truthy return from an
-    authorizer as a principal, so you are free to return your own type instead —
-    this class is just a batteries-included default carrying an id, roles, and
-    arbitrary claims.
+    and here is *who*". Istos treats any non-``bool`` truthy return from an
+    authorizer as a principal, so you can return your own type instead; this class
+    is a default carrying an id, roles, and arbitrary claims.
 
     Inject it into a handler body with ``Depends(current_principal)``.
     """

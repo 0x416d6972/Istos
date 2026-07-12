@@ -1,6 +1,8 @@
 import asyncio
+import contextlib
 import inspect
 import signal
+import uuid
 import warnings
 import zenoh
 from contextlib import AsyncExitStack
@@ -26,12 +28,13 @@ from istos.core.errors import (
     ExceptionHandler,
     ExceptionHandlerRegistry,
     IstosError,
+    IstosSecurityError,
     IstosSecurityWarning,
     get_default_registry,
 )
 from istos.core.authz import Authorizer, combine_authorizers
-from istos.context import RequestEnvelope, peek_request_context
-from istos.gateway import HttpRoute, parse_http_spec, build_selector, extract_bearer, status_for_reply, is_error_payload
+from istos.context import RequestContext, RequestEnvelope, peek_request_context, set_request_context
+from istos.gateway import HttpRoute, parse_http_spec, build_selector, extract_bearer, status_for_reply, is_error_payload, sse_event
 from istos.routing import IstosRouter
 from istos.logging import configure_logging as _configure_logging, ensure_configured, get_logger
 from istos.middleware.base import (
@@ -87,6 +90,7 @@ class Istos:
         service_name: str = "istos",
         exception_registry: Optional[ExceptionHandlerRegistry] = None,
         authorizer: Optional[Authorizer] = None,
+        require_auth: bool = False,
         configure_logging: Optional[bool] = None,
         http_port: Optional[int] = None,
     ):
@@ -154,6 +158,13 @@ class Istos:
         self.lifespan = lifespan
         self._service_name = service_name
         self._authorizer = authorizer
+        # Fail-closed: refuse to run an unauthenticated mesh instead of only warning.
+        if require_auth and authorizer is None:
+            raise IstosSecurityError(
+                "Istos(require_auth=True) requires an app-wide authorizer, but none "
+                "was set. Pass Istos(authorizer=...) (e.g. JWTAuthorizer/TokenAuthorizer), "
+                "or use Public per-handler to opt specific endpoints out."
+            )
         # Dependency overrides for testing: map a dependency
         # callable to a replacement. Mutate app.dependency_overrides in tests.
         self.dependency_overrides: dict = {}
@@ -318,7 +329,7 @@ class Istos:
             return wrapper
         return decorator
 
-    def query(self, prefix: str, timeout_s: float = 5.0, retry: Optional[Union[int, RetryPolicy]] = None, serializer: Optional[Serialize] = None) -> Callable:
+    def query(self, prefix: str, timeout_s: float = 5.0, retry: Optional[Union[int, RetryPolicy]] = None, serializer: Optional[Serialize] = None, attachment: Optional[Union[bytes, str]] = None) -> Callable:
         """
         Decorator that queries a registered handler when the function is called.
 
@@ -328,7 +339,15 @@ class Istos:
 
             @istos.query("binary/data", serializer=MsgPackSerializer())
             def process_binary(result): ...
+
+        Pass ``attachment`` (bytes or str) to carry an auth token on every call —
+        symmetry with ``query_once`` for calling gated handlers:
+
+            @istos.query("admin/op", attachment="secret")
+            def op(result): ...
         """
+        if isinstance(attachment, str):
+            attachment = attachment.encode("utf-8")
         def decorator(func: Callable) -> query_wrapper:
             wrapper = query_wrapper(
                 func, prefix, serializer or JsonSerializer(),
@@ -336,6 +355,7 @@ class Istos:
                 timeout_s=timeout_s,
                 retry=retry,
                 dependency_overrides=self.dependency_overrides,
+                attachment=attachment,
             )
             self._queries.append(wrapper)
             return wrapper
@@ -346,6 +366,8 @@ class Istos:
         prefix: str,
         serializer: Optional[Serialize] = None,
         authorizer: Optional[Authorizer] = None,
+        http: Optional[Union[bool, str]] = None,
+        http_timeout_s: float = 60.0,
     ) -> Callable:
         """
         Decorator that registers a **streaming** handler — an async generator
@@ -360,7 +382,19 @@ class Istos:
         Consume it with :meth:`stream_query`. Authorization, validation, DI, and
         the request envelope apply exactly as for ``@handle``; the dependency
         scope stays open for the whole stream.
+
+        HTTP/SSE ingress: pass ``http=True`` (or ``http="GET /path"``) to also
+        expose the stream over HTTP as ``text/event-stream`` (Server-Sent Events),
+        so a browser ``EventSource`` or FastAPI can consume the chunks live. Each
+        yielded chunk becomes one SSE ``data:`` frame; a terminating ``event: end``
+        (or ``event: error``) closes the stream. ``http_timeout_s`` bounds the
+        whole stream (defaults to 60s for long inference).
         """
+        if http is not None:
+            self._http_routes.append(
+                parse_http_spec(http, prefix, timeout_s=http_timeout_s, sse=True)
+            )
+
         def decorator(func: Callable) -> stream_wrapper:
             wrapper = stream_wrapper(
                 func, prefix, serializer or JsonSerializer(),
@@ -677,19 +711,34 @@ class Istos:
         )
         return await wrapper(**kwargs)
 
-    async def publish_once(self, prefix: str, data: Any, use_shm: bool = False, serializer: Optional[Serialize] = None) -> None:
+    async def publish_once(self, prefix: str, data: Any, use_shm: bool = False, serializer: Optional[Serialize] = None, attachment: Optional[Union[bytes, str]] = None) -> None:
         """
         One-shot publish without a decorator.
 
             await istos.publish_once("drone/status", {"ok": True})
             await istos.publish_once("binary/data", payload, serializer=MsgPackSerializer())
+
+        Pass ``attachment`` (bytes or str) to carry an auth token to a gated
+        subscriber. The current request's correlation_id / traceparent are
+        forwarded too (see the request envelope).
         """
         session = self._session_manager.session
         if session is None:
             raise RuntimeError("No active Zenoh session.")
         _serializer = serializer or JsonSerializer()
         serialized = _serializer.serialize(data)
-        
+
+        token = None
+        if attachment is not None:
+            token = attachment.decode("utf-8") if isinstance(attachment, bytes) else str(attachment)
+        ctx = peek_request_context()
+        att = RequestEnvelope(
+            token=token,
+            correlation_id=ctx.correlation_id if ctx else None,
+            traceparent=ctx.traceparent if ctx else None,
+        ).to_attachment()
+        put_kwargs = {"attachment": att} if att is not None else {}
+
         def _do_put():
             if use_shm:
                 provider = self._get_or_init_shm()
@@ -698,9 +747,9 @@ class Istos:
                     payload = str(payload).encode('utf-8')
                 sbuf = provider.alloc(len(payload))
                 sbuf[:] = payload
-                session.put(prefix, sbuf)
+                session.put(prefix, sbuf, **put_kwargs)
             else:
-                session.put(prefix, serialized)
+                session.put(prefix, serialized, **put_kwargs)
 
         await asyncio.to_thread(_do_put)
 
@@ -950,8 +999,14 @@ class Istos:
         app.router.add_get('/metrics', _metrics)
 
         # --- Ingress gateway: HTTP → Zenoh query, one route per http= handler.
+        # SSE routes bridge to a @stream handler and stream text/event-stream;
+        # the rest are one-shot request/reply.
         for route in self._http_routes:
-            app.router.add_route(route.method, route.path, self._make_gateway_handler(route))
+            handler = (
+                self._make_sse_handler(route) if route.sse
+                else self._make_gateway_handler(route)
+            )
+            app.router.add_route(route.method, route.path, handler)
 
         # --- Docs UI (only when serve_docs configured a prefix).
         if self._docs_prefix is not None:
@@ -1065,6 +1120,87 @@ class Istos:
             except Exception:
                 return web.Response(body=payload, content_type='application/octet-stream')
             return web.json_response(parsed, status=status_for_reply(parsed))
+
+        return _handler
+
+    def _make_sse_handler(self, route: HttpRoute) -> Any:
+        """Build an aiohttp handler that bridges an HTTP request to a ``@stream``
+        handler and relays its chunks as Server-Sent Events (``text/event-stream``).
+
+        Each yielded chunk is one ``data:`` frame; the stream closes with an
+        ``event: end`` frame, or ``event: error`` carrying the error envelope. The
+        ``Authorization`` header and HTTP trace headers cross into the Zenoh
+        envelope, so the stream's authorizer gate runs and correlation/trace
+        propagate from the HTTP edge."""
+        import json as _json
+
+        from aiohttp import web
+
+        async def _handler(request: web.Request) -> web.StreamResponse:
+            params: dict = dict(request.query)
+            if request.body_exists:
+                text = await request.text()
+                if text.strip():
+                    try:
+                        data = _json.loads(text)
+                    except _json.JSONDecodeError:
+                        return web.json_response(
+                            {"error": "bad_request", "code": "bad_request",
+                             "message": "Request body must be valid JSON."},
+                            status=400,
+                        )
+                    if isinstance(data, dict):
+                        params.update(data)
+
+            token = extract_bearer(request.headers.get("Authorization"))
+            # Bridge HTTP trace context so the stream keeps one correlation_id /
+            # W3C trace; stream_query reads these off the ambient request context.
+            set_request_context(RequestContext(
+                correlation_id=(request.headers.get("X-Correlation-ID")
+                                or request.headers.get("X-Request-ID")
+                                or str(uuid.uuid4())),
+                traceparent=request.headers.get("traceparent"),
+                prefix=route.key_expr,
+                operation="stream",
+            ))
+
+            response = web.StreamResponse(
+                status=200,
+                headers={
+                    "Content-Type": "text/event-stream",
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",  # disable proxy buffering (nginx)
+                },
+            )
+            await response.prepare(request)
+
+            try:
+                async for chunk in self.stream_query(
+                    route.key_expr, timeout_s=route.timeout_s, attachment=token, **params
+                ):
+                    text_chunk = chunk if isinstance(chunk, str) else _json.dumps(chunk)
+                    await response.write(sse_event(text_chunk).encode("utf-8"))
+                await response.write(sse_event("", event="end").encode("utf-8"))
+            except IstosError as e:
+                err = _json.dumps({"code": e.code, "message": e.message})
+                await response.write(sse_event(err, event="error").encode("utf-8"))
+            except asyncio.CancelledError:
+                raise  # client disconnected; let aiohttp tear the response down
+            except Exception as e:
+                self._logger.error(
+                    "SSE stream failed for %s: %s", route.key_expr, e,
+                    exc_info=True, extra={"prefix": route.key_expr},
+                )
+                err = _json.dumps({"code": "stream_error", "message": "Upstream stream failed."})
+                try:
+                    await response.write(sse_event(err, event="error").encode("utf-8"))
+                except Exception:
+                    pass
+            finally:
+                with contextlib.suppress(Exception):
+                    await response.write_eof()
+            return response
 
         return _handler
 

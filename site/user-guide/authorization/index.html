@@ -3623,7 +3623,7 @@ it:</p>
 <a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    <span class="c1"># `user` is the exact object `authenticate` returned — no re-parsing.</span>
 <a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;requested_by&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">&quot;is_admin&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">has_role</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">)}</span>
 </code></pre></div>
-<p><code>Principal</code> is a batteries-included shape (<code>id</code>, <code>roles</code>, <code>claims</code>) with a <code>has_role()</code>
+<p><code>Principal</code> is a default shape (<code>id</code>, <code>roles</code>, <code>claims</code>) with a <code>has_role()</code>
 helper — but the contract is structural, so you can return <strong>your own</strong> user object and
 inject it the same way. It's just "whatever truthy thing the authorizer returned."</p>
 <h3 id="the-gate-decides-di-materializes">The gate decides, DI materializes<a class="headerlink" href="#the-gate-decides-di-materializes" title="Permanent link">&para;</a></h3>

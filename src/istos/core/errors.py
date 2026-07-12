@@ -22,6 +22,11 @@ class IstosSecurityWarning(UserWarning):
     """
 
 
+class IstosSecurityError(Exception):
+    """Raised (fail-closed) when a required security guarantee is missing —
+    e.g. ``Istos(require_auth=True)`` with no authorizer configured."""
+
+
 class IstosError(Exception):
     """Base exception for Istos application errors."""
 
