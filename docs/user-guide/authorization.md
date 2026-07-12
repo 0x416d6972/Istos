@@ -99,17 +99,16 @@ Every authorizer receives one, describing the incoming request:
 | `key_expr` | `str` | The actual key that was queried (useful with wildcards). |
 | `params` | `dict` | Parsed selector parameters (`?robot_id=7` → `{"robot_id": "7"}`). |
 | `attachment` | `bytes \| None` | Raw bytes the caller attached to the request. |
-| `.token` | `str \| None` | Auth credential from the attachment via [`RequestEnvelope`](../api/context.md): a **bare UTF-8 string** is treated as the token; a JSON object `{"tok","cid","tp"}` carries token + correlation/trace. `None` if absent or undecodable. |
+| `.token` | `str \| None` | Credential from the attachment. Bare UTF-8 string → token. JSON `{"tok","cid","tp"}` → envelope (see [`RequestEnvelope`](../api/context.md)). |
 
 Because the context carries `prefix`, `key_expr`, and `params`, you can authorize on
-**what** is being touched (attribute/resource-based), not only on **who** is calling.
+**what** is being touched, not only on **who** is calling.
 
-!!! info "The token is not the Zenoh username"
-    `ctx.token` is an **application-level** credential that the caller ships in the
-    Zenoh attachment — analogous to an `Authorization: Bearer <token>` header. It is
-    unrelated to the Zenoh username/password from `IstosZenohConfig`. Send it with
-    `query_once` / `@query(..., attachment=…)` / `publish_once(..., attachment=…)`,
-    or over HTTP via `Authorization: Bearer` on the [gateway](http-gateway.md):
+!!! info "Not the Zenoh username"
+    `ctx.token` is whatever the caller put in the attachment — same idea as
+    `Authorization: Bearer …`. Unrelated to `IstosZenohConfig` credentials.
+    Send it with `query_once` / `@query(..., attachment=…)` /
+    `publish_once(..., attachment=…)`, or as Bearer on the [gateway](http-gateway.md):
 
     ```python
     await client.query_once("fleet/status", attachment="super-secret-token")
@@ -121,24 +120,22 @@ Because the context carries `prefix`, `key_expr`, and `params`, you can authoriz
 
 ---
 
-## Fail-closed: `require_auth=True`
+## `require_auth=True`
 
-By default Istos allows unauthenticated construction (with an
-`IstosSecurityWarning` on insecure transport). For production meshes, refuse to
-start without an app-wide authorizer:
+Default construction stays open (you'll get an `IstosSecurityWarning` on insecure
+transport). If you want construction itself to fail without an authorizer:
 
 ```python
-from istos import Istos, JWTAuthorizer, IstosSecurityError
+from istos import Istos, JWTAuthorizer
 
-# Raises IstosSecurityError at construction — no silent open mesh:
 istos = Istos(
     require_auth=True,
     authorizer=JWTAuthorizer(secret=os.environ["JWT_SECRET"]),
 )
+# missing authorizer → IstosSecurityError
 ```
 
-Use `Public` on individual handlers to opt specific endpoints out of the
-app-wide gate while keeping `require_auth` for everything else.
+`Public` on a handler still opts that one endpoint out of the app-wide gate.
 
 ---
 
@@ -408,10 +405,9 @@ API surface to every peer.
 - **Authorization is an application layer, not transport.** It runs *after* a peer is
   already on the fabric. Always pair it with TLS + Zenoh credentials — an open,
   unencrypted transport with a great authorizer is still wide open at the link level.
-- **The token is a bearer credential in the attachment.** With `TokenAuthorizer` it
-  is an unsigned shared secret (API-key style). For signed, expiring, role-carrying
-  identity use the built-in [`JWTAuthorizer`](#jwtauthorizer--verified-identity--roles)
-  (`istos[jwt]`), not a hand-rolled custom decoder unless you need a special IdP.
+- **The attachment token is a bearer.** `TokenAuthorizer` is an API key. For
+  signed identity use [`JWTAuthorizer`](#jwtauthorizer--verified-identity--roles)
+  (`istos[jwt]`).
 - **One credential per request.** The attachment carries a single token, so you can
   authenticate-then-authorize on one identity, but you cannot layer two *independent*
   shared secrets on the same request.

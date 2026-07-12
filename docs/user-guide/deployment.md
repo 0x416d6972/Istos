@@ -74,16 +74,16 @@ health = await istos.query_once(".istos/health")
 ready = await istos.query_once(".istos/ready")
 ```
 
-When `Istos(http_port=8080)` is set, the same process also serves HTTP probes that
-kubelet can hit without Zenoh:
+When `Istos(http_port=8080)` is set you also get plain HTTP probes (no Zenoh
+client needed on the kubelet side):
 
 | Path | Purpose |
 |------|---------|
-| `GET /livez`, `GET /healthz` | Liveness |
-| `GET /readyz` | Readiness (503 when not ready) |
-| `GET /metrics` | Prometheus scrape |
+| `GET /livez`, `GET /healthz` | liveness |
+| `GET /readyz` | readiness (503 if not ready) |
+| `GET /metrics` | Prometheus |
 
-See [HTTP Gateway & Probes](http-gateway.md).
+See [HTTP Gateway](http-gateway.md).
 
 ### Custom Readiness Checks
 
@@ -178,7 +178,7 @@ spec:
           ports:
             - containerPort: 8080
               name: http
-          # Prefer HTTP probes when Istos(http_port=8080) is set:
+          # With Istos(http_port=8080):
           livenessProbe:
             httpGet:
               path: /livez
@@ -193,21 +193,20 @@ spec:
             periodSeconds: 10
 ```
 
-!!! note "No `http_port`?"
-    If the process does not expose HTTP, you can still probe over Zenoh with an
-    `exec` check that runs `query_once('.istos/health')` — less ideal for kubelet,
-    but valid inside the fabric.
+!!! note "No HTTP port?"
+    Fall back to an `exec` probe that runs `query_once('.istos/health')`. Works,
+    just clumsier than `/livez`.
 
 ## Security Checklist
 
-- [ ] Enable TLS on Zenoh router connections
-- [ ] Configure authentication (username/password or mTLS)
-- [ ] Prefer `Istos(require_auth=True, authorizer=…)` (or app-wide / per-handler rules)
-- [ ] Use secret managers for certificates (never write PEM to disk)
-- [ ] Run services as non-root in containers
-- [ ] Restrict network policies to Zenoh router (+ HTTP port if gateway enabled)
+- [ ] TLS on router connections
+- [ ] Zenoh username/password or mTLS
+- [ ] `require_auth=True` + an authorizer (or conscious `Public` opt-outs)
+- [ ] Secrets not on disk as PEM files if you can help it
+- [ ] Non-root containers
+- [ ] Network policy: Zenoh port (+ HTTP if you opened a gateway)
 
-See [Security & TLS](security.md) for detailed configuration.
+See [Security & TLS](security.md).
 
 ## Related guides
 

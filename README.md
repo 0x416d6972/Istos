@@ -32,19 +32,19 @@ the whole architecture.
 
 ##  Key Features
 
-- **Decorators First**: Write clean business logic. Turn any Python function into a network-addressable handler, subscriber, publisher, or stream using intuitive decorators (`@istos.handle`, `@istos.stream`, `@istos.publish`, `@istos.subscribe`).
-- **Smart Selectors & RPC**: Automatically map Zenoh query parameters (e.g., `?limit=5&role=admin`) directly to your function's Python arguments.
-- **Streaming RPC**: `@istos.stream` yields chunked replies (SLM/LLM tokens) over one query; consume with `stream_query`.
-- **HTTP / SSE gateway**: `Istos(http_port=8080)` exposes selected `@handle(..., http=…)` routes as JSON and `@stream(..., http=…)` as Server-Sent Events — so FastAPI, browsers, and kubelet probes need no Zenoh client. See [HTTP Gateway](docs/user-guide/http-gateway.md).
-- **Schema Validation**: Automatic type coercion and Pydantic model validation at the network boundary — bad data is rejected before your code runs.
-- **Retry Policies**: Built-in exponential backoff retries for queries and subscribers via a simple `retry=5` parameter.
-- **Pub/Sub**: Broadcast real-time state changes and react across your network with minimal boilerplate.
-- **Brokerless Durability**: `durable=True` gives you replayable, recoverable streams with **no broker to run** — a late subscriber replays history peer-to-peer from the producer's cache. Optional `persist="s3://…"` survives producer crashes. Built for microservices *and* SLM/agent messaging.
-- **Async & Sync Compatibility**: First-class support for `asyncio` — write `async def` for maximum speed on the main loop, or `def` which gets automatically offloaded to a background thread pool without blocking the network. Clients do not need to import or manage `asyncio` themselves.
-- **Pluggable Architecture**: Inject custom behavior via simple abstractions:
-  - **Storage:** Use `InMemoryStoragePlugin`, `RedisStoragePlugin`, or `SqlAlchemyStoragePlugin` (any SQL database — you bring the async driver).
-  - **Serialization:** Built-in `JsonSerializer` powered by Pydantic and msgpack integrations.
-- **Security**: TLS/mTLS + username/password transport auth, plus app-wide / per-handler **authorization** (`TokenAuthorizer`, `JWTAuthorizer`, `require_roles`). Prefer `Istos(require_auth=True, authorizer=…)` in production — Istos is **unauthenticated by default**. See [Security](#10-security-transport-authentication--authorization).
+- **Decorators First**: Write the function, decorate it — `@handle`, `@stream`, `@publish`, `@subscribe`.
+- **Smart Selectors & RPC**: Query params like `?limit=5` land on your Python arguments.
+- **Streaming RPC**: `@stream` yields chunks over one query; `stream_query` consumes them.
+- **HTTP gateway**: `Istos(http_port=8080)` plus `http=` on a handler or stream — JSON or SSE for FastAPI, browsers, and probes. See [HTTP Gateway](docs/user-guide/http-gateway.md).
+- **Schema Validation**: Type hints / Pydantic at the edge; bad input never reaches your body.
+- **Retry Policies**: `retry=5` (or a `RetryPolicy`) on queries and subscribers.
+- **Pub/Sub**: Put a value on a key; someone else reacts.
+- **Brokerless Durability**: `durable=True` keeps a replay cache on the producer. Late joiners catch up peer-to-peer. `persist="s3://…"` if the producer itself can die. Useful for services and agent traffic alike.
+- **Async & Sync**: `async def` on the loop; plain `def` offloaded to a thread pool. Callers don't manage asyncio for you.
+- **Pluggable Architecture**:
+  - **Storage:** in-memory, Redis, or SQLAlchemy (bring your async driver).
+  - **Serialization:** JSON (default), msgpack, and friends.
+- **Security**: TLS/mTLS and Zenoh credentials at the transport; `TokenAuthorizer` / `JWTAuthorizer` / `require_roles` on handlers. Default is still open — use `require_auth=True` when you mean it. See [Security](#10-security-transport-authentication--authorization).
 
 ##  The Mental Model
 The framework maps network topology onto a few decorators:
@@ -462,18 +462,18 @@ pytest tests/                         # includes network integration tests
 
 ##  Production Features
 
-- **Structured logging** — human-readable text or JSON. Istos follows the standard library convention: it logs through the `istos.*` logger namespace with a `NullHandler` and **never reconfigures your app's logging**. A standalone `istos.run()` installs a sensible default handler only if you haven't configured one; embed Istos in a larger app and its records simply propagate to your root logger. Opt into Istos-managed output explicitly with `Istos(configure_logging=True, log_level=..., json_logs=...)` or by calling `configure_logging()`. Messages are prose with structured context in `extra=`, surfaced as fields in JSON mode.
-- **Health checks** — `.istos/health` and `.istos/ready` (and HTTP `/livez` / `/readyz` when `http_port` is set)
-- **Prometheus metrics** — `.istos/metrics` (and HTTP `/metrics`)
-- **Capability discovery** — `.istos/capabilities` returns a machine-readable tool manifest (schemas included) for agents to discover and invoke tools
-- **HTTP / SSE northbound** — `http_port` + `@handle(http=…)` / `@stream(http=…)` for FastAPI and browsers
-- **OpenTelemetry tracing** — optional via `pip install 'istos[otel]'`
-- **Middleware pipeline** — cross-cutting concerns (logging, correlation IDs, custom)
-- **Exception handlers** — `@istos.exception_handler()` for typed errors
-- **Graceful shutdown** — SIGINT/SIGTERM handling
-- **Storage plugins** — Redis (`istos[redis]`), SQLAlchemy (`istos[sqlalchemy]`), S3 persist (`istos[s3]`), JWT (`istos[jwt]`)
+- **Logging** — text or JSON under `istos.*`. We don't reconfigure your root logger unless you ask (`configure_logging=True` / `configure_logging()`).
+- **Health** — `.istos/health` / `.istos/ready` (and `/livez` / `/readyz` with `http_port`)
+- **Metrics** — `.istos/metrics` (and `/metrics`)
+- **Capabilities** — `.istos/capabilities` lists handlers/streams with schemas
+- **HTTP / SSE** — `http_port` + `http=` on handle/stream
+- **Tracing** — optional OTel (`istos[otel]`)
+- **Middleware** — correlation IDs, logging, your own
+- **Exceptions** — `@exception_handler`
+- **Shutdown** — SIGINT/SIGTERM
+- **Storage** — Redis, SQLAlchemy, S3 persist, JWT extras
 
-See the [Deployment Guide](docs/user-guide/deployment.md) and [HTTP Gateway](docs/user-guide/http-gateway.md) for Docker, Kubernetes, and observability setup.
+[Deployment](docs/user-guide/deployment.md) · [HTTP Gateway](docs/user-guide/http-gateway.md)
 
 ##  CLI
 

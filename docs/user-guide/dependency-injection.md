@@ -36,10 +36,9 @@ You can also use the default-argument form: `db=Depends(get_db)`.
 
 ### Streaming note
 
-On `@stream`, the dependency scope stays open for the **whole stream** (teardown
-runs after the last chunk). On `@subscribe` / `@publish`, dependencies resolve
-**per message**. For expensive shared resources (DB pool, socket), create them
-once in `lifespan` and inject a cheap `Depends` that returns the shared instance.
+`@stream`: deps live for the whole stream. `@subscribe` / `@publish`: one resolve
+per message. Hold expensive things (pools, sockets) in `lifespan` and inject a
+cheap `Depends` that returns them.
 
 ### Named databases
 

@@ -107,7 +107,7 @@ page. The short version:
 from istos import Istos, TokenAuthorizer
 
 istos = Istos(
-    require_auth=True,                              # fail-closed at construction
+    require_auth=True,
     authorizer=TokenAuthorizer("super-secret-token"),
 )
 
@@ -115,27 +115,26 @@ istos = Istos(
 async def status():
     return {"ok": True}
 
-# callers attach the token
 await istos.query_once("fleet/status", attachment="super-secret-token")
 ```
 
-Authentication and authorization are **independent, complementary layers** — configure
-both before deploying. For JWT identity and RBAC, see
-[`JWTAuthorizer`](authorization.md#jwtauthorizer--verified-identity--roles).
+Transport auth and app authorizers are separate — you usually want both.
+JWT / RBAC: [Authorization](authorization.md).
 
 ## Serialization note
 
-Istos does **not** ship a pickle serializer. `pickle.loads` executes arbitrary code — on a fabric where any peer can publish, that is remote code execution by design. Use JSON, MsgPack, or other safe serializers from `istos.messages.serialization`.
+No pickle serializer. On a fabric where anyone can publish, `pickle.loads` is RCE.
+Use JSON, msgpack, or the other serializers in `istos.messages.serialization`.
 
 ## Security checklist
 
-- [ ] Enable TLS on Zenoh router connections
-- [ ] Configure authentication (username/password or mTLS)
-- [ ] Prefer `Istos(require_auth=True, authorizer=…)` (or app-wide / per-handler rules)
-- [ ] Disable multicast scouting in production when using explicit endpoints
-- [ ] Use secret managers for certificates (prefer raw PEM in memory)
-- [ ] Escalate `IstosSecurityWarning` to errors in CI
-- [ ] Restrict network policies to the Zenoh router port (+ HTTP if gateway enabled)
+- [ ] TLS to the router
+- [ ] Zenoh username/password or mTLS
+- [ ] `require_auth=True` + authorizer
+- [ ] Multicast scouting off when using explicit endpoints
+- [ ] Certs from a secret store when you can
+- [ ] `IstosSecurityWarning` → error in CI
+- [ ] Network policy for Zenoh (+ HTTP if gateway is on)
 
 ## Next Steps
 

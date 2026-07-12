@@ -243,10 +243,10 @@ await app.delete_once("robot/cache/old_logs")
 
 ## Authorizing subscribers
 
-Pass `authorizer=` on `@subscribe` to drop samples whose attachment token fails
-the gate (denied samples are dropped — there is no NACK channel). Producers can
-send a token with `publish_once(..., attachment=…)` or via the request envelope
-when publishing from inside an authorized RPC. See [Authorization](authorization.md).
+`@subscribe(..., authorizer=…)` drops samples that fail the gate (no NACK —
+pub/sub has nowhere to reply). Attach a token with `publish_once(..., attachment=…)`
+or via the request envelope when publishing from an authorized handler. Details
+in [Authorization](authorization.md).
 
 ## Next Steps
 

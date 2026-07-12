@@ -11,22 +11,12 @@ from typing import Any, Optional
 
 @dataclass
 class RequestEnvelope:
-    """Structured request metadata carried in the Zenoh attachment.
+    """Auth token (+ optional correlation/trace) carried in the Zenoh attachment.
 
-    The attachment is Istos' one out-of-band channel per request. Historically it
-    held only an auth *token*; the envelope extends it — backward compatibly — to
-    also carry request metadata *across hops*:
+    A bare UTF-8 string is still just a token — old clients keep working. When
+    you also need ``correlation_id`` or ``traceparent``, we send compact JSON::
 
-    * ``token``          — the auth credential (as before).
-    * ``correlation_id`` — links every hop of one logical operation in logs/traces.
-    * ``traceparent``    — W3C Trace Context, so distributed tracing spans a chain.
-
-    Wire form: a **bare string** attachment is read as a token-only envelope (so
-    existing callers and non-Istos peers keep working); when there is metadata to
-    carry, the envelope is a compact JSON object with short keys
-    ``{"tok","cid","tp"}``. Emitting stays bare unless ``correlation_id`` or
-    ``traceparent`` is present, so the simple wire format is preserved when
-    nothing needs propagating.
+        {"tok": "...", "cid": "...", "tp": "..."}
     """
 
     token: Optional[str] = None
@@ -34,7 +24,7 @@ class RequestEnvelope:
     traceparent: Optional[str] = None
 
     def to_attachment(self) -> Optional[bytes]:
-        # Nothing beyond a token → keep the simple, interop-friendly bare form.
+        # Token alone stays a bare string; otherwise compact JSON.
         if self.correlation_id is None and self.traceparent is None:
             return self.token.encode("utf-8") if self.token is not None else None
         obj: dict[str, str] = {}

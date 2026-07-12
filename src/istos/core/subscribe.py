@@ -51,30 +51,22 @@ class subscribe_wrapper:
         self.prefix = prefix
         self.serializer = serializer
         self.calls = 0
-        # Cross-cutting parity with @handle: an inbound sample is untrusted
-        # network input, so it passes the authorizer gate and the middleware
-        # chain before the callback body runs.
         self._middleware = middleware
         self._authorizer = authorizer
-        # Brokerless durability: subscribe via an AdvancedSubscriber that replays
-        # history on join and recovers missed samples (see Istos._bind_subscribers).
+        # AdvancedSubscriber: join replay + gap recovery (_bind_subscribers).
         self.durable = durable
         self.replay = replay
         self.recover = recover
-        # On join, pull persisted history from the object-store queryable (see
-        # istos.communication.persist) so the stream survives producer restarts.
+        # Pull history from PersistRole's object-store queryable on join.
         self.replay_persisted = replay_persisted
-        # Fired when a gap could not be recovered.
         self.on_miss = on_miss
 
-        # Optional dedup window (dedup=True -> 4096, dedup=N -> N). Drops repeated
-        # payload bytes; content-based, so identical payloads collapse too.
+        # Content fingerprint window (True→4096). Identical payloads collapse.
         self._dedup_window = (
             4096 if dedup is True else int(dedup) if dedup else 0
         )
         self._seen: "OrderedDict[str, None]" = OrderedDict()
 
-        # Normalize retry parameter
         if retry is None:
             self.retry_policy = RetryPolicy(max_retries=0)
         elif isinstance(retry, int):
@@ -83,15 +75,12 @@ class subscribe_wrapper:
             self.retry_policy = retry
         self._logger = get_logger("subscribe")
 
-        # Dependency injection: the payload fills the first positional slot.
         self._has_depends = has_dependencies(func)
         _positional = positional_param_names(func)
         self._skip_names = tuple(_positional[:1])
         self._dependency_overrides = dependency_overrides if dependency_overrides is not None else {}
 
-        # Boundary validation: the incoming message is untrusted network input, so
-        # coerce/validate it against the payload param's type hint — mirroring how
-        # @handle validates its params. None when the payload param is untyped.
+        # Untyped payload param → no validation (same idea as @handle).
         self._validate_payload = build_payload_validator(
             func, _positional[0] if _positional else None
         )
@@ -121,7 +110,7 @@ class subscribe_wrapper:
         return await asyncio.to_thread(self.func, *args)
 
     async def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        # Direct/in-process path (e.g. TestClient): first positional is the payload.
+        # In-process (TestClient): first positional is the payload.
         instance = args[0] if len(args) > 1 else None
         data = args[-1] if args else kwargs.get("data")
         if self._validate_payload is not None:
@@ -168,10 +157,7 @@ class subscribe_wrapper:
             key = str(getattr(sample, "key_expr", self.prefix))
             attachment = self._extract_attachment(sample)
 
-            # --- Authorization: enforced at the network boundary, mirroring
-            # @handle. A denied sample is logged and dropped — pub/sub has no
-            # reply channel. In-process delivery (TestClient) goes through
-            # __call__ and is not subject to this gate. ---
+            # Denied samples are dropped (no reply channel). TestClient skips this.
             try:
                 principal = await check_authorized(
                     self._authorizer,
@@ -218,18 +204,15 @@ class subscribe_wrapper:
             )
             return
         data = self.serializer.deserialize(raw_payload)
-        # Validate once, before the retry loop — a schema failure won't pass on
-        # retry, and an invalid event is logged and dropped (can't reply to pub/sub).
+        # Validate before retry — schema failures won't recover, and we can't reply.
         if self._validate_payload is not None:
             data = self._validate_payload(data)
 
-        # Expose the resolved identity to the callback body (Depends(...)).
         req_ctx = get_request_context()
         req_ctx.prefix = self.prefix
         req_ctx.operation = "subscribe"
         req_ctx.principal = principal
         req_ctx.attachment = attachment
-        # Inherit cross-hop metadata (correlation_id, trace) from the sample's envelope.
         _env = RequestEnvelope.from_attachment(attachment)
         if _env.correlation_id:
             req_ctx.correlation_id = _env.correlation_id
@@ -240,7 +223,6 @@ class subscribe_wrapper:
                 scope = RequestScope(prefix=self.prefix, operation="subscribe")
                 scope.context.principal = principal
                 scope.context.attachment = attachment
-                # Carry cross-hop metadata into the middleware chain's context.
                 outer = get_request_context()
                 scope.context.correlation_id = outer.correlation_id
                 scope.context.traceparent = outer.traceparent
@@ -281,7 +263,7 @@ class subscribe_wrapper:
                     "History replay query failed on %s: %s", self.prefix, e,
                     extra={"prefix": self.prefix},
                 )
-            # Minted keys sort chronologically; restore publish order.
+            # Minted keys sort as publish order.
             out.sort(key=lambda kv: kv[0])
             return out
 

@@ -1,9 +1,7 @@
-"""Streaming RPC — token/chunk streaming for SLM/LLM output.
+"""Streaming RPC via multi-reply queryables.
 
-A normal ``@handle`` replies once. A ``@stream`` handler is an **async
-generator**: each ``yield`` is sent as one reply chunk over a single Zenoh query
-(a multi-reply queryable), so the caller receives tokens incrementally rather
-than waiting for a whole response.
+``@handle`` answers once. ``@stream`` is an async generator: each ``yield`` is
+one reply chunk on a single Zenoh query.
 
     @app.stream("llm/generate")
     async def generate(prompt: str):
@@ -13,10 +11,8 @@ than waiting for a whole response.
     async for token in app.stream_query("llm/generate", prompt="hi"):
         print(token, end="")
 
-Requests flow through the same gate as ``@handle`` — authorization, parameter
-validation, dependency injection, and the request envelope (correlation/trace).
-The dependency scope stays open for the whole stream, so a ``yield`` dependency's
-teardown runs after the last chunk.
+Same pipeline as ``@handle`` (auth, validation, DI, envelope). Dep scope stays
+open for the whole stream.
 """
 
 import asyncio
@@ -41,7 +37,7 @@ from istos.messages.serialization import Serialize
 
 
 class stream_wrapper:
-    """A streaming (multi-reply) queryable backed by an async generator."""
+    """Queryable backed by an async generator (one reply per yield)."""
 
     def __init__(
         self,

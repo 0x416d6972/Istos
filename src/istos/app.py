@@ -94,10 +94,7 @@ class Istos:
         configure_logging: Optional[bool] = None,
         http_port: Optional[int] = None,
     ):
-        # Logging follows the library convention: don't touch output config by
-        # default. configure_logging=True installs Istos' handler now; None (the
-        # default) defers to run(), which only installs a default handler if the
-        # app hasn't configured one; False leaves logging entirely to the app.
+        # configure_logging=True installs now; None defers to run(); False = never.
         self._log_level = log_level
         self._json_logs = json_logs
         self._configure_logging = configure_logging
@@ -105,10 +102,7 @@ class Istos:
             _configure_logging(level=log_level, json_format=json_logs)
         self._logger = get_logger("app")
 
-        # config= is a convenience: build the session manager from an
-        # IstosZenohConfig (or a raw zenoh.Config) so callers don't have to write
-        # AsyncZenohSession(config.build()) themselves. The build happens here, and
-        # the sync/async flavor is taken from config.session.
+        # Build session manager from config= when callers don't pass one.
         self._config: Optional[IstosZenohConfig] = None
         if config is not None:
             if session_manager is not None:
@@ -120,17 +114,15 @@ class Istos:
                 zenoh_conf = config.build()
                 session_cls = AsyncZenohSession if config.session == "async" else ZenohSession
             else:
-                # Raw zenoh.Config: no session-flavor hint, default to async.
+                # Raw zenoh.Config has no session= hint → async.
                 zenoh_conf = config
                 session_cls = AsyncZenohSession
             session_manager = session_cls(zenoh_conf)
 
         self._session_manager = session_manager or AsyncZenohSession()
-        # Named application databases: app-lifetime engines Istos manages and
-        # hands to handlers per request via Depends(app.db_session(name)).
         self._databases = DatabaseRegistry(databases or {})
 
-        # The durability ledger can be specified exactly one of three ways.
+        # Exactly one of storage / storage_config / storage_database.
         ledger_sources = [
             s for s in (storage, storage_config, storage_database) if s is not None
         ]
@@ -146,7 +138,7 @@ class Istos:
                     f"storage_database={storage_database!r} is not in `databases` "
                     f"({self._databases.names()})."
                 )
-            # Borrow the named engine; the registry owns its disposal.
+            # Registry owns disposal of the named engine.
             self._storage: StoragePlugin = SqlAlchemyStoragePlugin(
                 self._databases.engine(storage_database)
             )
@@ -158,15 +150,13 @@ class Istos:
         self.lifespan = lifespan
         self._service_name = service_name
         self._authorizer = authorizer
-        # Fail-closed: refuse to run an unauthenticated mesh instead of only warning.
+        # require_auth without an authorizer is a hard error, not a warning.
         if require_auth and authorizer is None:
             raise IstosSecurityError(
                 "Istos(require_auth=True) requires an app-wide authorizer, but none "
                 "was set. Pass Istos(authorizer=...) (e.g. JWTAuthorizer/TokenAuthorizer), "
                 "or use Public per-handler to opt specific endpoints out."
             )
-        # Dependency overrides for testing: map a dependency
-        # callable to a replacement. Mutate app.dependency_overrides in tests.
         self.dependency_overrides: dict = {}
         self._exception_registry = exception_registry or get_default_registry()
         self._middleware_stack = MiddlewareStack([
@@ -191,7 +181,6 @@ class Istos:
         self._liveliness_subs: List[liveliness_wrapper] = []
         self._liveliness_declares: List[str] = []
         self._persist_roles: List["PersistRole"] = []
-        # HTTP ingress gateway: routes that bridge HTTP → a handler's Zenoh query.
         self._http_routes: List[HttpRoute] = []
         self._zenoh_subscribers: List[zenoh.Subscriber] = []
         self._zenoh_queryables: List[zenoh.Queryable] = []
@@ -208,10 +197,6 @@ class Istos:
         if self._shm_provider is None:
             self._shm_provider = zenoh.shm.ShmProvider.default_backend(10 * 1024 * 1024)
         return self._shm_provider
-
-    # ------------------------------------------------------------------
-    # Middleware & Exception Handlers
-    # ------------------------------------------------------------------
 
     def add_middleware(self, middleware: Middleware) -> None:
         """Add middleware to the request pipeline."""
@@ -259,10 +244,6 @@ class Istos:
         (the provider is cached per name, so the key is stable).
         """
         return self._databases.session_dependency(name)
-
-    # ------------------------------------------------------------------
-    # Decorator
-    # ------------------------------------------------------------------
 
     def handle(
         self,
@@ -370,23 +351,20 @@ class Istos:
         http_timeout_s: float = 60.0,
     ) -> Callable:
         """
-        Decorator that registers a **streaming** handler — an async generator
-        whose ``yield`` s are sent as a stream of reply chunks over one query.
-        Built for token/chunk streaming (SLM/LLM output):
+        Register an async-generator handler. Each ``yield`` is one reply chunk
+        on the same Zenoh query (unlike ``@handle``, which replies once)::
 
             @istos.stream("llm/generate")
             async def generate(prompt: str):
                 async for token in model.stream(prompt):
                     yield token
 
-        Consume it with :meth:`stream_query`. Authorization, validation, DI, and
-        the request envelope apply exactly as for ``@handle``; the dependency
-        scope stays open for the whole stream.
+        Consume with :meth:`stream_query`. Auth, validation, DI, and the request
+        envelope work like ``@handle``; deps stay open until the stream ends.
 
-        Pass ``http=True`` (or ``http="GET /path"``) to also expose the stream
-        over HTTP as ``text/event-stream``, for a browser ``EventSource`` or a
-        FastAPI proxy. Each chunk becomes one ``data:`` frame; the stream ends with
-        ``event: end`` (or ``event: error``). ``http_timeout_s`` bounds it (60s).
+        ``http=True`` (or ``http="GET /path"``) also serves the stream as SSE.
+        Chunks are ``data:`` frames; the stream finishes with ``event: end``
+        (or ``event: error``). ``http_timeout_s`` defaults to 60s.
         """
         if http is not None:
             self._http_routes.append(
@@ -413,15 +391,13 @@ class Istos:
         attachment: Optional[Union[bytes, str]] = None,
         **params: Any,
     ) -> AsyncIterator[Any]:
-        """Consume a ``@stream`` handler, yielding chunks as they arrive.
+        """Yield chunks from a ``@stream`` handler as they arrive::
 
             async for token in app.stream_query("llm/generate", prompt="hi"):
                 print(token, end="")
 
-        Runs a single Zenoh query with ``consolidation=NONE`` (so every reply
-        chunk is delivered, in order) and forwards the request envelope (token +
-        correlation/trace). ``timeout_s`` defaults to 60s for long inference. If
-        the handler emits an error, it is raised here.
+        Uses ``consolidation=NONE`` so every reply is kept. Forwards the request
+        envelope. Default timeout is 60s. Handler errors are raised here.
         """
         import threading
         import urllib.parse
@@ -494,9 +470,6 @@ class Istos:
             # get so the pump thread unwinds instead of draining to completion.
             cancel_token.cancel()
 
-    # ------------------------------------------------------------------
-    # Pub/Sub & Advanced Features
-    # ------------------------------------------------------------------
 
     def publish(
         self,
@@ -677,9 +650,6 @@ class Istos:
         """
         self._liveliness_declares.append(prefix)
 
-    # ------------------------------------------------------------------
-    # Querying / Publishing directly
-    # ------------------------------------------------------------------
 
     async def query_once(
         self,
@@ -767,9 +737,6 @@ class Istos:
             raise RuntimeError("No active Zenoh session.")
         await asyncio.to_thread(session.delete, prefix)
 
-    # ------------------------------------------------------------------
-    # Routing
-    # ------------------------------------------------------------------
 
     def include_router(self, router: IstosRouter) -> None:
         """
@@ -778,9 +745,6 @@ class Istos:
         for action in router._actions:
             action(self)
 
-    # ------------------------------------------------------------------
-    # Auto-Documentation (AsyncAPI)
-    # ------------------------------------------------------------------
 
     def export_asyncapi(self, title: str = "Istos Network", version: str = "1.0.0") -> str:
         """
@@ -806,7 +770,7 @@ class Istos:
         app-wide authorizer alone. If neither is set a security warning is emitted
         because any peer can then enumerate your API.
         """
-        # For the warning only: is the endpoint gated at all once layering applies?
+        # Used only to decide whether to warn about an ungated docs endpoint.
         effective = authorizer if authorizer is not None else self._authorizer
         if effective is None:
             warnings.warn(
@@ -825,9 +789,6 @@ class Istos:
             self._docs_web_port = web_port
             self._docs_prefix = prefix
 
-    # ------------------------------------------------------------------
-    # Lifecycle
-    # ------------------------------------------------------------------
 
     async def _bind_handlers(self, session: zenoh.Session) -> None:
         loop = asyncio.get_running_loop()
@@ -881,9 +842,6 @@ class Istos:
                 return _sync_callback
 
             if wrapper.durable:
-                # Brokerless durable subscription: replay history on join +
-                # recover missed samples peer-to-peer from the producer's cache.
-                # Unrecoverable gaps are bridged back to the loop via handle_miss.
                 from istos.communication.durable import declare_durable_subscriber
 
                 def make_miss_callback(w=wrapper):
@@ -901,9 +859,7 @@ class Istos:
                 sub = session.declare_subscriber(wrapper.prefix, make_callback())
             self._zenoh_subscribers.append(sub)
 
-            # Recover persisted history (object-store queryable) after the live
-            # subscription is up. Runs as a background task so a slow/empty
-            # history query never stalls startup.
+            # History replay in the background so a slow get doesn't stall startup.
             if wrapper.replay_persisted:
                 loop.create_task(wrapper.replay_history(session))
 
@@ -943,7 +899,6 @@ class Istos:
         loop = asyncio.get_running_loop()
         
         for prefix in self._liveliness_declares:
-            # Zenoh API: session.liveliness().declare_token(...)
             token = session.liveliness().declare_token(prefix)
             self._zenoh_liveliness_tokens.append(token)
             self._logger.info("Declared liveliness token %s", prefix, extra={"prefix": prefix})
@@ -981,7 +936,6 @@ class Istos:
 
         app = web.Application()
 
-        # --- K8s probes: HTTP liveness/readiness for kubelet, backed by HealthState.
         async def _livez(request: web.Request) -> web.Response:
             return web.json_response(await self._health.liveness())
 
@@ -994,7 +948,6 @@ class Istos:
         app.router.add_get('/healthz', _livez)   # common alias
         app.router.add_get('/readyz', _readyz)
 
-        # --- Prometheus scrape endpoint.
         async def _metrics(request: web.Request) -> web.Response:
             return web.Response(
                 text=self._metrics.export_prometheus(),
@@ -1003,7 +956,6 @@ class Istos:
 
         app.router.add_get('/metrics', _metrics)
 
-        # --- Ingress gateway: HTTP → Zenoh. SSE routes stream, the rest reply once.
         for route in self._http_routes:
             handler = (
                 self._make_sse_handler(route) if route.sse
@@ -1011,7 +963,6 @@ class Istos:
             )
             app.router.add_route(route.method, route.path, handler)
 
-        # --- Docs UI (only when serve_docs configured a prefix).
         if self._docs_prefix is not None:
             html = get_asyncapi_ui_html(title="Istos Network Docs", schema_url="/asyncapi.yaml")
 
@@ -1074,8 +1025,7 @@ class Istos:
 
             token = extract_bearer(request.headers.get("Authorization"))
             selector = build_selector(route.key_expr, params)
-            # Bridge HTTP trace context into the Zenoh envelope so a request keeps
-            # one correlation_id / W3C trace from the HTTP edge through the fabric.
+            # Keep one cid / traceparent from HTTP into the Zenoh hop.
             envelope = RequestEnvelope(
                 token=token,
                 correlation_id=(request.headers.get("X-Correlation-ID")
@@ -1150,7 +1100,7 @@ class Istos:
                         params.update(data)
 
             token = extract_bearer(request.headers.get("Authorization"))
-            # stream_query reads correlation/trace off the ambient context.
+            # stream_query reads cid/trace from the ambient context.
             set_request_context(RequestContext(
                 correlation_id=(request.headers.get("X-Correlation-ID")
                                 or request.headers.get("X-Request-ID")
@@ -1205,9 +1155,7 @@ class Istos:
             return
         self._builtin_handlers_registered = True
 
-        # Built-in endpoints register through self.handle and therefore inherit
-        # the app-wide authorizer. Warn if they will be network-reachable with
-        # no authorization at all.
+        # Warn if built-ins would be open (they inherit the app-wide authorizer).
         if self._authorizer is None and (self._enable_health or self._enable_metrics or self._enable_discovery):
             exposed = []
             if self._enable_health:
@@ -1237,14 +1185,11 @@ class Istos:
                 return self.export_capabilities()
 
     def export_capabilities(self) -> dict:
-        """A machine-readable manifest of this node's callable capabilities.
+        """What this node exposes — handlers/streams with schemas when available.
 
-        Served at ``.istos/capabilities`` for discovery: an agent can query it
-        (fan out with the wildcard ``**/.istos/capabilities`` or per-node) to learn
-        what tools exist and their input schemas, then invoke them. Each entry has
-        a ``prefix`` (the key expression), ``kind`` (``handle`` / ``stream`` /
-        ``publish`` / ``subscribe``), a ``description`` (the function docstring),
-        and JSON-Schema ``params_schema`` / ``return_schema`` where available.
+        Served at ``.istos/capabilities``. Query ``**/.istos/capabilities`` (or
+        per node) to inventory the fabric. Each entry: ``prefix``, ``kind``,
+        optional ``description``, and ``params_schema`` / ``return_schema``.
         """
         from istos.core.asyncapi import get_function_schemas
 
@@ -1262,7 +1207,7 @@ class Istos:
             return entry
 
         capabilities: List[dict] = []
-        # User capabilities only — hide the built-in .istos/* plumbing.
+        # Skip .istos/* plumbing endpoints.
         for h in self._handlers:
             if not h.prefix.startswith(".istos/"):
                 capabilities.append(_describe(h.prefix, "handle", h.func))
@@ -1294,8 +1239,7 @@ class Istos:
         Async entry-point.
         Opens a Zenoh session, binds registries, and keeps the loop alive.
         """
-        # Standalone convenience: install a default log handler only if neither
-        # Istos nor the embedding app already configured one (unless opted out).
+        # Default log handler only if nobody configured logging yet.
         if self._configure_logging is not False:
             ensure_configured(self._log_level, self._json_logs)
         self._register_builtin_handlers()
@@ -1306,18 +1250,14 @@ class Istos:
             if self.lifespan:
                 await stack.enter_async_context(self.lifespan(self))
 
-            # Tie the storage backend's teardown to the service lifecycle: whatever
-            # connection pool / engine it holds is disposed on shutdown (normal or
-            # error). close() is optional — only backends that hold resources define
-            # it (Redis, SQLAlchemy); InMemory does not.
+            # close() is optional (Redis/SQLAlchemy); InMemory has none.
             storage_close = getattr(self._storage, "close", None)
             if callable(storage_close):
                 stack.push_async_callback(storage_close)
 
-            # Dispose all named application-database engines on shutdown too.
             stack.push_async_callback(self._databases.dispose_all)
 
-            # Support both the async session manager and a sync one (session="sync").
+            # session="sync" managers use __enter__, not __aenter__.
             if hasattr(self._session_manager, "__aenter__"):
                 session = await stack.enter_async_context(self._session_manager)  # type: ignore
             else:

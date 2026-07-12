@@ -64,7 +64,6 @@ class handler_wrapper:
         self._exception_registry = exception_registry or get_default_registry()
         self._logger = get_logger("handler")
 
-        # Normalize retry parameter
         if retry is None:
             self.retry_policy = RetryPolicy(max_retries=0)
         elif isinstance(retry, int):
@@ -73,25 +72,20 @@ class handler_wrapper:
             self.retry_policy = retry
 
         _params = inspect.signature(func).parameters
-        # Check if the function wants storage injected via a 'db' parameter
         self._inject_db = "db" in _params
-        # Parameters resolved via Depends(...) (default value or Annotated)
         self._depends_params = {n for n, p in _params.items() if extract_depends(p) is not None}
         self._has_depends = bool(self._depends_params)
-        # Framework-injected params must be excluded from network validation.
+        # db / Depends(...) are framework-injected — not network params.
         self._injected_params = set(self._depends_params)
         if self._inject_db:
             self._injected_params.add("db")
-        # Live reference to the app's dependency overrides (for testing).
         self._dependency_overrides = dependency_overrides if dependency_overrides is not None else {}
 
-        # Normalize durability parameter
         if isinstance(durability, str):
             self.durability = Durability(durability)
         else:
             self.durability = durability
 
-        # Cache return type hint for validation
         hints = get_type_hints(func)
         self._return_type = hints.get("return", None)
 
@@ -108,7 +102,6 @@ class handler_wrapper:
         """Validate the return value against the function's return type hint."""
         if self._return_type is None or not HAS_PYDANTIC:
             return result
-        # Skip validation for None return type
         if self._return_type is type(None):
             return result
         try:
@@ -123,27 +116,22 @@ class handler_wrapper:
     async def __call__(self, *args: Any, **kwargs: Any) -> Any:
         self.calls += 1
 
-        # Build idempotency key from the network params only (exclude anything
-        # the framework injects: 'db' and Depends(...) dependencies).
+        # Idempotency key from network params only (not db / Depends).
         idemp_params = {k: v for k, v in kwargs.items() if k not in self._injected_params}
         idemp_key = self._make_idempotency_key(self.prefix, idemp_params)
 
-        # --- EXACTLY_ONCE: return cached result if already processed ---
         if self.durability == Durability.EXACTLY_ONCE:
             cached = await self.storage.check_processed(idemp_key)
             if cached is not None:
                 return cached
 
-        # A per-request exit stack drives teardown of any `yield` dependencies
-        # after the handler (and its post-processing) completes.
+        # Exit stack tears down yield-deps after the handler finishes.
         async with AsyncExitStack() as di_stack:
             call_kwargs = dict(kwargs)
 
-            # Inject storage as 'db' if the function signature declares it
             if self._inject_db and "db" not in call_kwargs:
                 call_kwargs["db"] = self.storage
 
-            # Resolve Depends(...) dependencies into the call kwargs
             if self._has_depends:
                 call_kwargs = await resolve_dependencies(
                     self.func,
@@ -165,10 +153,8 @@ class handler_wrapper:
                         operation="handle",
                         params=idemp_params,
                     )
-                    # Carry request state into the middleware chain's fresh
-                    # context (invoke() makes scope.context the active one): the
-                    # authorizer's identity, and the cross-hop correlation_id /
-                    # traceparent so downstream calls stay linked.
+                    # middleware.invoke() installs a fresh context — copy
+                    # principal / attachment / cid / traceparent into it.
                     outer = get_request_context()
                     scope.context.principal = outer.principal
                     scope.context.attachment = outer.attachment
@@ -177,20 +163,9 @@ class handler_wrapper:
                     return await self._middleware.invoke(scope, _handler)
                 return await _handler(RequestScope(prefix=self.prefix, operation="handle"))
 
-            # Execute with retry
             result = await execute_with_retry(_execute, self.retry_policy)
-
-            # --- EXACTLY_ONCE: mark processed IMMEDIATELY after execution ---
-            if self.durability == Durability.EXACTLY_ONCE:
-                try:
-                    await self.storage.mark_processed(idemp_key, result)
-                except Exception:
-                    pass
-
-            # Validate return type
             result = self._validate_return(result)
 
-            # Persist durability metadata + event log
             metadata = {
                 "func_name": self.func.__name__,
                 "total_calls": self.calls,
@@ -201,11 +176,18 @@ class handler_wrapper:
                 serialized = self.serializer.serialize(metadata)
                 await self.storage.put(self.prefix, serialized)
 
-                # AT_LEAST_ONCE / EXACTLY_ONCE: append to event log
                 if self.durability in (Durability.AT_LEAST_ONCE, Durability.EXACTLY_ONCE):
                     await self.storage.log(self.prefix, serialized, idempotency_key=idemp_key)
             except Exception:
                 pass  # storage write must never crash the handler
+
+            # Mark processed last: log() skips keys already marked, so the
+            # event log must land before the idempotency key exists.
+            if self.durability == Durability.EXACTLY_ONCE:
+                try:
+                    await self.storage.mark_processed(idemp_key, result)
+                except Exception:
+                    pass
 
             return result
 
@@ -224,18 +206,15 @@ class handler_wrapper:
         try:
             key = str(query.selector.key_expr)
 
-            # Extract parameters from query. zenoh.Parameters has no .items();
-            # it iterates as (key, value) pairs, so dict() consumes it directly.
-            # (cast: zenoh's stub omits __iter__, though it is iterable at runtime.)
+            # zenoh.Parameters has no .items(); iterates as (key, value).
+            # stub omits __iter__, but it is iterable at runtime.
             params: dict = {}
             if hasattr(query.selector, "parameters") and query.selector.parameters:
                 params = decode_params(
                     dict(cast(Iterable[Tuple[str, str]], query.selector.parameters))
                 )
 
-            # --- Authorization: enforced at the network boundary, before the
-            # handler runs. In-process calls (TestClient, query decorators) go
-            # through __call__ and are not subject to this network gate. ---
+            # Network gate only — TestClient / in-process __call__ skips this.
             attachment = self._extract_attachment(query)
             try:
                 principal = await check_authorized(
@@ -260,23 +239,17 @@ class handler_wrapper:
                     pass
                 return
 
-            # The gate allowed the request. Expose the identity it resolved (and
-            # the raw attachment) on the request context so the handler body can
-            # inject them with Depends(current_principal) / Depends(current_token).
             req_ctx = get_request_context()
             req_ctx.prefix = self.prefix
             req_ctx.operation = "handle"
             req_ctx.principal = principal
             req_ctx.attachment = attachment
-            # Inherit cross-hop metadata from the caller's envelope: continue the
-            # same correlation_id and W3C trace, rather than minting fresh ones.
+            # Keep the caller's correlation_id / traceparent across hops.
             _env = RequestEnvelope.from_attachment(attachment)
             if _env.correlation_id:
                 req_ctx.correlation_id = _env.correlation_id
             req_ctx.traceparent = _env.traceparent
 
-            # Validate and coerce parameters against function signature
-            # (exclude 'db' — it's injected by the framework, not from the network)
             try:
                 validated_params = validate_params(
                     self.func, params, skip_params=self._injected_params
@@ -292,10 +265,8 @@ class handler_wrapper:
                 query.reply(key, self.serializer.serialize(error.to_dict()))
                 return
 
-            # Execute function
             result = await self(**validated_params)
 
-            # reply
             if result is not None:
                 payload = self.serializer.serialize(result)
                 query.reply(key, payload)

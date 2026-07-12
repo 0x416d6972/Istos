@@ -60,7 +60,6 @@ class query_wrapper:
         self._attachment = attachment
         self.calls = 0
 
-        # Normalize retry parameter
         if retry is None:
             self.retry_policy = RetryPolicy(max_retries=0)
         elif isinstance(retry, int):
@@ -68,7 +67,7 @@ class query_wrapper:
         else:
             self.retry_policy = retry
 
-        # Dependency injection: the query reply fills the first positional slot.
+        # Reply fills the first positional; Depends fill the rest.
         self._has_depends = has_dependencies(func)
         self._skip_names = tuple(positional_param_names(func)[:1])
         self._dependency_overrides = dependency_overrides if dependency_overrides is not None else {}
@@ -83,33 +82,29 @@ class query_wrapper:
                 "session — start it with istos.run()/run_async() first."
             )
 
-        # Build selector with kwargs
         import urllib.parse
         selector = self.prefix
         query_kwargs = dict(kwargs)
         if query_kwargs:
-            # Zenoh uses ';' as parameter separator, not '&'
+            # Zenoh separators are ';' — not '&'.
             query_string = ";".join(
                 f"{urllib.parse.quote(str(k))}={urllib.parse.quote(str(v))}"
                 for k, v in query_kwargs.items()
             )
             selector = f"{selector}?{query_string}"
-            # Consume kwargs so they aren't passed to the decorated func
             for k in query_kwargs:
                 kwargs.pop(k)
 
         async def _do_query():
-            # Query Zenoh on a background thread (session.get is blocking)
+            # session.get blocks — keep it off the event loop.
             results: List[QueryResult] = await asyncio.to_thread(
                 self._blocking_query, zenoh_session, selector
             )
 
-            # Decode the first result (most common case) or pass the full list
             decoded = [r.decode() for r in results]
             data = decoded[0] if len(decoded) == 1 else decoded
 
-            # Pass the queried data after any bound instance args (e.g. self)
-            # args may contain 'self' injected by bound_query_wrapper
+            # args may already hold `self` from bound_query_wrapper.
             if self._has_depends:
                 return await invoke_with_dependencies(
                     self.func, args=(*args, data), skip_names=self._skip_names,

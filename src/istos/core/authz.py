@@ -119,8 +119,7 @@ async def check_authorized(authorizer: Optional[Authorizer], ctx: AuthContext) -
         result = await result
     if not result:
         raise UnauthorizedError(f"Not authorized for '{ctx.prefix}'")
-    # A bare ``True`` is a stateless allow and carries no identity; any other
-    # truthy value is the principal.
+    # True = allow with no identity; any other truthy value is the principal.
     return None if result is True else result
 
 
@@ -167,22 +166,16 @@ def combine_authorizers(
         return handler_authorizer
 
     async def _layered(ctx: AuthContext) -> Any:
-        # Both must pass; check_authorized raises UnauthorizedError on either denial.
         app_principal = await check_authorized(app_authorizer, ctx)
-        # Expose the authenticated identity so a per-handler guard (require_roles)
-        # can authorize against it.
+        # Per-handler guards (require_roles) read who the app layer authenticated.
         ctx.principal = app_principal
         handler_principal = await check_authorized(handler_authorizer, ctx)
-        # Prefer the more specific (per-handler) identity, then the app-wide one.
-        # Fall back to ``True`` so an all-``bool`` chain still reads as allowed.
+        # Prefer handler identity, then app-wide; True if both were bare bools.
         return handler_principal or app_principal or True
 
     return _layered
 
 
-# ---------------------------------------------------------------------------
-# Batteries: JWT authentication + role-based authorization
-# ---------------------------------------------------------------------------
 class JWTAuthorizer:
     """Authenticate a request from a JSON Web Token in its attachment.
 

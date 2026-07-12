@@ -50,17 +50,13 @@ class publish_wrapper:
         self.use_shm = use_shm
         self._get_shm_provider = get_shm_provider
         self.calls = 0
-        # Brokerless durability: publish through an AdvancedPublisher that retains
-        # a replay cache. The publisher is declared once at startup (see
-        # Istos._bind_publishers) and reused for every put.
+        # AdvancedPublisher (declared in _bind_publishers) owns the replay cache.
         self.durable = durable
         self.cache = cache
         self.heartbeat = heartbeat
         self.reliability = reliability
         self.congestion_control = congestion_control
         self._advanced_pub: Optional[Any] = None
-        # Dependency injection: any caller args fill leading positional params;
-        # the rest may be Depends(...), resolved per publish.
         self._has_depends = has_dependencies(func)
         self._positional_names = positional_param_names(func)
         self._dependency_overrides = dependency_overrides if dependency_overrides is not None else {}
@@ -96,7 +92,6 @@ class publish_wrapper:
                 "service to be running — start it with istos.run()/run_async() first."
             )
 
-        # Calculate the result of the function (resolving any dependencies)
         if self._has_depends:
             result = await invoke_with_dependencies(
                 self.func,
@@ -110,11 +105,9 @@ class publish_wrapper:
         else:
             result = await asyncio.to_thread(self.func, *args, **kwargs)
 
-        # Publish the result
         serialized = self.serializer.serialize(result)
 
-        # When publishing from inside a request, carry its correlation_id /
-        # traceparent so subscribers continue the same logical operation.
+        # Propagate cid / traceparent when publishing inside a request.
         ctx = peek_request_context()
         attachment = None
         if ctx is not None and (ctx.correlation_id or ctx.traceparent):
@@ -126,7 +119,6 @@ class publish_wrapper:
 
         def _do_put():
             if self.durable:
-                # Through the AdvancedPublisher (key-bound): cached for replay.
                 self._advanced_pub.put(serialized, **put_kwargs)
             elif self.use_shm:
                 if self._get_shm_provider is None:
@@ -143,7 +135,7 @@ class publish_wrapper:
             else:
                 zenoh_session.put(self.prefix, serialized, **put_kwargs)
 
-        # Zenoh's put is synchronous, so offload it just in case
+        # put() is sync — keep it off the loop.
         await asyncio.to_thread(_do_put)
 
         return result

@@ -66,6 +66,8 @@ async def test_exactly_once_dedups_and_returns_cached():
     r2 = await h(x=7)  # same params -> served from ledger, body NOT re-run
     assert r1 == r2 == {"result": 14}
     assert calls == [7]
+    # exactly_once also logs the event exactly once (not skipped by the ledger).
+    assert len(await storage.get_log("math/double")) == 1
 
 
 @pytest.mark.asyncio

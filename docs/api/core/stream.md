@@ -2,14 +2,13 @@
 title: Stream API
 ---
 
-# Stream API Reference
+# Stream API
 
-Streaming (multi-reply) RPC powered by the `@stream` decorator — async generators
-whose `yield`s become progressive reply chunks (e.g. SLM/LLM tokens).
+`@stream` turns an async generator into a multi-reply Zenoh queryable. Each
+`yield` is one chunk. Callers use `Istos.stream_query`.
 
-Consume with `Istos.stream_query`. Optional HTTP SSE ingress via
-`@stream(..., http=True)` — see [HTTP Gateway](../../user-guide/http-gateway.md)
-and [RPC streaming](../../user-guide/rpc.md).
+For HTTP, pass `http=True` (or `http="GET /path"`) — chunks go out as SSE.
+Details: [RPC](../../user-guide/rpc.md), [HTTP Gateway](../../user-guide/http-gateway.md).
 
 ::: istos.core.stream
     options:

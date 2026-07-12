@@ -1,19 +1,15 @@
-"""HTTP → Zenoh ingress gateway helpers.
+"""HTTP → Zenoh helpers for the ingress gateway.
 
-Exposes selected ``@handle`` endpoints over HTTP for non-Zenoh callers. An HTTP
-request becomes a Zenoh query against the handler's key expression and runs the
-full handler pipeline (auth, validation, DI, middleware):
+Turns an HTTP request into a Zenoh query so ``@handle`` / ``@stream`` run the
+usual pipeline (auth, validation, DI, middleware):
 
-    HTTP POST /robot/move  {"distance": 5}   Authorization: Bearer <token>
-        → session.get("robot/move?distance=5", attachment=b"<token>")
-        → the @handle("robot/move") queryable runs
-        → its reply is returned as the HTTP JSON response
+    POST /robot/move  {"distance": 5}  Authorization: Bearer <token>
+        → session.get("robot/move?distance=5", attachment=<token>)
+        → @handle("robot/move")
+        → JSON (or SSE chunks for ``@stream``)
 
-The ``Authorization`` header is forwarded as the query attachment, where the
-authorizer reads the token (``current_token``).
-
-Pure, network-free logic (spec parsing, param encoding, status mapping) lives
-here so it's testable without aiohttp; the aiohttp wiring is in :mod:`istos.app`.
+Parsing / encoding / status mapping live here (no aiohttp). Wire-up is in
+:mod:`istos.app`.
 """
 
 from __future__ import annotations
@@ -38,8 +34,7 @@ DEFAULT_ERROR_STATUS = 500
 
 @dataclass
 class HttpRoute:
-    """One HTTP route bridged to a Zenoh key expression. ``sse=True`` streams a
-    ``@stream`` handler's chunks as ``text/event-stream`` instead of one reply."""
+    """HTTP path mapped to a Zenoh key. ``sse=True`` → stream as SSE."""
 
     method: str
     path: str

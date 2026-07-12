@@ -9,12 +9,9 @@ from istos.core.validation import SchemaValidationError
 
 
 class IstosSecurityWarning(UserWarning):
-    """Warns about an insecure configuration that will bite you in production.
+    """Insecure config (no TLS, no authorizer, …).
 
-    Emitted (via :mod:`warnings`) for developer-facing, config-time problems such
-    as an unauthenticated/unencrypted session, credentials without TLS, or
-    network-reachable endpoints with no authorization. Because it is a warning,
-    applications can silence it, or escalate it to a hard error in CI::
+    Emitting a warning keeps local demos easy. In CI escalate it::
 
         import warnings
         from istos import IstosSecurityWarning
@@ -23,8 +20,7 @@ class IstosSecurityWarning(UserWarning):
 
 
 class IstosSecurityError(Exception):
-    """Raised (fail-closed) when a required security guarantee is missing —
-    e.g. ``Istos(require_auth=True)`` with no authorizer configured."""
+    """Missing a required security setting — e.g. ``require_auth=True`` with no authorizer."""
 
 
 class IstosError(Exception):

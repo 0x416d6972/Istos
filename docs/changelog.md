@@ -8,57 +8,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2026-07
 
 ### Added
-- Streaming RPC: `@stream` / `stream_query` for chunked replies (SLM/LLM tokens)
-- HTTP ingress gateway: `Istos(http_port=…)` with `@handle(..., http=…)` JSON routes
-- HTTP SSE bridge: `@stream(..., http=…)` → `text/event-stream` for browsers / FastAPI
-- K8s-friendly HTTP probes: `GET /livez`, `/readyz`, `/metrics` when `http_port` is set
-- Capability discovery: `.istos/capabilities` tool manifest (`enable_discovery`, `export_capabilities()`)
-- Request envelope: correlation ID + W3C `traceparent` (+ token) on Zenoh attachments
-- Fail-closed auth mode: `Istos(require_auth=True, authorizer=…)` → `IstosSecurityError` if no authorizer
-- `JWTAuthorizer` and `require_roles` (`istos[jwt]`)
-- Subscriber-side `authorizer=` gating
-- Attachment support on `@query`, `query_once`, and `publish_once`
-- Brokerless producer-crash persistence: `@publish(persist="s3://…")` / `app.persist(...)` (`istos[s3]`)
-- Structured logging with JSON output (`log_level`, `json_logs`)
-- Standard error protocol with `IstosError`, `ErrorResponse`, and `@exception_handler`
-- Middleware pipeline (`add_middleware`) with logging and correlation ID support
-- `IstosTestClient` for in-process testing without Zenoh networking
-- Built-in health (`.istos/health`), readiness (`.istos/ready`), and metrics (`.istos/metrics`) endpoints
-- Prometheus-compatible metrics collector
-- OpenTelemetry tracing integration (`pip install 'istos[otel]'`)
-- Graceful shutdown on SIGINT/SIGTERM
-- `RedisStoragePlugin` (`pip install 'istos[redis]'`)
-- `SqlAlchemyStoragePlugin` for any SQL database (`pip install 'istos[sqlalchemy]'` + your async driver)
-- CLI: `istos new`, `istos docs`, `istos version`
-- CI/CD workflows (test matrix, lint, docs deploy, PyPI publish)
-- Docker Compose with Zenoh router, Redis, and Postgres
-- Deployment and testing documentation
-- `SECURITY.md` and `py.typed` marker
-- Wire-protocol reference for polyglot peers
+- `@stream` / `stream_query` — chunked RPC replies
+- HTTP gateway (`http_port`) for `@handle(..., http=…)` and `@stream(..., http=…)` (SSE)
+- `GET /livez`, `/readyz`, `/metrics` when `http_port` is set
+- `.istos/capabilities` + `export_capabilities()`
+- Request envelope on attachments (`tok` / `cid` / `tp`)
+- `require_auth=True` (raises `IstosSecurityError` without an authorizer)
+- `JWTAuthorizer`, `require_roles` (`istos[jwt]`)
+- `authorizer=` on subscribers
+- `attachment=` on `@query`, `query_once`, `publish_once`
+- `@publish(persist="s3://…")` / `app.persist(...)` (`istos[s3]`)
+- Structured logging (`log_level`, `json_logs`)
+- `IstosError` / `ErrorResponse` / `@exception_handler`
+- Middleware stack (correlation ID, logging, …)
+- `IstosTestClient`
+- `.istos/health`, `.istos/ready`, `.istos/metrics`
+- Prometheus metrics + optional OTel (`istos[otel]`)
+- SIGINT/SIGTERM shutdown
+- `RedisStoragePlugin`, `SqlAlchemyStoragePlugin`
+- CLI: `istos new` / `docs` / `version`
+- CI, Docker Compose, deployment docs, `SECURITY.md`, `py.typed`
+- Wire-protocol reference
 
 ### Changed
-- Replaced `print()` statements with structured logging throughout
-- Handler errors now return standardized JSON error responses on the wire
-- Version bumped to 0.2.0
+- Logging instead of `print()`
+- Handler errors go out as structured JSON replies
+- Version → 0.2.0
 
-### Optional extras
-- `istos[all]` now includes `redis`, `sqlalchemy`, `otel`, `s3`, and `jwt`
+### Extras
+- `istos[all]` = redis + sqlalchemy + otel + s3 + jwt
 
 ## [0.1.0] - 2025
 
 ### Added
-- Initial release of Istos framework
-- Decorator-based API: `@handle`, `@query`, `@publish`, `@subscribe`
-- Smart Selectors with automatic parameter mapping
-- Pydantic schema validation at the network boundary
-- Retry policies with exponential backoff
-- Liveliness tracking for node discovery
-- Pluggable storage: `InMemoryStoragePlugin`
-- Pluggable serialization: `JsonSerializer` with msgpack support
-- Async & Sync compatibility (`run()` / `run_async()`)
-- `IstosRouter` for modular route organization
-- Transport security with TLS/mTLS via `IstosZenohConfig`
-- Dependency injection system
-- Shared memory (zero-copy) support for high-performance transfers
-- Built-in AsyncAPI 3.0.0 documentation generator
-- Embedded web documentation server via `serve_docs()`
+- Initial release
+- `@handle`, `@query`, `@publish`, `@subscribe`
+- Selector → function args
+- Pydantic / type-hint validation at the boundary
+- Retry with backoff
+- Liveliness
+- `InMemoryStoragePlugin`
+- JSON + msgpack serializers
+- `run()` / `run_async()`
+- `IstosRouter`
+- TLS/mTLS via `IstosZenohConfig`
+- Dependency injection
+- Shared memory transfers
+- AsyncAPI generator + `serve_docs()`

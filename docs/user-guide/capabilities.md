@@ -4,59 +4,37 @@ title: Capability Discovery
 
 # Capability Discovery
 
-Agents and orchestrators need to know **what tools a peer exposes** — not only
-whether it is alive ([liveliness](liveliness.md)). Istos publishes a
-machine-readable manifest at `.istos/capabilities` (enabled by default).
-
-## Enable / disable
+Liveliness tells you a peer is up. `.istos/capabilities` tells you what it
+exposes — which `@handle` / `@stream` keys, plus JSON Schema from their type
+hints. On by default.
 
 ```python
 from istos import Istos
 
-app = Istos(enable_discovery=True)   # default — registers .istos/capabilities
-# app = Istos(enable_discovery=False)
+app = Istos()                          # enable_discovery=True
+# app = Istos(enable_discovery=False)  # turn it off
 ```
 
-## What is advertised
-
-Every `@handle` and `@stream` endpoint is listed with its key expression and
-JSON Schema derived from type hints / Pydantic models (same source as AsyncAPI).
+In-process:
 
 ```python
-manifest = app.export_capabilities()
-# {
-#   "service": "istos",
-#   "capabilities": [
-#     {"key_expr": "robot/move", "kind": "handle", "input_schema": {...}, ...},
-#     ...
-#   ]
-# }
+print(app.export_capabilities())
 ```
 
-Query another node on the fabric:
+Over the fabric:
 
 ```python
 caps = await app.query_once(".istos/capabilities")
-# or fleet-wide: session.get("**/.istos/capabilities")
+# or: session.get("**/.istos/capabilities")
 ```
 
-## Agent / SLM pattern
+Shape of each entry: `prefix`, `kind`, optional `description` (docstring),
+`params_schema` / `return_schema` when types exist. Same schemas AsyncAPI uses.
+Non-Python peers can serve the same key — see
+[Wire Protocol](../reference/wire-protocol.md).
 
-1. Discover online peers with [liveliness](liveliness.md).
-2. Query each peer's `.istos/capabilities` (or a wildcard) for tools.
-3. Invoke tools with `@query` / `query_once` (or HTTP via the [gateway](http-gateway.md)).
-4. Stream model output with `@stream` / SSE when the tool is progressive.
+The endpoint uses the app-wide `authorizer`, same as health/metrics. Lock it
+down if you don't want strangers enumerating your tools.
 
-Polyglot peers can implement the same key and JSON shape — see the
-[Wire Protocol](../reference/wire-protocol.md) reference.
-
-## Authorization
-
-Like other built-in endpoints, `.istos/capabilities` inherits the app-wide
-`authorizer`. Gate discovery in production the same way you gate health/metrics.
-
-## Related
-
-- [HTTP Gateway](http-gateway.md) — expose selected tools over HTTP/SSE
-- [Authorization](authorization.md) — JWT / token gates
-- [Wire Protocol](../reference/wire-protocol.md) — normative manifest shape
+See also: [Liveliness](liveliness.md), [HTTP Gateway](http-gateway.md),
+[Authorization](authorization.md).
