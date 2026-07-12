@@ -1,11 +1,7 @@
-"""Redis storage plugin — exactly-once ledger against a real server.
+"""Redis storage plugin against a real server.
 
-Skips cleanly when the ``redis`` package is missing or no server answers on
-``REDIS_URL`` (default ``redis://localhost:6379/15``, a scratch DB we flush).
-Run against a server with::
-
-    docker run -p 6379:6379 redis:7
-    uv run pytest tests/test_redis_storage.py -q
+Skips when redis isn't installed or no server answers on REDIS_URL
+(default redis://localhost:6379/15). Run one with: docker run -p 6379:6379 redis:7
 """
 
 import os

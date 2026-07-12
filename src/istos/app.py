@@ -383,12 +383,10 @@ class Istos:
         the request envelope apply exactly as for ``@handle``; the dependency
         scope stays open for the whole stream.
 
-        HTTP/SSE ingress: pass ``http=True`` (or ``http="GET /path"``) to also
-        expose the stream over HTTP as ``text/event-stream`` (Server-Sent Events),
-        so a browser ``EventSource`` or FastAPI can consume the chunks live. Each
-        yielded chunk becomes one SSE ``data:`` frame; a terminating ``event: end``
-        (or ``event: error``) closes the stream. ``http_timeout_s`` bounds the
-        whole stream (defaults to 60s for long inference).
+        Pass ``http=True`` (or ``http="GET /path"``) to also expose the stream
+        over HTTP as ``text/event-stream``, for a browser ``EventSource`` or a
+        FastAPI proxy. Each chunk becomes one ``data:`` frame; the stream ends with
+        ``event: end`` (or ``event: error``). ``http_timeout_s`` bounds it (60s).
         """
         if http is not None:
             self._http_routes.append(
@@ -522,10 +520,10 @@ class Istos:
             @istos.publish("binary/feed", serializer=MsgPackSerializer())
             def get_feed(): ...
 
-        Brokerless durability: with ``durable=True`` the message is published
-        through Zenoh's AdvancedPublisher, which retains the last ``cache`` samples
-        as a replay log and heartbeats every ``heartbeat`` seconds so late or
-        recovering subscribers can fetch what they missed — no broker required.
+        With ``durable=True`` the message is published through Zenoh's
+        AdvancedPublisher, which retains the last ``cache`` samples as a replay log
+        and heartbeats every ``heartbeat`` seconds so late or recovering
+        subscribers can fetch what they missed.
 
             @istos.publish("orders/created", durable=True, cache=1000)
             def created(): ...
@@ -605,6 +603,7 @@ class Istos:
         on_miss: Optional[Callable[[str, int], Any]] = None,
         authorizer: Optional[Authorizer] = None,
         replay_persisted: bool = False,
+        dedup: Union[bool, int] = False,
     ) -> Callable:
         """
         Decorator that registers a function to be called when data is published
@@ -617,10 +616,10 @@ class Istos:
             @istos.subscribe("binary/events", serializer=MsgPackSerializer())
             def on_event(data): ...
 
-        Brokerless durability: with ``durable=True`` the subscription uses Zenoh's
-        AdvancedSubscriber, which replays up to ``replay`` historical samples from
-        the producer's cache on join, and (when ``recover=True``) re-fetches
-        samples missed during transient disconnects — no broker required.
+        With ``durable=True`` the subscription uses Zenoh's AdvancedSubscriber,
+        which replays up to ``replay`` historical samples from the producer's cache
+        on join, and (when ``recover=True``) re-fetches samples missed during
+        transient disconnects.
 
             @istos.subscribe("orders/created", durable=True, replay=1000)
             def on_created(event): ...
@@ -640,6 +639,11 @@ class Istos:
         (see :meth:`persist`), so it recovers the stream even if the original
         producer is gone. Best-effort and at-least-once — combine with idempotent
         handlers.
+
+        Recovery and history replay can deliver a sample twice. Pass
+        ``dedup=True`` (or ``dedup=<window>``) to drop repeated payloads within a
+        bounded window. It compares payload bytes, so only use it where identical
+        payloads are safe to drop.
         """
         def decorator(func: Callable) -> subscribe_wrapper:
             wrapper = subscribe_wrapper(
@@ -650,6 +654,7 @@ class Istos:
                 middleware=self._middleware_stack,
                 authorizer=combine_authorizers(self._authorizer, authorizer),
                 replay_persisted=replay_persisted,
+                dedup=dedup,
             )
             self._subscribers.append(wrapper)
             return wrapper
@@ -998,9 +1003,7 @@ class Istos:
 
         app.router.add_get('/metrics', _metrics)
 
-        # --- Ingress gateway: HTTP → Zenoh query, one route per http= handler.
-        # SSE routes bridge to a @stream handler and stream text/event-stream;
-        # the rest are one-shot request/reply.
+        # --- Ingress gateway: HTTP → Zenoh. SSE routes stream, the rest reply once.
         for route in self._http_routes:
             handler = (
                 self._make_sse_handler(route) if route.sse
@@ -1124,14 +1127,8 @@ class Istos:
         return _handler
 
     def _make_sse_handler(self, route: HttpRoute) -> Any:
-        """Build an aiohttp handler that bridges an HTTP request to a ``@stream``
-        handler and relays its chunks as Server-Sent Events (``text/event-stream``).
-
-        Each yielded chunk is one ``data:`` frame; the stream closes with an
-        ``event: end`` frame, or ``event: error`` carrying the error envelope. The
-        ``Authorization`` header and HTTP trace headers cross into the Zenoh
-        envelope, so the stream's authorizer gate runs and correlation/trace
-        propagate from the HTTP edge."""
+        """aiohttp handler that relays a ``@stream`` handler's chunks as SSE.
+        Forwards the Authorization and trace headers into the Zenoh envelope."""
         import json as _json
 
         from aiohttp import web
@@ -1153,8 +1150,7 @@ class Istos:
                         params.update(data)
 
             token = extract_bearer(request.headers.get("Authorization"))
-            # Bridge HTTP trace context so the stream keeps one correlation_id /
-            # W3C trace; stream_query reads these off the ambient request context.
+            # stream_query reads correlation/trace off the ambient context.
             set_request_context(RequestContext(
                 correlation_id=(request.headers.get("X-Correlation-ID")
                                 or request.headers.get("X-Request-ID")
@@ -1186,7 +1182,7 @@ class Istos:
                 err = _json.dumps({"code": e.code, "message": e.message})
                 await response.write(sse_event(err, event="error").encode("utf-8"))
             except asyncio.CancelledError:
-                raise  # client disconnected; let aiohttp tear the response down
+                raise  # client disconnected
             except Exception as e:
                 self._logger.error(
                     "SSE stream failed for %s: %s", route.key_expr, e,

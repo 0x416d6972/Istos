@@ -1,5 +1,4 @@
-"""HTTP/SSE bridge for @stream: pure formatting + route parsing, plus an
-end-to-end EventSource-style consumption over a real Zenoh session."""
+"""HTTP/SSE bridge for @stream: frame formatting, route parsing, end-to-end."""
 
 import asyncio
 

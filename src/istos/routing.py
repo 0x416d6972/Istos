@@ -95,12 +95,12 @@ class IstosRouter:
             return proxy
         return decorator
 
-    def subscribe(self, prefix: str, retry: Optional[Union[int, RetryPolicy]] = None, serializer: Optional[Serialize] = None, durable: bool = False, replay: int = 1000, recover: bool = True, authorizer: Optional[Authorizer] = None, replay_persisted: bool = False) -> Callable:
+    def subscribe(self, prefix: str, retry: Optional[Union[int, RetryPolicy]] = None, serializer: Optional[Serialize] = None, durable: bool = False, replay: int = 1000, recover: bool = True, authorizer: Optional[Authorizer] = None, replay_persisted: bool = False, dedup: Union[bool, int] = False) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
-                proxy._real_wrapper = app.subscribe(full_prefix, retry=retry, serializer=serializer, durable=durable, replay=replay, recover=recover, authorizer=authorizer, replay_persisted=replay_persisted)(func)
+                proxy._real_wrapper = app.subscribe(full_prefix, retry=retry, serializer=serializer, durable=durable, replay=replay, recover=recover, authorizer=authorizer, replay_persisted=replay_persisted, dedup=dedup)(func)
             self._actions.append(action)
             return proxy
         return decorator

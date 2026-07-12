@@ -1,23 +1,19 @@
 """HTTP → Zenoh ingress gateway helpers.
 
-The gateway exposes selected ``@handle`` endpoints over HTTP so non-Zenoh callers
-(FastAPI services, browsers, external partners) can invoke them. An HTTP request
-is translated into a Zenoh query against the handler's key expression, so it flows
-through the *entire* handler pipeline — authorization, validation, DI, middleware
-— with nothing bypassed:
+Exposes selected ``@handle`` endpoints over HTTP for non-Zenoh callers. An HTTP
+request becomes a Zenoh query against the handler's key expression and runs the
+full handler pipeline (auth, validation, DI, middleware):
 
     HTTP POST /robot/move  {"distance": 5}   Authorization: Bearer <token>
         → session.get("robot/move?distance=5", attachment=b"<token>")
         → the @handle("robot/move") queryable runs
         → its reply is returned as the HTTP JSON response
 
-The ``Authorization`` header is forwarded as the Zenoh query **attachment**, which
-is where the authorizer reads the token (``current_token``) — so the auth gate and
-``Principal`` work across the HTTP boundary.
+The ``Authorization`` header is forwarded as the query attachment, where the
+authorizer reads the token (``current_token``).
 
-This module holds the pure, network-free logic (spec parsing, param encoding,
-status mapping) so it is unit-testable without aiohttp or a live session; the
-aiohttp wiring lives in :mod:`istos.app`.
+Pure, network-free logic (spec parsing, param encoding, status mapping) lives
+here so it's testable without aiohttp; the aiohttp wiring is in :mod:`istos.app`.
 """
 
 from __future__ import annotations
@@ -42,12 +38,8 @@ DEFAULT_ERROR_STATUS = 500
 
 @dataclass
 class HttpRoute:
-    """One HTTP route bridged to a Zenoh handler key expression.
-
-    ``sse=True`` marks a route that bridges to a ``@stream`` handler and streams
-    its chunks back as ``text/event-stream`` (Server-Sent Events) instead of a
-    single JSON reply.
-    """
+    """One HTTP route bridged to a Zenoh key expression. ``sse=True`` streams a
+    ``@stream`` handler's chunks as ``text/event-stream`` instead of one reply."""
 
     method: str
     path: str
@@ -69,8 +61,8 @@ def parse_http_spec(
     * ``"/custom/path"``  → ``POST /custom/path`` (``GET`` for ``sse=True``)
     * ``"GET /things"``   → method + path
 
-    SSE routes default to ``GET`` because that is what the browser ``EventSource``
-    API uses; an explicit method in ``spec`` always wins.
+    SSE routes default to ``GET`` (what ``EventSource`` uses); an explicit method
+    wins.
     """
     default_method = "GET" if sse else "POST"
     default_path = "/" + prefix.lstrip("/")
@@ -93,11 +85,8 @@ def parse_http_spec(
 
 
 def sse_event(data: str, event: Optional[str] = None, *, id: Optional[str] = None) -> str:
-    """Format one Server-Sent Events frame per the WHATWG spec.
-
-    Multi-line ``data`` is split into successive ``data:`` lines (the browser
-    rejoins them with ``\\n``); the frame is terminated by a blank line.
-    """
+    """Format one SSE frame. Multi-line ``data`` becomes one ``data:`` line each;
+    a blank line terminates the frame."""
     lines = []
     if id is not None:
         lines.append(f"id: {id}")

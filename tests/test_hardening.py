@@ -1,5 +1,4 @@
-"""P0 hardening: attachment/auth symmetry on @query & publish_once, and the
-fail-closed require_auth mode."""
+"""Attachment/auth symmetry on @query & publish_once, and fail-closed require_auth."""
 
 import asyncio
 

@@ -1,6 +1,8 @@
 import asyncio
+import hashlib
 import inspect
 import zenoh
+from collections import OrderedDict
 from typing import Any, Callable, Optional, Union
 
 from istos.messages.serialization import Serialize
@@ -43,6 +45,7 @@ class subscribe_wrapper:
         middleware: Optional[MiddlewareStack] = None,
         authorizer: Optional[Authorizer] = None,
         replay_persisted: bool = False,
+        dedup: Union[bool, int] = False,
     ):
         self.func = func
         self.prefix = prefix
@@ -61,8 +64,15 @@ class subscribe_wrapper:
         # On join, pull persisted history from the object-store queryable (see
         # istos.communication.persist) so the stream survives producer restarts.
         self.replay_persisted = replay_persisted
-        # Fired when a gap could NOT be recovered — the honest at-least-once signal.
+        # Fired when a gap could not be recovered.
         self.on_miss = on_miss
+
+        # Optional dedup window (dedup=True -> 4096, dedup=N -> N). Drops repeated
+        # payload bytes; content-based, so identical payloads collapse too.
+        self._dedup_window = (
+            4096 if dedup is True else int(dedup) if dedup else 0
+        )
+        self._seen: "OrderedDict[str, None]" = OrderedDict()
 
         # Normalize retry parameter
         if retry is None:
@@ -85,6 +95,19 @@ class subscribe_wrapper:
         self._validate_payload = build_payload_validator(
             func, _positional[0] if _positional else None
         )
+
+    def _is_duplicate(self, raw_payload: bytes) -> bool:
+        """True if these bytes are already in the window, else records them."""
+        if not self._dedup_window:
+            return False
+        fp = hashlib.sha256(raw_payload).hexdigest()
+        if fp in self._seen:
+            self._seen.move_to_end(fp)
+            return True
+        self._seen[fp] = None
+        if len(self._seen) > self._dedup_window:
+            self._seen.popitem(last=False)
+        return False
 
     async def _dispatch(self, data: Any, instance: Optional[Any] = None) -> Any:
         args = (instance, data) if instance is not None else (data,)
@@ -188,6 +211,12 @@ class subscribe_wrapper:
         """Deserialize, validate, and dispatch a payload through the retry +
         middleware pipeline. Shared by live delivery (``on_sample``) and history
         replay (``replay_history``)."""
+        if self._is_duplicate(raw_payload):
+            self._logger.debug(
+                "Deduped duplicate sample on %s", self.prefix,
+                extra={"prefix": self.prefix},
+            )
+            return
         data = self.serializer.deserialize(raw_payload)
         # Validate once, before the retry loop — a schema failure won't pass on
         # retry, and an invalid event is logged and dropped (can't reply to pub/sub).

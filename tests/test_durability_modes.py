@@ -1,9 +1,4 @@
-"""Handler delivery semantics: at_most_once / at_least_once / exactly_once.
-
-These exercise the idempotency ledger directly through ``handler_wrapper.__call__``
-(the same path a real query takes after decoding), so we can assert on how many
-times the body actually ran without standing up a network.
-"""
+"""Handler delivery semantics: at_most_once / at_least_once / exactly_once."""
 
 import pytest
 
