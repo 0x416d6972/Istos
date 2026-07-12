@@ -1449,8 +1449,8 @@ class Istos:
         """
         from istos.core.asyncapi import get_function_schemas
 
-        def _describe(prefix: str, kind: str, func: Callable) -> dict:
-            schemas = get_function_schemas(func)
+        def _describe(prefix: str, kind: str, func: Callable, skip: Optional[set] = None) -> dict:
+            schemas = get_function_schemas(func, skip_params=skip)
             entry: dict = {
                 "prefix": prefix,
                 "kind": kind,
@@ -1469,6 +1469,12 @@ class Istos:
                 capabilities.append(_describe(h.prefix, "handle", h.func))
         for s in self._streams:
             capabilities.append(_describe(s.prefix, "stream", s.func))
+        for c in self._channels:
+            entry = _describe(c.prefix, "channel", c.func, skip=c._injected_params)
+            ws_path = next((p for p, w in self._ws_channel_routes if w is c), None)
+            if ws_path is not None:
+                entry["websocket"] = ws_path
+            capabilities.append(entry)
         for p in self._publishers:
             capabilities.append(_describe(p.prefix, "publish", p.func))
         for sub in self._subscribers:

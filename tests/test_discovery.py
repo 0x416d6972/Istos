@@ -28,6 +28,13 @@ def test_export_capabilities_describes_all_kinds():
     async def on_tel(data):
         pass
 
+    from istos import ChannelSession
+
+    @app.channel("agent/chat", ws="/chat")
+    async def chat(s: ChannelSession):
+        """Multi-turn chat."""
+        ...
+
     manifest = app.export_capabilities()
     assert manifest["service"] == "fleet"
     by_prefix = {c["prefix"]: c for c in manifest["capabilities"]}
@@ -38,6 +45,12 @@ def test_export_capabilities_describes_all_kinds():
     assert by_prefix["llm/gen"]["kind"] == "stream"
     assert by_prefix["drone/status"]["kind"] == "publish"
     assert by_prefix["drone/telemetry"]["kind"] == "subscribe"
+    # Channels are discoverable, with their WebSocket path, and the injected
+    # ChannelSession param doesn't leak into (or break) the schema.
+    assert by_prefix["agent/chat"]["kind"] == "channel"
+    assert by_prefix["agent/chat"]["description"] == "Multi-turn chat."
+    assert by_prefix["agent/chat"]["websocket"] == "/chat"
+    assert "params_schema" not in by_prefix["agent/chat"]
 
 
 def test_capabilities_excludes_builtin_endpoints():

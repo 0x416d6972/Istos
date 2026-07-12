@@ -15,7 +15,7 @@ def get_function_schemas(func: Callable) -> Dict[str, Any]:
     """
     Extracts JSON Schema for parameters (payload/query) and return type
     of a given function, using Pydantic.
-    Returns:
+    Returns: 
         {
             "payload_schema": dict | None,
             "return_schema": dict | None

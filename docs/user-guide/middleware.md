@@ -75,6 +75,25 @@ async def enqueue(job_id: str):
 
 Unhandled exceptions become a standardized `ErrorResponse` on the wire (`code`, `message`, `correlation_id`, `details`).
 
+## Rate limiting
+
+`RateLimitMiddleware` enforces a token bucket per key and raises `RateLimitError`
+(429) when it's empty:
+
+```python
+from istos.middleware import RateLimitMiddleware
+
+istos.add_middleware(RateLimitMiddleware(rate=10, per=1.0))            # 10/s per identity
+istos.add_middleware(RateLimitMiddleware(rate=100, per=60,
+                                         key=lambda s: s.prefix))       # 100/min per endpoint
+```
+
+By default it keys on the authenticated principal (`principal.id`), so each
+caller gets their own quota; pass `key=` to limit per endpoint, per tenant, or
+globally. `burst` (default `rate`) sets how many requests may arrive at once
+before the steady rate applies. The raised error carries `details.retry_after`,
+and over the HTTP gateway it maps to a 429.
+
 ## Scope note
 
 Built-in middleware focuses on **handlers** (`@handle`). For pub/sub, prefer dependencies, lifespan resources, or logic inside the subscriber/publisher.
