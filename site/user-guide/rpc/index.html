@@ -815,6 +815,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#bidirectional-channels-interactive-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bidirectional channels (interactive sessions)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Bidirectional channels (interactive sessions)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#across-the-fabric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Across the fabric
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#declarative-clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Declarative clients
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3350,6 +3389,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#bidirectional-channels-interactive-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bidirectional channels (interactive sessions)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Bidirectional channels (interactive sessions)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#across-the-fabric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Across the fabric
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#declarative-clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Declarative clients
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3747,6 +3825,77 @@ each <code>yield</code> is delivered to the caller as a chunk, over a single que
 <code>consolidation=NONE</code>, so chunks stream incrementally rather than being buffered.
 Middleware does not wrap streams (a stream has no single return value); authorization
 still runs.</p>
+<h2 id="bidirectional-channels-interactive-sessions">Bidirectional channels (interactive sessions)<a class="headerlink" href="#bidirectional-channels-interactive-sessions" title="Permanent link">&para;</a></h2>
+<p><code>@stream</code> is one-way. When both sides need to talk — an agent that reads a turn,
+streams tokens back, then waits for the next — use <code>@channel</code>. The handler gets a
+<code>ChannelSession</code> and drives it with <code>send()</code> / <code>receive()</code> (or <code>async for</code>) in any
+order:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChannelSession</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="nd">@app</span><span class="o">.</span><span class="n">channel</span><span class="p">(</span><span class="s2">&quot;agent/chat&quot;</span><span class="p">,</span> <span class="n">ws</span><span class="o">=</span><span class="s2">&quot;/chat&quot;</span><span class="p">)</span>     <span class="c1"># ws= exposes it as a WebSocket</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="n">ChannelSession</span><span class="p">):</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="k">await</span> <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">({</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;ready&quot;</span><span class="p">})</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="k">async</span> <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">s</span><span class="p">:</span>                     <span class="c1"># inbound message</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>        <span class="k">async</span> <span class="k">for</span> <span class="n">tok</span> <span class="ow">in</span> <span class="n">llm</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>            <span class="k">await</span> <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">tok</span><span class="p">)</span>               <span class="c1"># many out per one in</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>        <span class="k">await</span> <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">({</span><span class="s2">&quot;done&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
+</code></pre></div>
+<p><code>ws=True</code> serves it at <code>/&lt;prefix&gt;</code>; <code>ws="/path"</code> picks the path. The transport is
+a WebSocket, so a browser <code>EventSource</code>'s duplex cousin works directly:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s2">&quot;ws://gateway:8080/chat&quot;</span><span class="p">);</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="nx">ws</span><span class="p">.</span><span class="nx">onmessage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">render</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">data</span><span class="p">));</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="nx">ws</span><span class="p">.</span><span class="nx">onopen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">ws</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">));</span>
+</code></pre></div>
+<p>Messages are JSON text frames by default (binary is used for non-UTF-8
+serializers). The <code>Authorization</code> header and trace headers from the WebSocket
+handshake feed the same authorizer and request envelope as everything else, and
+the handler resolves <code>Depends(...)</code> and can reach the rest of the mesh
+(<code>query_once</code>, <code>publish</code>, <code>stream_query</code>) while the session is open. When the peer
+disconnects, <code>receive()</code> raises <code>ChannelClosed</code> (so <code>async for</code> simply ends).</p>
+<div class="admonition note">
+<p class="admonition-title">One-way vs two-way</p>
+<p>Pick by direction, not by transport: <code>@stream</code> for server→client output (SSE
+or a Zenoh queryable), <code>@channel</code> for full duplex (WebSocket). WebSocket is
+the channel's transport, not a separate primitive.</p>
+</div>
+<h3 id="across-the-fabric">Across the fabric<a class="headerlink" href="#across-the-fabric" title="Permanent link">&para;</a></h3>
+<p>The same <code>@channel</code> also works node-to-node over Zenoh — a WebSocket gateway on
+one node can front an agent running on another. Open a session with
+<code>open_channel</code>, which returns a client with the same <code>send</code>/<code>receive</code>/<code>async for</code>
+surface:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">chan</span> <span class="o">=</span> <span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">open_channel</span><span class="p">(</span><span class="s2">&quot;agent/chat&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="n">jwt</span><span class="p">)</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="k">await</span> <span class="n">chan</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">)</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="k">async</span> <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">chan</span><span class="p">:</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    <span class="n">render</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="k">await</span> <span class="n">chan</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div>
+<p>Opening is an authorized handshake (the <code>token</code> rides the query attachment, so
+the channel's authorizer runs before a session exists). Messages then flow over a
+per-session pub/sub pair, and a liveliness token keeps the session alive — when
+the client <code>close()</code>s or crashes, the server tears the session down and the
+handler's <code>async for</code> ends. So a FastAPI gateway can bridge a browser WebSocket
+straight through to a remote agent: pump the socket into <code>open_channel</code> and back.</p>
+<h3 id="declarative-clients">Declarative clients<a class="headerlink" href="#declarative-clients" title="Permanent link">&para;</a></h3>
+<p><code>stream_query</code> and <code>open_channel</code> are the imperative way. For a service that's a
+mix of senders and receivers, attach the receiving side declaratively too — the
+client counterparts to <code>@query</code>, available on the app and on a router:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nd">@app</span><span class="o">.</span><span class="n">stream_client</span><span class="p">(</span><span class="s2">&quot;llm/generate&quot;</span><span class="p">)</span>     <span class="c1"># reaches a @stream</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="n">chunks</span><span class="p">):</span>            <span class="c1"># body gets the live chunk iterator</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    <span class="k">async</span> <span class="k">for</span> <span class="n">tok</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>        <span class="nb">print</span><span class="p">(</span><span class="n">tok</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="nd">@app</span><span class="o">.</span><span class="n">channel_client</span><span class="p">(</span><span class="s2">&quot;agent/chat&quot;</span><span class="p">)</span>      <span class="c1"># reaches a @channel</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">session</span><span class="p">):</span>               <span class="c1"># body gets an open ChannelClient</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s2">&quot;hi&quot;</span><span class="p">)</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    <span class="k">async</span> <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">session</span><span class="p">:</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>        <span class="n">render</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="k">await</span> <span class="n">generate</span><span class="p">(</span><span class="n">prompt</span><span class="o">=</span><span class="s2">&quot;hi&quot;</span><span class="p">)</span>            <span class="c1"># call kwargs → params, like @query</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="k">await</span> <span class="n">chat</span><span class="p">(</span><span class="n">token</span><span class="o">=</span><span class="n">jwt</span><span class="p">)</span>                  <span class="c1"># session closes when the body returns</span>
+</code></pre></div>
+<p>Call kwargs become the stream/channel params and <code>token=</code> carries auth, exactly
+as with <code>@query</code>. On a router, use <code>@router.stream_client(...)</code> /
+<code>@router.channel_client(...)</code>; they wire up on <code>include_router</code>.</p>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../validation/">Schema Validation</a> — the validation/coercion layer</li>

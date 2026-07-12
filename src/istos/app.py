@@ -21,6 +21,9 @@ from istos.core.query import query_wrapper
 from istos.core.subscribe import subscribe_wrapper
 from istos.core.publish import publish_wrapper
 from istos.core.stream import stream_wrapper
+from istos.core.channel import ChannelSession, channel_wrapper
+from istos.core.channel_fabric import ChannelClient, FabricChannelServer
+from istos.core.client_decorators import stream_client_wrapper, channel_client_wrapper
 from istos.core.liveliness import liveliness_wrapper
 from istos.core.retry import RetryPolicy
 from istos.core.asyncapi import AsyncApiGenerator, get_asyncapi_ui_html
@@ -30,11 +33,12 @@ from istos.core.errors import (
     IstosError,
     IstosSecurityError,
     IstosSecurityWarning,
+    UnauthorizedError,
     get_default_registry,
 )
 from istos.core.authz import Authorizer, combine_authorizers
 from istos.context import RequestContext, RequestEnvelope, peek_request_context, set_request_context
-from istos.gateway import HttpRoute, parse_http_spec, build_selector, extract_bearer, status_for_reply, is_error_payload, sse_event
+from istos.gateway import HttpRoute, parse_http_spec, build_selector, extract_bearer, status_for_reply, is_error_payload, sse_event, decode_params
 from istos.routing import IstosRouter
 from istos.logging import configure_logging as _configure_logging, ensure_configured, get_logger
 from istos.middleware.base import (
@@ -194,6 +198,9 @@ class Istos:
         self._builtin_handlers_registered = False
         self._lifecycle_stack: Optional[AsyncExitStack] = None
         self._web_runner: Any = None
+        self._channels: List[channel_wrapper] = []
+        self._ws_channel_routes: List[tuple] = []
+        self._channel_servers: List[FabricChannelServer] = []
 
     def _get_or_init_shm(self) -> Any:
         if self._shm_provider is None:
@@ -384,6 +391,45 @@ class Istos:
             return wrapper
         return decorator
 
+    def channel(
+        self,
+        prefix: str,
+        serializer: Optional[Serialize] = None,
+        authorizer: Optional[Authorizer] = None,
+        ws: Optional[Union[bool, str]] = None,
+    ) -> Callable:
+        """
+        Decorator for a **bidirectional** handler — a full-duplex session for
+        interactive agents. The handler takes a :class:`ChannelSession` and uses
+        ``send()`` / ``receive()`` (or ``async for``) in any order:
+
+            @app.channel("agent/chat", ws="/chat")
+            async def chat(s: ChannelSession):
+                async for msg in s:
+                    async for tok in llm.stream(msg):
+                        await s.send(tok)
+
+        ``ws=True`` (or ``ws="/path"``) exposes the channel as a WebSocket on the
+        HTTP surface (needs ``Istos(http_port=...)``); the ``Authorization`` header
+        and trace headers from the handshake feed the usual authorizer/envelope.
+        Auth, validation and DI work like ``@handle``.
+        """
+        def decorator(func: Callable) -> channel_wrapper:
+            wrapper = channel_wrapper(
+                func, prefix, serializer or JsonSerializer(),
+                authorizer=combine_authorizers(self._authorizer, authorizer),
+                exception_registry=self._exception_registry,
+                dependency_overrides=self.dependency_overrides,
+            )
+            self._channels.append(wrapper)
+            if ws is not None:
+                path = ws if isinstance(ws, str) else "/" + prefix.lstrip("/")
+                if not path.startswith("/"):
+                    path = "/" + path
+                self._ws_channel_routes.append((path, wrapper))
+            return wrapper
+        return decorator
+
     async def stream_query(
         self,
         key_expr: str,
@@ -472,6 +518,131 @@ class Istos:
             # get so the pump thread unwinds instead of draining to completion.
             cancel_token.cancel()
 
+    async def open_channel(
+        self,
+        prefix: str,
+        *,
+        token: Optional[Union[bytes, str]] = None,
+        timeout_s: float = 5.0,
+        serializer: Optional[Serialize] = None,
+        **params: Any,
+    ) -> ChannelClient:
+        """Open a session to a remote ``@channel`` over the fabric and return a
+        :class:`ChannelClient` (``send`` / ``receive`` / ``async for`` / ``close``)::
+
+            chan = await app.open_channel("agent/chat", token=jwt)
+            await chan.send("hello")
+            async for msg in chan:
+                ...
+            await chan.close()
+
+        Runs the open handshake (authorized via ``token``), then keeps the session
+        alive with a liveliness token until you ``close()`` (or the process exits).
+        """
+        session = self._session_manager.session
+        if session is None:
+            raise RuntimeError(
+                "No active Zenoh session. Call istos.run()/run_async()/serving() first."
+            )
+        serializer = serializer or JsonSerializer()
+        sid = uuid.uuid4().hex
+        loop = asyncio.get_running_loop()
+
+        tok = None
+        if token is not None:
+            tok = token.decode("utf-8") if isinstance(token, bytes) else str(token)
+        ctx = peek_request_context()
+        attachment = RequestEnvelope(
+            token=tok,
+            correlation_id=ctx.correlation_id if ctx else None,
+            traceparent=ctx.traceparent if ctx else None,
+        ).to_attachment()
+
+        client = ChannelClient(session, prefix, sid, serializer, loop)
+        # Subscribe to the down channel before opening so no early reply is lost.
+        client._subscribe_down()
+
+        selector = build_selector(f"{prefix}/{sid}/open", params)
+
+        def _open() -> Optional[bytes]:
+            kwargs: dict = {"timeout": timeout_s}
+            if attachment is not None:
+                kwargs["attachment"] = attachment
+            for reply in session.get(selector, **kwargs):
+                try:
+                    return bytes(reply.ok.payload)
+                except Exception:
+                    continue
+            return None
+
+        payload = await asyncio.to_thread(_open)
+        if payload is None:
+            await client.close()
+            raise IstosError(
+                f"No channel server answered for {prefix!r}.", code="not_found", status=504
+            )
+        resp = serializer.deserialize(payload)
+        if is_error_payload(resp):
+            await client.close()
+            raise IstosError(
+                resp.get("message", "channel open denied"),
+                code=resp.get("code", "unauthorized"),
+            )
+        client._declare_liveliness()
+        return client
+
+    def stream_client(
+        self,
+        prefix: str,
+        serializer: Optional[Serialize] = None,
+        timeout_s: float = 60.0,
+        attachment: Optional[Union[bytes, str]] = None,
+    ) -> Callable:
+        """
+        Client-side decorator for reaching a ``@stream`` — the streaming
+        counterpart to ``@query``. The body receives the live chunk iterator:
+
+            @app.stream_client("llm/generate")
+            async def generate(chunks):
+                async for tok in chunks:
+                    print(tok, end="")
+
+            await generate(prompt="hi")     # call kwargs → params
+
+        Pass ``token=`` when calling (or ``attachment=`` on the decorator) for auth.
+        """
+        def decorator(func: Callable) -> stream_client_wrapper:
+            return stream_client_wrapper(
+                func, self, prefix, serializer=serializer, timeout_s=timeout_s,
+                attachment=attachment, dependency_overrides=self.dependency_overrides,
+            )
+        return decorator
+
+    def channel_client(
+        self,
+        prefix: str,
+        serializer: Optional[Serialize] = None,
+        timeout_s: float = 5.0,
+        attachment: Optional[Union[bytes, str]] = None,
+    ) -> Callable:
+        """
+        Client-side decorator for reaching a ``@channel``. The body receives an
+        open :class:`ChannelClient`; the session closes when the body returns:
+
+            @app.channel_client("agent/chat")
+            async def chat(session):
+                await session.send("hi")
+                async for msg in session:
+                    print(msg)
+
+            await chat(token=jwt)           # call kwargs → open params
+        """
+        def decorator(func: Callable) -> channel_client_wrapper:
+            return channel_client_wrapper(
+                func, self, prefix, serializer=serializer, timeout_s=timeout_s,
+                attachment=attachment, dependency_overrides=self.dependency_overrides,
+            )
+        return decorator
 
     def publish(
         self,
@@ -826,6 +997,21 @@ class Istos:
             queryable = session.declare_queryable(wrapper.prefix, make_callback(), complete=True)
             self._zenoh_queryables.append(queryable)
 
+    async def _bind_channels(self, session: zenoh.Session) -> None:
+        """Serve @channel handlers over the fabric: an open-handshake queryable
+        plus liveliness-driven teardown, one server per channel."""
+        loop = asyncio.get_running_loop()
+        for wrapper in self._channels:
+            self._logger.info("Binding channel %s", wrapper.prefix, extra={"prefix": wrapper.prefix})
+            server = FabricChannelServer(session, wrapper, loop)
+            server.bind()
+            self._channel_servers.append(server)
+
+    async def _unbind_channels(self) -> None:
+        for server in self._channel_servers:
+            server.unbind()
+        self._channel_servers.clear()
+
     async def _unbind_handlers(self) -> None:
         for q in self._zenoh_queryables:
             q.undeclare()
@@ -964,6 +1150,10 @@ class Istos:
                 else self._make_gateway_handler(route)
             )
             app.router.add_route(route.method, route.path, handler)
+
+        # WebSocket routes for @channel handlers.
+        for path, wrapper in self._ws_channel_routes:
+            app.router.add_get(path, self._make_ws_channel_handler(wrapper))
 
         if self._docs_prefix is not None:
             html = get_asyncapi_ui_html(title="Istos Network Docs", schema_url="/asyncapi.yaml")
@@ -1152,6 +1342,70 @@ class Istos:
 
         return _handler
 
+    def _make_ws_channel_handler(self, wrapper: channel_wrapper) -> Any:
+        """aiohttp handler that runs a @channel over a WebSocket. The socket is
+        the duplex pipe: inbound frames feed the session, session.send() writes
+        back. Auth + trace headers come off the handshake."""
+        import json as _json
+
+        from aiohttp import WSMsgType, web
+
+        async def _handler(request: web.Request) -> web.WebSocketResponse:
+            ws = web.WebSocketResponse(heartbeat=30.0)
+            await ws.prepare(request)
+
+            token = extract_bearer(request.headers.get("Authorization"))
+            attachment = RequestEnvelope(
+                token=token,
+                correlation_id=(request.headers.get("X-Correlation-ID")
+                                or request.headers.get("X-Request-ID")),
+                traceparent=request.headers.get("traceparent"),
+            ).to_attachment()
+            params = decode_params(dict(request.query))
+
+            async def sink(raw: bytes) -> None:
+                # Prefer text frames (browser-friendly JSON); fall back to binary.
+                try:
+                    await ws.send_str(raw.decode("utf-8"))
+                except UnicodeDecodeError:
+                    await ws.send_bytes(raw)
+
+            session = ChannelSession(wrapper.serializer, sink, attachment=attachment)
+
+            async def pump_inbound() -> None:
+                async for msg in ws:
+                    if msg.type == WSMsgType.TEXT:
+                        session.feed(msg.data.encode("utf-8"))
+                    elif msg.type == WSMsgType.BINARY:
+                        session.feed(msg.data)
+                    elif msg.type == WSMsgType.ERROR:
+                        break
+                session.close()
+
+            reader = asyncio.create_task(pump_inbound())
+            try:
+                await wrapper.run(session, attachment=attachment, params=params)
+            except UnauthorizedError:
+                with contextlib.suppress(Exception):
+                    await ws.send_str(_json.dumps(
+                        {"error": "unauthorized", "code": "unauthorized",
+                         "message": "Not authorized for this channel."}))
+            except Exception as e:
+                self._logger.error(
+                    "Channel error on %s: %s", wrapper.prefix, e,
+                    exc_info=True, extra={"prefix": wrapper.prefix},
+                )
+            finally:
+                session.close()
+                reader.cancel()
+                with contextlib.suppress(Exception):
+                    await reader
+                with contextlib.suppress(Exception):
+                    await ws.close()
+            return ws
+
+        return _handler
+
     def _register_builtin_handlers(self) -> None:
         if self._builtin_handlers_registered:
             return
@@ -1262,6 +1516,7 @@ class Istos:
 
         await self._bind_handlers(session)
         await self._bind_streams(session)
+        await self._bind_channels(session)
         await self._bind_persist(session)
         await self._bind_publishers(session)
         await self._bind_subscribers(session)
@@ -1292,6 +1547,7 @@ class Istos:
         await self._unbind_subscribers()
         await self._unbind_publishers()
         await self._unbind_persist()
+        await self._unbind_channels()
         await self._unbind_handlers()
         if self._lifecycle_stack is not None:
             await self._lifecycle_stack.aclose()

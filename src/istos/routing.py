@@ -85,6 +85,36 @@ class IstosRouter:
             return proxy
         return decorator
 
+    def channel(self, prefix: str, serializer: Optional[Serialize] = None, authorizer: Optional[Authorizer] = None, ws: Optional[Union[bool, str]] = None) -> Callable:
+        full_prefix = self._apply_prefix(prefix)
+        def decorator(func: Callable) -> Callable:
+            proxy = RouterProxy(func.__name__)
+            def action(app: "Istos"):
+                proxy._real_wrapper = app.channel(full_prefix, serializer=serializer, authorizer=authorizer, ws=ws)(func)
+            self._actions.append(action)
+            return proxy
+        return decorator
+
+    def stream_client(self, prefix: str, serializer: Optional[Serialize] = None, timeout_s: float = 60.0, attachment: Optional[Union[bytes, str]] = None) -> Callable:
+        full_prefix = self._apply_prefix(prefix)
+        def decorator(func: Callable) -> Callable:
+            proxy = RouterProxy(func.__name__)
+            def action(app: "Istos"):
+                proxy._real_wrapper = app.stream_client(full_prefix, serializer=serializer, timeout_s=timeout_s, attachment=attachment)(func)
+            self._actions.append(action)
+            return proxy
+        return decorator
+
+    def channel_client(self, prefix: str, serializer: Optional[Serialize] = None, timeout_s: float = 5.0, attachment: Optional[Union[bytes, str]] = None) -> Callable:
+        full_prefix = self._apply_prefix(prefix)
+        def decorator(func: Callable) -> Callable:
+            proxy = RouterProxy(func.__name__)
+            def action(app: "Istos"):
+                proxy._real_wrapper = app.channel_client(full_prefix, serializer=serializer, timeout_s=timeout_s, attachment=attachment)(func)
+            self._actions.append(action)
+            return proxy
+        return decorator
+
     def publish(self, prefix: str, use_shm: bool = False, serializer: Optional[Serialize] = None, durable: bool = False, cache: int = 1000, heartbeat: float = 1.0, persist: Optional[str] = None) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:

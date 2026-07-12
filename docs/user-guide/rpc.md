@@ -320,6 +320,94 @@ Under the hood this is a Zenoh multi-reply queryable read with
 Middleware does not wrap streams (a stream has no single return value); authorization
 still runs.
 
+## Bidirectional channels (interactive sessions)
+
+`@stream` is one-way. When both sides need to talk — an agent that reads a turn,
+streams tokens back, then waits for the next — use `@channel`. The handler gets a
+`ChannelSession` and drives it with `send()` / `receive()` (or `async for`) in any
+order:
+
+```python
+from istos import ChannelSession
+
+@app.channel("agent/chat", ws="/chat")     # ws= exposes it as a WebSocket
+async def chat(s: ChannelSession):
+    await s.send({"role": "system", "text": "ready"})
+    async for msg in s:                     # inbound message
+        async for tok in llm.stream(msg):
+            await s.send(tok)               # many out per one in
+        await s.send({"done": True})
+```
+
+`ws=True` serves it at `/<prefix>`; `ws="/path"` picks the path. The transport is
+a WebSocket, so a browser `EventSource`'s duplex cousin works directly:
+
+```javascript
+const ws = new WebSocket("ws://gateway:8080/chat");
+ws.onmessage = (e) => render(JSON.parse(e.data));
+ws.onopen = () => ws.send(JSON.stringify("hello"));
+```
+
+Messages are JSON text frames by default (binary is used for non-UTF-8
+serializers). The `Authorization` header and trace headers from the WebSocket
+handshake feed the same authorizer and request envelope as everything else, and
+the handler resolves `Depends(...)` and can reach the rest of the mesh
+(`query_once`, `publish`, `stream_query`) while the session is open. When the peer
+disconnects, `receive()` raises `ChannelClosed` (so `async for` simply ends).
+
+!!! note "One-way vs two-way"
+    Pick by direction, not by transport: `@stream` for server→client output (SSE
+    or a Zenoh queryable), `@channel` for full duplex (WebSocket). WebSocket is
+    the channel's transport, not a separate primitive.
+
+### Across the fabric
+
+The same `@channel` also works node-to-node over Zenoh — a WebSocket gateway on
+one node can front an agent running on another. Open a session with
+`open_channel`, which returns a client with the same `send`/`receive`/`async for`
+surface:
+
+```python
+chan = await app.open_channel("agent/chat", token=jwt)
+await chan.send("hello")
+async for msg in chan:
+    render(msg)
+await chan.close()
+```
+
+Opening is an authorized handshake (the `token` rides the query attachment, so
+the channel's authorizer runs before a session exists). Messages then flow over a
+per-session pub/sub pair, and a liveliness token keeps the session alive — when
+the client `close()`s or crashes, the server tears the session down and the
+handler's `async for` ends. So a FastAPI gateway can bridge a browser WebSocket
+straight through to a remote agent: pump the socket into `open_channel` and back.
+
+### Declarative clients
+
+`stream_query` and `open_channel` are the imperative way. For a service that's a
+mix of senders and receivers, attach the receiving side declaratively too — the
+client counterparts to `@query`, available on the app and on a router:
+
+```python
+@app.stream_client("llm/generate")     # reaches a @stream
+async def generate(chunks):            # body gets the live chunk iterator
+    async for tok in chunks:
+        print(tok, end="")
+
+@app.channel_client("agent/chat")      # reaches a @channel
+async def chat(session):               # body gets an open ChannelClient
+    await session.send("hi")
+    async for msg in session:
+        render(msg)
+
+await generate(prompt="hi")            # call kwargs → params, like @query
+await chat(token=jwt)                  # session closes when the body returns
+```
+
+Call kwargs become the stream/channel params and `token=` carries auth, exactly
+as with `@query`. On a router, use `@router.stream_client(...)` /
+`@router.channel_client(...)`; they wire up on `include_router`.
+
 ## Next Steps
 
 - [Schema Validation](validation.md) — the validation/coercion layer

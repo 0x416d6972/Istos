@@ -21,6 +21,8 @@ from .core.authz import (
     Public,
 )
 from .communication.persist import ObjectStore, InMemoryObjectStore, S3ObjectStore, PersistRole
+from .core.channel import ChannelSession, ChannelClosed
+from .core.channel_fabric import ChannelClient
 from .di import Depends, DependencyCycleError, current_principal, current_request, current_token
 from .logging import configure_logging, get_logger
 from .testing import IstosTestClient
@@ -49,6 +51,9 @@ __all__ = [
     "InMemoryObjectStore",
     "S3ObjectStore",
     "PersistRole",
+    "ChannelSession",
+    "ChannelClosed",
+    "ChannelClient",
     "Depends",
     "DependencyCycleError",
     "current_principal",
