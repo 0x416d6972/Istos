@@ -55,12 +55,12 @@ class IstosRouter:
             return f"{base}/{sub}" if base and sub else (base or sub)
         return prefix
 
-    def handle(self, prefix: str, serializer: Optional[Serialize] = None, retry: Optional[Union[int, RetryPolicy]] = None, durability: str = "at_most_once", authorizer: Optional[Authorizer] = None) -> Callable:
+    def handle(self, prefix: str, serializer: Optional[Serialize] = None, retry: Optional[Union[int, RetryPolicy]] = None, durability: str = "at_most_once", authorizer: Optional[Authorizer] = None, http: Optional[Union[bool, str]] = None) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
-                proxy._real_wrapper = app.handle(full_prefix, serializer=serializer, retry=retry, durability=durability, authorizer=authorizer)(func)
+                proxy._real_wrapper = app.handle(full_prefix, serializer=serializer, retry=retry, durability=durability, authorizer=authorizer, http=http)(func)
             self._actions.append(action)
             return proxy
         return decorator
@@ -75,22 +75,32 @@ class IstosRouter:
             return proxy
         return decorator
 
-    def publish(self, prefix: str, use_shm: bool = False, serializer: Optional[Serialize] = None, durable: bool = False, cache: int = 1000, heartbeat: float = 1.0) -> Callable:
+    def stream(self, prefix: str, serializer: Optional[Serialize] = None, authorizer: Optional[Authorizer] = None) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
-                proxy._real_wrapper = app.publish(full_prefix, use_shm=use_shm, serializer=serializer, durable=durable, cache=cache, heartbeat=heartbeat)(func)
+                proxy._real_wrapper = app.stream(full_prefix, serializer=serializer, authorizer=authorizer)(func)
             self._actions.append(action)
             return proxy
         return decorator
 
-    def subscribe(self, prefix: str, retry: Optional[Union[int, RetryPolicy]] = None, serializer: Optional[Serialize] = None, durable: bool = False, replay: int = 1000, recover: bool = True, authorizer: Optional[Authorizer] = None) -> Callable:
+    def publish(self, prefix: str, use_shm: bool = False, serializer: Optional[Serialize] = None, durable: bool = False, cache: int = 1000, heartbeat: float = 1.0, persist: Optional[str] = None) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
-                proxy._real_wrapper = app.subscribe(full_prefix, retry=retry, serializer=serializer, durable=durable, replay=replay, recover=recover, authorizer=authorizer)(func)
+                proxy._real_wrapper = app.publish(full_prefix, use_shm=use_shm, serializer=serializer, durable=durable, cache=cache, heartbeat=heartbeat, persist=persist)(func)
+            self._actions.append(action)
+            return proxy
+        return decorator
+
+    def subscribe(self, prefix: str, retry: Optional[Union[int, RetryPolicy]] = None, serializer: Optional[Serialize] = None, durable: bool = False, replay: int = 1000, recover: bool = True, authorizer: Optional[Authorizer] = None, replay_persisted: bool = False) -> Callable:
+        full_prefix = self._apply_prefix(prefix)
+        def decorator(func: Callable) -> Callable:
+            proxy = RouterProxy(func.__name__)
+            def action(app: "Istos"):
+                proxy._real_wrapper = app.subscribe(full_prefix, retry=retry, serializer=serializer, durable=durable, replay=replay, recover=recover, authorizer=authorizer, replay_persisted=replay_persisted)(func)
             self._actions.append(action)
             return proxy
         return decorator

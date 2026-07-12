@@ -82,7 +82,8 @@ def test_storage_and_storage_config_are_mutually_exclusive():
 @pytest.mark.asyncio
 async def test_storage_closed_on_shutdown(mocker):
     """run_async must dispose the storage backend when the service stops."""
-    app = Istos(enable_health=False, enable_metrics=False)
+    # Bare app (no built-in handlers) so the mocked session binds no queryables.
+    app = Istos(enable_health=False, enable_metrics=False, enable_discovery=False)
     app._storage = mocker.AsyncMock()             # has an awaitable close()
     app._session_manager = mocker.AsyncMock()
     app._session_manager.__aenter__.return_value = mocker.AsyncMock()

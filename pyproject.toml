@@ -39,24 +39,24 @@ redis = ["redis>=5.0.0"]
 sqlalchemy = [
     "sqlalchemy[asyncio]>=2.0.0",
 ]
-# Convenience extra: the SQLAlchemy backend plus the aiosqlite async driver, so
-# `pip install "istos[sqlite]"` gives a zero-config, file-backed durable ledger.
-sqlite = [
-    "sqlalchemy[asyncio]>=2.0.0",
-    "aiosqlite>=0.22.1",
-]
 otel = [
     "opentelemetry-api>=1.28.0",
     "opentelemetry-sdk>=1.28.0",
     "opentelemetry-exporter-otlp-proto-grpc>=1.28.0",
 ]
+# Brokerless producer-crash durability: persist durable pub/sub streams to
+# S3/MinIO object storage (see Istos.persist / @publish(persist="s3://…")).
+s3 = [
+    "aioboto3>=13.0.0",
+]
+# JWT authentication for the authorizer gate (JWTAuthorizer).
+jwt = [
+    "pyjwt>=2.8.0",
+]
+# Everything — composed from the individual extras so each dependency's version
+# is pinned in exactly one place.
 all = [
-    "redis>=5.0.0",
-    "sqlalchemy[asyncio]>=2.0.0",
-    "aiosqlite>=0.22.1",
-    "opentelemetry-api>=1.28.0",
-    "opentelemetry-sdk>=1.28.0",
-    "opentelemetry-exporter-otlp-proto-grpc>=1.28.0",
+    "istos[redis,sqlalchemy,otel,s3,jwt]",
 ]
 dev = [
     "mypy>=1.19.1",

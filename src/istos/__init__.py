@@ -5,11 +5,21 @@ from .core.errors import (
     IstosSecurityWarning,
     NotFoundError,
     UnauthorizedError,
+    ForbiddenError,
     RateLimitError,
     ErrorResponse,
     exception_handler,
 )
-from .core.authz import Authorizer, AuthContext, Principal, TokenAuthorizer, Public
+from .core.authz import (
+    Authorizer,
+    AuthContext,
+    Principal,
+    TokenAuthorizer,
+    JWTAuthorizer,
+    require_roles,
+    Public,
+)
+from .communication.persist import ObjectStore, InMemoryObjectStore, S3ObjectStore, PersistRole
 from .di import Depends, DependencyCycleError, current_principal, current_request, current_token
 from .logging import configure_logging, get_logger
 from .testing import IstosTestClient
@@ -22,6 +32,7 @@ __all__ = [
     "IstosSecurityWarning",
     "NotFoundError",
     "UnauthorizedError",
+    "ForbiddenError",
     "RateLimitError",
     "ErrorResponse",
     "exception_handler",
@@ -29,7 +40,13 @@ __all__ = [
     "AuthContext",
     "Principal",
     "TokenAuthorizer",
+    "JWTAuthorizer",
+    "require_roles",
     "Public",
+    "ObjectStore",
+    "InMemoryObjectStore",
+    "S3ObjectStore",
+    "PersistRole",
     "Depends",
     "DependencyCycleError",
     "current_principal",

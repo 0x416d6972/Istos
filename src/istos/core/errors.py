@@ -50,6 +50,13 @@ class UnauthorizedError(IstosError):
         super().__init__(message, code="unauthorized", status=401, **kwargs)
 
 
+class ForbiddenError(IstosError):
+    """Authenticated, but not permitted (e.g. missing a required role)."""
+
+    def __init__(self, message: str = "Forbidden", **kwargs: Any):
+        super().__init__(message, code="forbidden", status=403, **kwargs)
+
+
 class RateLimitError(IstosError):
     def __init__(self, message: str = "Rate limit exceeded", **kwargs: Any):
         super().__init__(message, code="rate_limit_exceeded", status=429, **kwargs)

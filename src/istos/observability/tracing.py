@@ -38,7 +38,13 @@ def configure_tracing(
 
 
 class TracingMiddleware:
-    """Creates an OpenTelemetry span per request."""
+    """Creates an OpenTelemetry span per request, linked across hops.
+
+    Continues the caller's trace when the request carried a W3C ``traceparent``
+    (see :class:`~istos.context.RequestEnvelope`), and writes this hop's active
+    ``traceparent`` back onto the request context so any outbound query/publish
+    propagates it to the next hop — end-to-end distributed tracing over Zenoh.
+    """
 
     async def __call__(
         self,
@@ -48,12 +54,30 @@ class TracingMiddleware:
         if _tracer is None:
             return await call_next(scope)
 
+        from opentelemetry.trace.propagation.tracecontext import (
+            TraceContextTextMapPropagator,
+        )
+
+        from istos.context import get_request_context
+
+        propagator = TraceContextTextMapPropagator()
+        incoming = scope.context.traceparent
+        parent = propagator.extract({"traceparent": incoming}) if incoming else None
+
         with _tracer.start_as_current_span(
             f"istos.{scope.operation}",
+            context=parent,
             attributes={
                 "istos.prefix": scope.prefix,
                 "istos.operation": scope.operation,
                 "istos.correlation_id": scope.context.correlation_id,
             },
         ):
+            # Publish this span as the traceparent for downstream hops.
+            carrier: dict[str, str] = {}
+            propagator.inject(carrier)
+            tp = carrier.get("traceparent")
+            if tp:
+                scope.context.traceparent = tp
+                get_request_context().traceparent = tp
             return await call_next(scope)

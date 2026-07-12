@@ -25,7 +25,7 @@ import inspect
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Iterable, Optional, Union
 
-from istos.core.errors import UnauthorizedError
+from istos.core.errors import ForbiddenError, UnauthorizedError
 
 
 @dataclass
@@ -37,16 +37,21 @@ class AuthContext:
     params: dict[str, Any] = field(default_factory=dict)
     attachment: Optional[bytes] = None
     operation: str = "handle"
+    #: Identity resolved by an upstream authorizer in a layered chain. Set by
+    #: ``combine_authorizers`` after the app-wide authorizer runs, so a per-handler
+    #: guard like ``require_roles`` can inspect who was authenticated.
+    principal: Any = None
 
     @property
     def token(self) -> Optional[str]:
-        """Decode the request attachment as a UTF-8 token, if present."""
-        if self.attachment is None:
-            return None
-        try:
-            return bytes(self.attachment).decode("utf-8")
-        except (UnicodeDecodeError, ValueError, TypeError):
-            return None
+        """The auth token from the request attachment (envelope-aware).
+
+        Accepts both a bare-token attachment and a structured
+        :class:`~istos.context.RequestEnvelope`.
+        """
+        from istos.context import RequestEnvelope
+
+        return RequestEnvelope.from_attachment(self.attachment).token
 
 
 @dataclass
@@ -165,9 +170,164 @@ def combine_authorizers(
     async def _layered(ctx: AuthContext) -> Any:
         # Both must pass; check_authorized raises UnauthorizedError on either denial.
         app_principal = await check_authorized(app_authorizer, ctx)
+        # Expose the authenticated identity so a per-handler guard (require_roles)
+        # can authorize against it.
+        ctx.principal = app_principal
         handler_principal = await check_authorized(handler_authorizer, ctx)
         # Prefer the more specific (per-handler) identity, then the app-wide one.
         # Fall back to ``True`` so an all-``bool`` chain still reads as allowed.
         return handler_principal or app_principal or True
 
     return _layered
+
+
+# ---------------------------------------------------------------------------
+# Batteries: JWT authentication + role-based authorization
+# ---------------------------------------------------------------------------
+class JWTAuthorizer:
+    """Authenticate a request from a JSON Web Token in its attachment.
+
+    Verifies the token's signature and standard claims (``exp``, and — when
+    configured — ``aud`` / ``iss``) with `PyJWT <https://pyjwt.readthedocs.io>`_
+    (the ``istos[jwt]`` extra), then maps it to a :class:`Principal`: ``id`` from
+    the ``id_claim`` (``sub`` by default), roles from ``roles_claim``, and the
+    full decoded payload as ``claims``.
+
+    Symmetric (HS*) verification uses ``secret``; asymmetric (RS*/ES*/PS*) uses
+    ``public_key``. The ``none`` algorithm is always rejected.
+
+        # HS256 shared secret:
+        Istos(authorizer=JWTAuthorizer(secret=os.environ["JWT_SECRET"]))
+
+        # RS256 with an identity provider's public key + audience:
+        Istos(authorizer=JWTAuthorizer(
+            public_key=PUBKEY_PEM, algorithms=["RS256"], audience="my-api"))
+
+    An absent, malformed, or invalid token is a denial (falsy → ``UnauthorizedError``).
+    """
+
+    def __init__(
+        self,
+        secret: Optional[str] = None,
+        *,
+        public_key: Optional[str] = None,
+        algorithms: Iterable[str] = ("HS256",),
+        audience: Optional[str] = None,
+        issuer: Optional[str] = None,
+        roles_claim: str = "roles",
+        id_claim: str = "sub",
+        leeway: float = 0,
+        require_exp: bool = True,
+    ) -> None:
+        try:
+            import jwt  # noqa: F401
+        except ImportError as e:  # pragma: no cover - exercised via the extra
+            raise RuntimeError(
+                "JWTAuthorizer requires the 'pyjwt' package. Install it with "
+                "`pip install \"istos[jwt]\"`."
+            ) from e
+
+        self._algorithms = list(algorithms)
+        if "none" in (a.lower() for a in self._algorithms):
+            raise ValueError("The 'none' JWT algorithm is unsafe and not allowed.")
+        self._key = public_key or secret
+        if not self._key:
+            raise ValueError("JWTAuthorizer requires a `secret` or `public_key`.")
+        self._audience = audience
+        self._issuer = issuer
+        self._roles_claim = roles_claim
+        self._id_claim = id_claim
+        self._leeway = leeway
+        self._require_exp = require_exp
+
+    @staticmethod
+    def _as_roles(value: Any) -> frozenset[str]:
+        if value is None:
+            return frozenset()
+        if isinstance(value, str):
+            # Accept a space- or comma-separated scope-style string.
+            return frozenset(value.replace(",", " ").split())
+        if isinstance(value, (list, tuple, set, frozenset)):
+            return frozenset(str(v) for v in value)
+        return frozenset()
+
+    def __call__(self, ctx: AuthContext) -> Any:
+        import jwt
+
+        token = ctx.token
+        if not token:
+            return False
+        options = {"require": ["exp"] if self._require_exp else [],
+                   "verify_aud": self._audience is not None}
+        try:
+            payload = jwt.decode(
+                token,
+                self._key,
+                algorithms=self._algorithms,
+                audience=self._audience,
+                issuer=self._issuer,
+                leeway=self._leeway,
+                options=options,
+            )
+        except jwt.PyJWTError:
+            return False
+        return Principal(
+            id=str(payload.get(self._id_claim, "")),
+            roles=self._as_roles(payload.get(self._roles_claim)),
+            claims=payload,
+        )
+
+
+def _roles_of(principal: Any) -> frozenset[str]:
+    """Best-effort role set from a principal (``Principal`` or any object with
+    a ``roles`` attribute)."""
+    roles = getattr(principal, "roles", None)
+    if roles is None:
+        return frozenset()
+    return frozenset(roles)
+
+
+def require_roles(
+    *roles: str,
+    mode: str = "all",
+    authenticator: Optional[Authorizer] = None,
+) -> Authorizer:
+    """Authorize based on the authenticated principal's roles (RBAC).
+
+    Designed to **layer** on top of an authenticating authorizer: set the
+    authenticator app-wide (``Istos(authorizer=JWTAuthorizer(...))``) and guard
+    individual handlers with the roles they need::
+
+        @app.handle("admin/reset", authorizer=require_roles("admin"))
+        async def reset(): ...
+
+    ``mode="all"`` (default) requires every listed role; ``mode="any"`` requires
+    at least one. When no authenticator has run (no identity), the request is
+    **401**; when the identity lacks the roles, it is **403**.
+
+    If there is no app-wide authenticator, pass ``authenticator=`` to run one
+    first::
+
+        require_roles("admin", authenticator=JWTAuthorizer(secret=...))
+    """
+    required = frozenset(roles)
+    if mode not in ("all", "any"):
+        raise ValueError("mode must be 'all' or 'any'")
+
+    async def _authz(ctx: AuthContext) -> Any:
+        principal = ctx.principal
+        if authenticator is not None:
+            principal = await check_authorized(authenticator, ctx)
+            ctx.principal = principal
+        if principal is None:
+            raise UnauthorizedError(f"Authentication required for '{ctx.prefix}'")
+        have = _roles_of(principal)
+        ok = bool(required & have) if mode == "any" else required <= have
+        if not ok:
+            raise ForbiddenError(
+                f"Requires role(s) {sorted(required)} ({mode}); "
+                f"principal has {sorted(have)}"
+            )
+        return principal
+
+    return _authz

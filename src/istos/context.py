@@ -2,10 +2,73 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, Optional
+
+
+@dataclass
+class RequestEnvelope:
+    """Structured request metadata carried in the Zenoh attachment.
+
+    The attachment is Istos' one out-of-band channel per request. Historically it
+    held only an auth *token*; the envelope extends it — backward compatibly — to
+    also carry request metadata *across hops*:
+
+    * ``token``          — the auth credential (as before).
+    * ``correlation_id`` — links every hop of one logical operation in logs/traces.
+    * ``traceparent``    — W3C Trace Context, so distributed tracing spans a chain.
+
+    Wire form: a **bare string** attachment is read as a token-only envelope (so
+    existing callers and non-Istos peers keep working); when there is metadata to
+    carry, the envelope is a compact JSON object with short keys
+    ``{"tok","cid","tp"}``. Emitting stays bare unless ``correlation_id`` or
+    ``traceparent`` is present, so the simple wire format is preserved when
+    nothing needs propagating.
+    """
+
+    token: Optional[str] = None
+    correlation_id: Optional[str] = None
+    traceparent: Optional[str] = None
+
+    def to_attachment(self) -> Optional[bytes]:
+        # Nothing beyond a token → keep the simple, interop-friendly bare form.
+        if self.correlation_id is None and self.traceparent is None:
+            return self.token.encode("utf-8") if self.token is not None else None
+        obj: dict[str, str] = {}
+        if self.token is not None:
+            obj["tok"] = self.token
+        if self.correlation_id is not None:
+            obj["cid"] = self.correlation_id
+        if self.traceparent is not None:
+            obj["tp"] = self.traceparent
+        return json.dumps(obj, separators=(",", ":")).encode("utf-8")
+
+    @classmethod
+    def from_attachment(cls, raw: Optional[bytes]) -> "RequestEnvelope":
+        if raw is None:
+            return cls()
+        try:
+            text = bytes(raw).decode("utf-8")
+        except (UnicodeDecodeError, ValueError, TypeError):
+            return cls()
+        stripped = text.strip()
+        # Only a JSON object carrying at least one known key is an envelope;
+        # anything else (a JWT, a shared secret, opaque text) is a bare token.
+        if stripped.startswith("{") and stripped.endswith("}"):
+            try:
+                obj = json.loads(stripped)
+            except (ValueError, TypeError):
+                obj = None
+            if isinstance(obj, dict) and any(k in obj for k in ("tok", "cid", "tp")):
+                return cls(
+                    token=obj.get("tok"),
+                    correlation_id=obj.get("cid"),
+                    traceparent=obj.get("tp"),
+                )
+        return cls(token=text)
 
 
 @dataclass
@@ -19,18 +82,15 @@ class RequestContext:
     #: Identity resolved by the authorizer for this request (``None`` if the
     #: request was allowed without an identity, or came from an in-process call).
     principal: Any = None
-    #: Raw request attachment as sent by the caller (auth token bytes, etc.).
+    #: Raw request attachment as sent by the caller (envelope or bare token bytes).
     attachment: Optional[bytes] = None
+    #: W3C ``traceparent`` for this request, propagated across hops for tracing.
+    traceparent: Optional[str] = None
 
     @property
     def token(self) -> Optional[str]:
-        """Decode the request attachment as a UTF-8 token, if present."""
-        if self.attachment is None:
-            return None
-        try:
-            return bytes(self.attachment).decode("utf-8")
-        except (UnicodeDecodeError, ValueError, TypeError):
-            return None
+        """The auth token from the request attachment (envelope-aware)."""
+        return RequestEnvelope.from_attachment(self.attachment).token
 
 
 _request_context: ContextVar[Optional[RequestContext]] = ContextVar(
@@ -45,6 +105,15 @@ def get_request_context() -> RequestContext:
         ctx = RequestContext()
         _request_context.set(ctx)
     return ctx
+
+
+def peek_request_context() -> Optional[RequestContext]:
+    """Return the active request context without creating one.
+
+    Used by outbound calls to propagate metadata (correlation_id, traceparent)
+    *only* when they originate inside a request — a root call carries nothing.
+    """
+    return _request_context.get()
 
 
 def set_request_context(ctx: RequestContext) -> None:

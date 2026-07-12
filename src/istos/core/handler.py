@@ -12,8 +12,9 @@ from istos.core.validation import validate_params, SchemaValidationError
 from istos.core.retry import RetryPolicy, execute_with_retry
 from istos.core.errors import ExceptionHandlerRegistry, get_default_registry, UnauthorizedError
 from istos.core.authz import Authorizer, AuthContext, check_authorized
+from istos.gateway import decode_params
 from istos.di.depends import resolve_dependencies, extract_depends
-from istos.context import get_request_context
+from istos.context import RequestEnvelope, get_request_context
 from istos.middleware.base import MiddlewareStack, RequestScope
 from istos.logging import get_logger
 
@@ -164,11 +165,15 @@ class handler_wrapper:
                         operation="handle",
                         params=idemp_params,
                     )
-                    # Carry the authorizer's identity into the middleware chain's
-                    # fresh context so middleware + body can read it imperatively.
+                    # Carry request state into the middleware chain's fresh
+                    # context (invoke() makes scope.context the active one): the
+                    # authorizer's identity, and the cross-hop correlation_id /
+                    # traceparent so downstream calls stay linked.
                     outer = get_request_context()
                     scope.context.principal = outer.principal
                     scope.context.attachment = outer.attachment
+                    scope.context.correlation_id = outer.correlation_id
+                    scope.context.traceparent = outer.traceparent
                     return await self._middleware.invoke(scope, _handler)
                 return await _handler(RequestScope(prefix=self.prefix, operation="handle"))
 
@@ -224,7 +229,9 @@ class handler_wrapper:
             # (cast: zenoh's stub omits __iter__, though it is iterable at runtime.)
             params: dict = {}
             if hasattr(query.selector, "parameters") and query.selector.parameters:
-                params = dict(cast(Iterable[Tuple[str, str]], query.selector.parameters))
+                params = decode_params(
+                    dict(cast(Iterable[Tuple[str, str]], query.selector.parameters))
+                )
 
             # --- Authorization: enforced at the network boundary, before the
             # handler runs. In-process calls (TestClient, query decorators) go
@@ -261,6 +268,12 @@ class handler_wrapper:
             req_ctx.operation = "handle"
             req_ctx.principal = principal
             req_ctx.attachment = attachment
+            # Inherit cross-hop metadata from the caller's envelope: continue the
+            # same correlation_id and W3C trace, rather than minting fresh ones.
+            _env = RequestEnvelope.from_attachment(attachment)
+            if _env.correlation_id:
+                req_ctx.correlation_id = _env.correlation_id
+            req_ctx.traceparent = _env.traceparent
 
             # Validate and coerce parameters against function signature
             # (exclude 'db' — it's injected by the framework, not from the network)

@@ -10,7 +10,7 @@ from istos.core.authz import Authorizer, AuthContext, check_authorized
 from istos.core.errors import UnauthorizedError
 from istos.di.depends import has_dependencies, invoke_with_dependencies, positional_param_names
 from istos.middleware.base import MiddlewareStack, RequestScope
-from istos.context import get_request_context
+from istos.context import RequestEnvelope, get_request_context
 from istos.logging import get_logger
 
 class bound_subscribe_wrapper:
@@ -42,6 +42,7 @@ class subscribe_wrapper:
         on_miss: Optional[Callable[[str, int], Any]] = None,
         middleware: Optional[MiddlewareStack] = None,
         authorizer: Optional[Authorizer] = None,
+        replay_persisted: bool = False,
     ):
         self.func = func
         self.prefix = prefix
@@ -57,6 +58,9 @@ class subscribe_wrapper:
         self.durable = durable
         self.replay = replay
         self.recover = recover
+        # On join, pull persisted history from the object-store queryable (see
+        # istos.communication.persist) so the stream survives producer restarts.
+        self.replay_persisted = replay_persisted
         # Fired when a gap could NOT be recovered — the honest at-least-once signal.
         self.on_miss = on_miss
 
@@ -163,35 +167,108 @@ class subscribe_wrapper:
                 return
 
             raw_payload = bytes(sample.payload)
-            data = self.serializer.deserialize(raw_payload)
-            # Validate once, before the retry loop — a schema failure won't pass on
-            # retry, and an invalid event is logged and dropped (can't reply to pub/sub).
-            if self._validate_payload is not None:
-                data = self._validate_payload(data)
-
-            # Expose the resolved identity to the callback body (Depends(...)).
-            req_ctx = get_request_context()
-            req_ctx.prefix = self.prefix
-            req_ctx.operation = "subscribe"
-            req_ctx.principal = principal
-            req_ctx.attachment = attachment
-
-            async def _process():
-                if self._middleware is not None:
-                    scope = RequestScope(prefix=self.prefix, operation="subscribe")
-                    scope.context.principal = principal
-                    scope.context.attachment = attachment
-                    return await self._middleware.invoke(
-                        scope, lambda _s: self._dispatch(data, instance)
-                    )
-                return await self._dispatch(data, instance)
-
-            await execute_with_retry(_process, self.retry_policy)
+            await self._deliver(
+                raw_payload, principal=principal, attachment=attachment, instance=instance
+            )
         except Exception as e:
             self._logger.error(
                 "Subscriber error on %s: %s", self.prefix, e,
                 exc_info=True,
                 extra={"prefix": self.prefix},
+            )
+
+    async def _deliver(
+        self,
+        raw_payload: bytes,
+        *,
+        principal: Any = None,
+        attachment: Optional[bytes] = None,
+        instance: Optional[Any] = None,
+    ) -> None:
+        """Deserialize, validate, and dispatch a payload through the retry +
+        middleware pipeline. Shared by live delivery (``on_sample``) and history
+        replay (``replay_history``)."""
+        data = self.serializer.deserialize(raw_payload)
+        # Validate once, before the retry loop — a schema failure won't pass on
+        # retry, and an invalid event is logged and dropped (can't reply to pub/sub).
+        if self._validate_payload is not None:
+            data = self._validate_payload(data)
+
+        # Expose the resolved identity to the callback body (Depends(...)).
+        req_ctx = get_request_context()
+        req_ctx.prefix = self.prefix
+        req_ctx.operation = "subscribe"
+        req_ctx.principal = principal
+        req_ctx.attachment = attachment
+        # Inherit cross-hop metadata (correlation_id, trace) from the sample's envelope.
+        _env = RequestEnvelope.from_attachment(attachment)
+        if _env.correlation_id:
+            req_ctx.correlation_id = _env.correlation_id
+        req_ctx.traceparent = _env.traceparent
+
+        async def _process():
+            if self._middleware is not None:
+                scope = RequestScope(prefix=self.prefix, operation="subscribe")
+                scope.context.principal = principal
+                scope.context.attachment = attachment
+                # Carry cross-hop metadata into the middleware chain's context.
+                outer = get_request_context()
+                scope.context.correlation_id = outer.correlation_id
+                scope.context.traceparent = outer.traceparent
+                return await self._middleware.invoke(
+                    scope, lambda _s: self._dispatch(data, instance)
+                )
+            return await self._dispatch(data, instance)
+
+        await execute_with_retry(_process, self.retry_policy)
+
+    async def replay_history(self, session: Any, instance: Optional[Any] = None) -> None:
+        """Fetch persisted history from the object-store queryable and deliver it.
+
+        Issues a single wildcard ``get(prefix/**)`` — answered by a persistence
+        role (see :mod:`istos.communication.persist`) from durable object storage,
+        so the stream is recovered even after the original producer has crashed.
+        Replayed samples originate from the trusted store, so they bypass the
+        authorizer gate (they were authorized when first published) and carry no
+        token attachment.
+
+        Best-effort and at-least-once: history may interleave with live samples
+        and may overlap the producer-cache replay of a durable subscriber, so
+        callbacks should be idempotent / order-tolerant.
+        """
+        selector = f"{self.prefix.rstrip('/')}/**"
+
+        def _collect() -> list:
+            out: list = []
+            try:
+                for reply in session.get(selector):
+                    try:
+                        sample = reply.ok
+                        out.append((str(sample.key_expr), bytes(sample.payload)))
+                    except Exception:
+                        continue  # skip error replies
+            except Exception as e:  # a get failure must not break startup
+                self._logger.warning(
+                    "History replay query failed on %s: %s", self.prefix, e,
+                    extra={"prefix": self.prefix},
+                )
+            # Minted keys sort chronologically; restore publish order.
+            out.sort(key=lambda kv: kv[0])
+            return out
+
+        history = await asyncio.to_thread(_collect)
+        for _key, raw_payload in history:
+            try:
+                await self._deliver(raw_payload, instance=instance)
+            except Exception as e:
+                self._logger.error(
+                    "History replay delivery failed on %s: %s", self.prefix, e,
+                    exc_info=True, extra={"prefix": self.prefix},
+                )
+        if history:
+            self._logger.info(
+                "Replayed %d persisted sample(s) on %s", len(history), self.prefix,
+                extra={"prefix": self.prefix, "replayed": len(history)},
             )
 
     def __get__(self, instance: Any, owner: Any) -> Any:

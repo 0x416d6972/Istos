@@ -8,6 +8,28 @@
 
 ---
 
+##  Why Istos
+
+**Keep your architecture brain on the problem — not the plumbing.** Distributed
+systems are hard enough without spending your design budget on message brokers.
+Istos lets you reason about your system the way you actually think about it —
+*services that answer requests* and *events that fan out* — and nothing else. You
+draw the boxes and arrows; Istos **is** the arrows. A two-service prototype and a
+hundred-service fleet are the same mental model, just more decorators.
+
+**No broker. No bloat.** There is no Kafka, RabbitMQ, NATS, or Redis Streams
+cluster to provision, size, shard, secure, patch, monitor, and pay for. Durability
+lives in the *peers* — via [Eclipse Zenoh](https://zenoh.io/)'s advanced pub/sub —
+not in a central log you have to operate. Removing the broker removes an entire
+category of operational burden, single points of failure, and cognitive overhead.
+
+The result: **broker-grade capabilities with library-grade simplicity** — RPC,
+durable replayable streams, and effectively-once processing, with nothing to run
+but your own service. `pip install`, write a decorated function, `run()`. That's
+the whole architecture.
+
+---
+
 ##  Key Features
 
 - **Decorators First**: Write clean business logic. Turn any Python function into a network-addressable handler, subscriber, or publisher using intuitive decorators (`@istos.handle`, `@istos.publish`, `@istos.subscribe`).
@@ -440,6 +462,7 @@ pytest tests/                         # includes network integration tests
 - **Structured logging** — human-readable text or JSON. Istos follows the standard library convention: it logs through the `istos.*` logger namespace with a `NullHandler` and **never reconfigures your app's logging**. A standalone `istos.run()` installs a sensible default handler only if you haven't configured one; embed Istos in a larger app and its records simply propagate to your root logger. Opt into Istos-managed output explicitly with `Istos(configure_logging=True, log_level=..., json_logs=...)` or by calling `configure_logging()`. Messages are prose with structured context in `extra=`, surfaced as fields in JSON mode.
 - **Health checks** — `.istos/health` and `.istos/ready` endpoints
 - **Prometheus metrics** — `.istos/metrics` endpoint
+- **Capability discovery** — `.istos/capabilities` returns a machine-readable tool manifest (schemas included) for agents to discover and invoke tools
 - **OpenTelemetry tracing** — optional via `pip install 'istos[otel]'`
 - **Middleware pipeline** — cross-cutting concerns (logging, correlation IDs, custom)
 - **Exception handlers** — `@istos.exception_handler()` for typed errors

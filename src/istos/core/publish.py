@@ -4,6 +4,7 @@ import zenoh
 from typing import Any, Callable, Optional
 
 from istos.messages.serialization import Serialize
+from istos.context import RequestEnvelope, peek_request_context
 from istos.di.depends import has_dependencies, invoke_with_dependencies, positional_param_names
 
 class bound_publish_wrapper:
@@ -112,10 +113,21 @@ class publish_wrapper:
         # Publish the result
         serialized = self.serializer.serialize(result)
 
+        # When publishing from inside a request, carry its correlation_id /
+        # traceparent so subscribers continue the same logical operation.
+        ctx = peek_request_context()
+        attachment = None
+        if ctx is not None and (ctx.correlation_id or ctx.traceparent):
+            attachment = RequestEnvelope(
+                correlation_id=ctx.correlation_id, traceparent=ctx.traceparent
+            ).to_attachment()
+
+        put_kwargs = {"attachment": attachment} if attachment is not None else {}
+
         def _do_put():
             if self.durable:
-                # Through the AdvancedPublisher: cached for replay + recovery.
-                self._advanced_pub.put(serialized)
+                # Through the AdvancedPublisher (key-bound): cached for replay.
+                self._advanced_pub.put(serialized, **put_kwargs)
             elif self.use_shm:
                 if self._get_shm_provider is None:
                     raise RuntimeError("SHM provider callback not provided.")
@@ -127,9 +139,9 @@ class publish_wrapper:
                     payload = str(payload).encode('utf-8')
                 sbuf = provider.alloc(len(payload))
                 sbuf[:] = payload
-                zenoh_session.put(self.prefix, sbuf)
+                zenoh_session.put(self.prefix, sbuf, **put_kwargs)
             else:
-                zenoh_session.put(self.prefix, serialized)
+                zenoh_session.put(self.prefix, serialized, **put_kwargs)
 
         # Zenoh's put is synchronous, so offload it just in case
         await asyncio.to_thread(_do_put)

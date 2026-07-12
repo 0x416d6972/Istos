@@ -177,8 +177,78 @@ istos = Istos(authorizer=TokenAuthorizer({"old-token", "new-token"}))
 !!! warning "A shared secret is not user identity"
     `TokenAuthorizer` is a bearer secret — no signature, expiry, or scopes. It is
     right for authenticating *services*, not for authenticating *users*. For real
-    identity (JWT verification, expiry, roles) write a custom authorizer (below) that
-    validates the token itself.
+    identity, use `JWTAuthorizer` (below).
+
+---
+
+## `JWTAuthorizer` — verified identity + roles
+
+For real user identity — signed, expiring, role-carrying tokens — use the
+built-in `JWTAuthorizer` (the `istos[jwt]` extra, backed by PyJWT). It verifies
+the token from the request attachment and maps it to a [`Principal`](#resolving-an-identity-the-principal):
+
+```python
+import os
+from istos import Istos, JWTAuthorizer
+
+# HS256 shared secret:
+istos = Istos(authorizer=JWTAuthorizer(secret=os.environ["JWT_SECRET"]))
+
+# RS256 with an identity provider's public key + audience/issuer checks:
+istos = Istos(authorizer=JWTAuthorizer(
+    public_key=PUBLIC_KEY_PEM,
+    algorithms=["RS256"],
+    audience="my-api",
+    issuer="https://idp.example.com",
+))
+```
+
+It verifies the signature and `exp` (plus `aud`/`iss` when configured), then
+builds `Principal(id=<sub>, roles=<roles claim>, claims=<full payload>)`. The
+`none` algorithm is always rejected. An absent, malformed, expired, or
+wrong-audience token is denied (**401**). Tune the claim mapping with
+`id_claim=` (default `sub`), `roles_claim=` (default `roles`; a space/comma
+string like an OAuth2 `scope` is split into a set), `leeway=`, and
+`require_exp=`.
+
+## `require_roles` — role-based authorization (RBAC)
+
+Authenticate app-wide, then guard individual handlers with the roles they need.
+`require_roles` reads the `Principal` the authenticator resolved and checks its
+roles:
+
+```python
+from istos import Istos, JWTAuthorizer, require_roles, Principal, Depends, current_principal
+
+istos = Istos(authorizer=JWTAuthorizer(secret=SECRET))   # authenticate everything
+
+@istos.handle("fleet/status")                            # any authenticated caller
+async def status(): ...
+
+@istos.handle("fleet/reset", authorizer=require_roles("admin"))
+async def reset(user: Principal = Depends(current_principal)):
+    return {"reset_by": user.id}
+
+@istos.handle("fleet/ops", authorizer=require_roles("admin", "operator", mode="any"))
+async def ops(): ...
+```
+
+`mode="all"` (default) requires every listed role; `mode="any"` requires at least
+one. The semantics follow HTTP: **no authenticated identity → 401**, **identity
+without the role → 403**. This is the [layered](#layered-resolution-app-wide-and-per-handler)
+model — the app-wide authenticator and the per-handler role guard both run.
+
+If a handler needs auth *without* an app-wide authenticator, pass one inline:
+
+```python
+@istos.handle("admin/op",
+              authorizer=require_roles("admin", authenticator=JWTAuthorizer(secret=SECRET)))
+async def op(): ...
+```
+
+Combined with the [HTTP gateway](http-gateway.md), this all works over HTTP too:
+the `Authorization: Bearer <jwt>` header is forwarded as the token, so
+`JWTAuthorizer` + `require_roles` gate HTTP callers exactly as they gate Zenoh peers.
 
 ---
 

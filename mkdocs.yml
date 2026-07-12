@@ -70,6 +70,7 @@ nav:
     - Handlers & Queries (RPC): user-guide/rpc.md
     - Publish & Subscribe: user-guide/pubsub.md
     - Brokerless Durable Messaging: user-guide/durable-messaging.md
+    - HTTP Gateway & Probes: user-guide/http-gateway.md
     - Security & TLS: user-guide/security.md
     - Authorization: user-guide/authorization.md
     - Deployment: user-guide/deployment.md
@@ -94,6 +95,8 @@ nav:
     - Custom middleware: recipes/custom-middleware.md
     - Production service: recipes/production-service.md
     - Scaffold a service: recipes/scaffold-service.md
+  - Reference:
+    - Wire Protocol (Polyglot): reference/wire-protocol.md
   - API Reference:
     - Istos: api/istos.md
     - IstosRouter: api/router.md
@@ -114,6 +117,7 @@ nav:
       - Sessions: api/communication/sessions.md
       - Zenoh Config: api/communication/config.md
       - Durable Pub/Sub: api/communication/durable.md
+      - Persistence: api/communication/persist.md
     - Consistency:
       - Storage: api/consistency/storage.md
       - Redis Storage: api/consistency/redis_storage.md

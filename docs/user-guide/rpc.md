@@ -287,6 +287,39 @@ result — so client retry + exactly-once server does not double-execute side ef
     > The service shares **one** Zenoh session opened by `app.run()`. Calling a
     > `@query` / `query_once` before the session is running raises `RuntimeError`.
 
+## Streaming RPC (token / chunk streaming)
+
+A normal `@handle` replies once. For incremental output — SLM/LLM tokens, progress
+updates, large paginated results — use `@stream`: an **async generator** whose
+each `yield` is delivered to the caller as a chunk, over a single query.
+
+```python
+@app.stream("llm/generate")
+async def generate(prompt: str):
+    async for token in model.stream(prompt):
+        yield token          # each yield → one chunk on the wire
+```
+
+Consume it with `stream_query`, which yields chunks **as they arrive**:
+
+```python
+async for token in app.stream_query("llm/generate", prompt="hello"):
+    print(token, end="", flush=True)
+```
+
+- Same gate as `@handle`: authorization, validation, DI, and the request envelope
+  (correlation/trace) all apply. The dependency scope stays open for the whole
+  stream, so a `yield` dependency tears down after the last chunk.
+- `stream_query` defaults to `timeout_s=60` (tuned for long inference) and forwards
+  the auth token via `attachment=`.
+- If the handler raises mid-stream, chunks already sent are delivered and then
+  `stream_query` raises — so consumers see partial output followed by the error.
+
+Under the hood this is a Zenoh multi-reply queryable read with
+`consolidation=NONE`, so chunks stream incrementally rather than being buffered.
+Middleware does not wrap streams (a stream has no single return value); authorization
+still runs.
+
 ## Next Steps
 
 - [Schema Validation](validation.md) — the validation/coercion layer

@@ -5,6 +5,7 @@ from typing import Any, Callable, List, Optional, Union
 
 from istos.messages.serialization import Serialize
 from istos.core.retry import RetryPolicy, execute_with_retry
+from istos.context import RequestEnvelope, peek_request_context
 from istos.di.depends import has_dependencies, invoke_with_dependencies, positional_param_names
 
 
@@ -121,12 +122,26 @@ class query_wrapper:
 
         return await execute_with_retry(_do_query, self.retry_policy)
 
+    def _outbound_attachment(self) -> Optional[bytes]:
+        """Build the attachment: the caller's token plus — when this query runs
+        inside a request — the ambient correlation_id and traceparent, so the
+        logical operation stays linked across hops."""
+        token = RequestEnvelope.from_attachment(self._attachment).token
+        ctx = peek_request_context()
+        env = RequestEnvelope(
+            token=token,
+            correlation_id=ctx.correlation_id if ctx else None,
+            traceparent=ctx.traceparent if ctx else None,
+        )
+        return env.to_attachment()
+
     def _blocking_query(self, session: zenoh.Session, selector: str) -> List[QueryResult]:
         """Synchronous Zenoh get — runs inside asyncio.to_thread."""
         results: List[QueryResult] = []
         get_kwargs: dict = {"timeout": self.timeout_s}
-        if self._attachment is not None:
-            get_kwargs["attachment"] = self._attachment
+        attachment = self._outbound_attachment()
+        if attachment is not None:
+            get_kwargs["attachment"] = attachment
         replies = session.get(selector, **get_kwargs)
 
         for reply in replies:
