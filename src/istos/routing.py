@@ -1,7 +1,7 @@
 import inspect
 from typing import Any, Callable, List, Optional, Union, TYPE_CHECKING
-from istos.core.retry import RetryPolicy
-from istos.core.authz import Authorizer
+from istos.retry import RetryPolicy
+from istos.security.authz import Authorizer
 from istos.messages.serialization import Serialize
 
 if TYPE_CHECKING:

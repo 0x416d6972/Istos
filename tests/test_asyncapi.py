@@ -1,7 +1,7 @@
 import pytest
 from pydantic import BaseModel
 from istos import Istos
-from istos.core.asyncapi import get_function_schemas
+from istos.discovery.asyncapi import get_function_schemas
 import yaml
 
 class DemoModel(BaseModel):

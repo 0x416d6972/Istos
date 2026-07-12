@@ -18,7 +18,7 @@ from istos.context import (
     reset_request_context,
     set_request_context,
 )
-from istos.core.query import query_wrapper
+from istos.primitives.query import query_wrapper
 from istos.messages.serialization import JsonSerializer
 
 

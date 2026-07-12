@@ -12,7 +12,7 @@ import pytest_asyncio
 
 from istos.consistency.redis_storage import RedisStoragePlugin
 from istos.consistency.storage import Durability
-from istos.core.handler import handler_wrapper
+from istos.primitives.handler import handler_wrapper
 from istos.messages.serialization import JsonSerializer
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/15")

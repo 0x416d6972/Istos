@@ -794,10 +794,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#retries-and-the-dead-letter-list" class="md-nav__link">
+  <a href="#retries-backoff-and-the-dead-letter-list" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Retries and the dead-letter list
+        Retries, backoff, and the dead-letter list
       
     </span>
   </a>
@@ -816,10 +816,65 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#delaying-and-prioritizing-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delaying and prioritizing jobs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-a-result-back" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting a result back
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#periodic-jobs-intervals-and-cron" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Periodic jobs — intervals and cron
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflows-chains-groups-and-chords" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflows: chains, groups and chords
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#durability" class="md-nav__link">
     <span class="md-ellipsis">
       
         Durability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#high-availability-owner-failover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High availability: owner failover
       
     </span>
   </a>
@@ -1954,14 +2009,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/asgi/" class="md-nav__link">
+      <a href="../../api/errors/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    ASGI
+    Errors
   
 
     
@@ -1982,14 +2037,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/mcp/" class="md-nav__link">
+      <a href="../../api/retry/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    MCP
+    Retry Policy
   
 
     
@@ -2010,14 +2065,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/gateway/" class="md-nav__link">
+      <a href="../../api/validation/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Gateway
+    Validation
   
 
     
@@ -2063,7 +2118,7 @@
   <span class="md-ellipsis">
     
   
-    Core
+    Primitives
   
 
     
@@ -2079,7 +2134,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Core
+    Primitives
   
 
           </label>
@@ -2092,7 +2147,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/core/handler/" class="md-nav__link">
+      <a href="../../api/primitives/handler/" class="md-nav__link">
         
   
   
@@ -2120,7 +2175,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/core/query/" class="md-nav__link">
+      <a href="../../api/primitives/query/" class="md-nav__link">
         
   
   
@@ -2148,7 +2203,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/core/stream/" class="md-nav__link">
+      <a href="../../api/primitives/stream/" class="md-nav__link">
         
   
   
@@ -2176,7 +2231,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/core/channel/" class="md-nav__link">
+      <a href="../../api/primitives/channel/" class="md-nav__link">
         
   
   
@@ -2204,7 +2259,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/core/session_store/" class="md-nav__link">
+      <a href="../../api/primitives/session_store/" class="md-nav__link">
         
   
   
@@ -2232,35 +2287,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/core/queue/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Work Queue
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/core/publish/" class="md-nav__link">
+      <a href="../../api/primitives/publish/" class="md-nav__link">
         
   
   
@@ -2288,7 +2315,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/core/subscribe/" class="md-nav__link">
+      <a href="../../api/primitives/subscribe/" class="md-nav__link">
         
   
   
@@ -2316,7 +2343,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/core/liveliness/" class="md-nav__link">
+      <a href="../../api/primitives/liveliness/" class="md-nav__link">
         
   
   
@@ -2337,6 +2364,14 @@
 
               
             
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
               
                 
   
@@ -2344,14 +2379,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/core/retry/" class="md-nav__link">
+      <a href="../../api/queue/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Retry Policy
+    Work Queue
   
 
     
@@ -2371,15 +2406,33 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../api/core/validation/" class="md-nav__link">
+    
+    
+    
+    
+      
+      
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_10" id="__nav_6_10_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
     
   
-    Validation
+    Security
   
 
     
@@ -2387,11 +2440,19 @@
   
   
 
-      </a>
-    </li>
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
   
 
-              
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
             
               
                 
@@ -2400,35 +2461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/core/asyncapi/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    AsyncAPI Generator
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/core/authz/" class="md-nav__link">
+      <a href="../../api/security/authz/" class="md-nav__link">
         
   
   
@@ -2436,34 +2469,6 @@
     
   
     Authorization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/core/errors/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Errors
   
 
     
@@ -2507,10 +2512,274 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_11" >
         
           
-          <label class="md-nav__link" for="__nav_6_9" id="__nav_6_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_11" id="__nav_6_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Discovery
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Discovery
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/discovery/asyncapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AsyncAPI Generator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    HTTP
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/http/gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gateway
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/http/asgi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ASGI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/http/mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/http/health/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Health
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_13" id="__nav_6_13_label" tabindex="0">
             
   
   
@@ -2528,8 +2797,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_9">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2681,10 +2950,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_10" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_14" >
         
           
-          <label class="md-nav__link" for="__nav_6_10" id="__nav_6_10_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_14" id="__nav_6_14_label" tabindex="0">
             
   
   
@@ -2702,8 +2971,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_10">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_14">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2883,10 +3152,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_11" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_15" >
         
           
-          <label class="md-nav__link" for="__nav_6_11" id="__nav_6_11_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_15" id="__nav_6_15_label" tabindex="0">
             
   
   
@@ -2904,8 +3173,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_11">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_15_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_15">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2973,10 +3242,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_12" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_16" >
         
           
-          <label class="md-nav__link" for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_16" id="__nav_6_16_label" tabindex="0">
             
   
   
@@ -2994,8 +3263,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_16_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_16">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3132,34 +3401,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/health/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Health
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../api/logging/" class="md-nav__link">
         
   
@@ -3203,10 +3444,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_18" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_21" >
         
           
-          <label class="md-nav__link" for="__nav_6_18" id="__nav_6_18_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_21" id="__nav_6_21_label" tabindex="0">
             
   
   
@@ -3224,8 +3465,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_18_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_18">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_21_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_21">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3447,10 +3688,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#retries-and-the-dead-letter-list" class="md-nav__link">
+  <a href="#retries-backoff-and-the-dead-letter-list" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Retries and the dead-letter list
+        Retries, backoff, and the dead-letter list
       
     </span>
   </a>
@@ -3469,10 +3710,65 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#delaying-and-prioritizing-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delaying and prioritizing jobs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-a-result-back" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting a result back
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#periodic-jobs-intervals-and-cron" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Periodic jobs — intervals and cron
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflows-chains-groups-and-chords" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflows: chains, groups and chords
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#durability" class="md-nav__link">
     <span class="md-ellipsis">
       
         Durability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#high-availability-owner-failover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High availability: owner failover
       
     </span>
   </a>
@@ -3539,13 +3835,17 @@ it, exactly once if you can manage it, and you want it retried if the worker die
 halfway through. "Send this email" is a job. "The order was created" is an event.
 They are not the same thing, and treating a job like an event loses work the first
 time a process crashes.</p>
-<p>A work queue gives a job three things a topic doesn't:</p>
+<p>A work queue gives a job things a topic doesn't:</p>
 <ul>
 <li><strong>Single delivery.</strong> A job goes to one worker, not all of them.</li>
 <li><strong>Acknowledgement.</strong> The job isn't finished until the worker says so. If it
   never says so, the job comes back.</li>
+<li><strong>Backed-off retries.</strong> A failing job is retried with exponential backoff, so a
+  broken dependency isn't hammered a thousand times a second.</li>
 <li><strong>A dead end for poison jobs.</strong> A job that keeps failing eventually stops
   retrying and lands somewhere you can look at it, instead of looping forever.</li>
+<li><strong>Delays, priorities, results and schedules</strong> — run this in five minutes, run
+  that one first, tell me what it returned, run this every night.</li>
 </ul>
 <h2 id="where-the-state-lives">Where the state lives<a class="headerlink" href="#where-the-state-lives" title="Permanent link">&para;</a></h2>
 <p>A broker-based queue keeps all of this on the broker. Istos has no broker, so one
@@ -3599,16 +3899,25 @@ against the <a href="../storage/">idempotency ledger</a>).</p>
 <p>Pick <code>lease_s</code> a little longer than your slowest reasonable job. Too short and a
 slow-but-healthy worker gets its job yanked away and double-processed; too long
 and a crashed worker's job sits idle until the lease finally expires.</p>
-<h2 id="retries-and-the-dead-letter-list">Retries and the dead-letter list<a class="headerlink" href="#retries-and-the-dead-letter-list" title="Permanent link">&para;</a></h2>
+<h2 id="retries-backoff-and-the-dead-letter-list">Retries, backoff, and the dead-letter list<a class="headerlink" href="#retries-backoff-and-the-dead-letter-list" title="Permanent link">&para;</a></h2>
 <p>Each delivery increments the job's attempt count. A worker that raises sends the
-job back to <code>ready</code> — unless it has already used all <code>max_attempts</code>, in which case
-it is marked <strong>dead</strong> and set aside. Dead jobs are never handed out again; they
-wait for you to look at them:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">dead_letters</span><span class="p">(</span><span class="s2">&quot;jobs/email&quot;</span><span class="p">):</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;gave up on </span><span class="si">%s</span><span class="s2"> after </span><span class="si">%d</span><span class="s2"> tries: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>              <span class="n">job</span><span class="p">[</span><span class="s2">&quot;job_id&quot;</span><span class="p">],</span> <span class="n">job</span><span class="p">[</span><span class="s2">&quot;attempts&quot;</span><span class="p">],</span> <span class="n">job</span><span class="p">[</span><span class="s2">&quot;last_error&quot;</span><span class="p">])</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="c1"># inspect job[&quot;data&quot;], fix the cause, re-enqueue if you want to</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">enqueue</span><span class="p">(</span><span class="s2">&quot;jobs/email&quot;</span><span class="p">,</span> <span class="n">job</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">])</span>
+job back to <code>ready</code> — but not instantly. Istos waits an <strong>exponential backoff</strong>
+before the job is eligible again: <code>retry_backoff_s</code>, then double, then double
+again, capped at <code>retry_backoff_max_s</code>, with a little jitter so a batch of
+simultaneous failures doesn't retry in lockstep. A failing dependency gets a
+breather instead of a tight retry loop.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">app</span><span class="o">.</span><span class="n">queue</span><span class="p">(</span><span class="s2">&quot;jobs/email&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>          <span class="n">max_attempts</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>          <span class="n">retry_backoff_s</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>       <span class="c1"># 1s, 2s, 4s, 8s, … between attempts</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>          <span class="n">retry_backoff_max_s</span><span class="o">=</span><span class="mf">600.0</span><span class="p">)</span> <span class="c1"># never wait more than 10 minutes</span>
+</code></pre></div>
+<p>Once a job has used all <code>max_attempts</code> it is marked <strong>dead</strong> and set aside. Dead
+jobs are never handed out again; they wait for you to look at them:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">dead_letters</span><span class="p">(</span><span class="s2">&quot;jobs/email&quot;</span><span class="p">):</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;gave up on </span><span class="si">%s</span><span class="s2"> after </span><span class="si">%d</span><span class="s2"> tries: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>              <span class="n">job</span><span class="p">[</span><span class="s2">&quot;job_id&quot;</span><span class="p">],</span> <span class="n">job</span><span class="p">[</span><span class="s2">&quot;attempts&quot;</span><span class="p">],</span> <span class="n">job</span><span class="p">[</span><span class="s2">&quot;last_error&quot;</span><span class="p">])</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="c1"># inspect job[&quot;data&quot;], fix the cause, re-enqueue if you want to</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">enqueue</span><span class="p">(</span><span class="s2">&quot;jobs/email&quot;</span><span class="p">,</span> <span class="n">job</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">])</span>
 </code></pre></div>
 <p><code>dead_letters()</code> gives you the decoded job body, its id, how many times it was
 tried, and the last error string. Re-enqueueing is a plain <code>enqueue</code> — the queue
@@ -3625,10 +3934,73 @@ the queue is a decision you should make deliberately.</p>
 </ul>
 <p>Either way the owner is the arbiter, so no coordination between workers is needed
 and no job is claimed twice at the same time.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nd">@app</span><span class="o">.</span><span class="n">worker</span><span class="p">(</span><span class="s2">&quot;jobs/resize&quot;</span><span class="p">,</span> <span class="n">concurrency</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>   <span class="c1"># 8 in-process loops...</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">resize</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="k">await</span> <span class="n">make_thumbnail</span><span class="p">(</span><span class="n">job</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">])</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nd">@app</span><span class="o">.</span><span class="n">worker</span><span class="p">(</span><span class="s2">&quot;jobs/resize&quot;</span><span class="p">,</span> <span class="n">concurrency</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>   <span class="c1"># 8 in-process loops...</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">resize</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="k">await</span> <span class="n">make_thumbnail</span><span class="p">(</span><span class="n">job</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">])</span>
 </code></pre></div>
+<p>Workers don't busy-poll. The owner sends a lightweight nudge when a job arrives,
+so an idle worker wakes and claims immediately instead of waiting for its next
+tick. The <code>poll_interval_s</code> is a safety net — it catches redelivered jobs and jobs
+whose delay has just elapsed, not the normal hot path.</p>
+<h2 id="delaying-and-prioritizing-jobs">Delaying and prioritizing jobs<a class="headerlink" href="#delaying-and-prioritizing-jobs" title="Permanent link">&para;</a></h2>
+<p><code>enqueue</code> takes two knobs. <code>delay_s</code> holds a job back until that many seconds have
+passed — a job with an ETA. <code>priority</code> (higher first) lets urgent work jump the
+line ahead of lower-priority jobs already waiting; within the same priority the
+queue stays FIFO.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">enqueue</span><span class="p">(</span><span class="s2">&quot;jobs/email&quot;</span><span class="p">,</span> <span class="n">welcome</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>          <span class="c1"># send this first</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">enqueue</span><span class="p">(</span><span class="s2">&quot;jobs/email&quot;</span><span class="p">,</span> <span class="n">digest</span><span class="p">,</span> <span class="n">delay_s</span><span class="o">=</span><span class="mi">3600</span><span class="p">)</span>          <span class="c1"># …and this in an hour</span>
+</code></pre></div>
+<h2 id="getting-a-result-back">Getting a result back<a class="headerlink" href="#getting-a-result-back" title="Permanent link">&para;</a></h2>
+<p>By default a queue is fire-and-forget — enqueue, and the job runs somewhere. Turn
+on <code>keep_results</code> and the worker's return value is retained so the producer (or
+anyone) can fetch it by job id:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">app</span><span class="o">.</span><span class="n">queue</span><span class="p">(</span><span class="s2">&quot;jobs/render&quot;</span><span class="p">,</span> <span class="n">keep_results</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">result_ttl_s</span><span class="o">=</span><span class="mi">3600</span><span class="p">)</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="nd">@app</span><span class="o">.</span><span class="n">worker</span><span class="p">(</span><span class="s2">&quot;jobs/render&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="k">await</span> <span class="n">rasterize</span><span class="p">(</span><span class="n">job</span><span class="p">[</span><span class="s2">&quot;doc&quot;</span><span class="p">])}</span>   <span class="c1"># returned value is the result</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">job_id</span> <span class="o">=</span> <span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">enqueue</span><span class="p">(</span><span class="s2">&quot;jobs/render&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;doc&quot;</span><span class="p">:</span> <span class="s2">&quot;…&quot;</span><span class="p">})</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="c1"># …later, from anywhere on the mesh:</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="n">outcome</span> <span class="o">=</span> <span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">result</span><span class="p">(</span><span class="s2">&quot;jobs/render&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="p">)</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1"># {&quot;state&quot;: &quot;done&quot;, &quot;result&quot;: {&quot;url&quot;: &quot;…&quot;}}</span>
+</code></pre></div>
+<p><code>result()</code> reports <code>state</code> — <code>ready</code>/<code>leased</code> while in flight, <code>done</code> when
+finished, <code>dead</code> if it was dead-lettered, <code>unknown</code> once the record ages out after
+<code>result_ttl_s</code>. Results cost memory (and storage), so they're off unless you ask.</p>
+<h2 id="periodic-jobs-intervals-and-cron">Periodic jobs — intervals and cron<a class="headerlink" href="#periodic-jobs-intervals-and-cron" title="Permanent link">&para;</a></h2>
+<p><code>schedule</code> is the "beat" side of the system. Give it a fixed interval or a cron
+expression:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">app</span><span class="o">.</span><span class="n">queue</span><span class="p">(</span><span class="s2">&quot;jobs/report&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">app</span><span class="o">.</span><span class="n">schedule</span><span class="p">(</span><span class="s2">&quot;jobs/report&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;kind&quot;</span><span class="p">:</span> <span class="s2">&quot;hourly&quot;</span><span class="p">},</span> <span class="n">every_s</span><span class="o">=</span><span class="mi">3600</span><span class="p">)</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">app</span><span class="o">.</span><span class="n">schedule</span><span class="p">(</span><span class="s2">&quot;jobs/report&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;kind&quot;</span><span class="p">:</span> <span class="s2">&quot;nightly&quot;</span><span class="p">},</span> <span class="n">cron</span><span class="o">=</span><span class="s2">&quot;0 2 * * *&quot;</span><span class="p">)</span>   <span class="c1"># 02:00 daily</span>
+</code></pre></div>
+<p>Cron uses the five standard fields (minute, hour, day-of-month, month,
+day-of-week) with <code>*</code>, ranges (<code>1-5</code>), steps (<code>*/15</code>) and lists (<code>1,15,30</code>); when
+both day-of-month and day-of-week are set the match is the union, as in Vixie
+cron. It ticks on the node that declares it — run a given schedule on <strong>one</strong> node
+so you don't get duplicate ticks from every replica.</p>
+<h2 id="workflows-chains-groups-and-chords">Workflows: chains, groups and chords<a class="headerlink" href="#workflows-chains-groups-and-chords" title="Permanent link">&para;</a></h2>
+<p>For multi-step work, three composition helpers sit on top of the queue.</p>
+<p><strong>Chain</strong> runs queues in sequence, piping each step's return into the next — a
+pipeline:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># fetch(url) → parse(&lt;fetch result&gt;) → store(&lt;parse result&gt;)</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">chain</span><span class="p">([</span><span class="s2">&quot;jobs/fetch&quot;</span><span class="p">,</span> <span class="s2">&quot;jobs/parse&quot;</span><span class="p">,</span> <span class="s2">&quot;jobs/store&quot;</span><span class="p">],</span> <span class="n">url</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Group</strong> fans a batch onto one queue in parallel and hands back the job ids:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">ids</span> <span class="o">=</span> <span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;jobs/thumbnail&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">img1</span><span class="p">,</span> <span class="n">img2</span><span class="p">,</span> <span class="n">img3</span><span class="p">,</span> <span class="n">img4</span><span class="p">])</span>
+</code></pre></div>
+<p><strong>Chord</strong> is a group with a finish line: when <strong>all</strong> the members succeed, a
+callback fires once with their results collected in order:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># run every shard, then reduce the results</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">chord</span><span class="p">(</span><span class="s2">&quot;jobs/shard&quot;</span><span class="p">,</span> <span class="n">shards</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;jobs/reduce&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;job&quot;</span><span class="p">:</span> <span class="s2">&quot;nightly&quot;</span><span class="p">}))</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1"># jobs/reduce receives {&quot;results&quot;: [...], &quot;input&quot;: {&quot;job&quot;: &quot;nightly&quot;}}</span>
+</code></pre></div>
+<p>The group's queue owner is the barrier, so a chord's members share one queue.
+Continuations are enqueued before the current step is acked, so a crash redelivers
+the whole step — keep steps idempotent, as everywhere else in the queue. A member
+that exhausts its retries and dead-letters will stall its chord; fix and re-enqueue
+it to let the chord finish.</p>
 <h2 id="durability">Durability<a class="headerlink" href="#durability" title="Permanent link">&para;</a></h2>
 <p>The owner keeps the authoritative queue in memory and <strong>writes every change
 through to the app's storage</strong>. With the default in-memory storage that means the
@@ -3636,13 +4008,31 @@ queue is fast but volatile — restart the owner and the jobs are gone. Point th
 app at a durable <a href="../storage/"><code>StoragePlugin</code></a> (Redis or SQLAlchemy) and the queue
 survives an owner restart: on startup the owner reloads its jobs, leases and all,
 and the sweeper reclaims anything that was mid-flight.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span><span class="p">,</span> <span class="n">RedisStoragePlugin</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">app</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="n">RedisStoragePlugin</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;redis://localhost:6379/0&quot;</span><span class="p">))</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">app</span><span class="o">.</span><span class="n">queue</span><span class="p">(</span><span class="s2">&quot;jobs/email&quot;</span><span class="p">)</span>   <span class="c1"># now durable across owner restarts</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">istos</span><span class="w"> </span><span class="kn">import</span> <span class="n">Istos</span><span class="p">,</span> <span class="n">RedisStoragePlugin</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">app</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="n">RedisStoragePlugin</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;redis://localhost:6379/0&quot;</span><span class="p">))</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="n">app</span><span class="o">.</span><span class="n">queue</span><span class="p">(</span><span class="s2">&quot;jobs/email&quot;</span><span class="p">)</span>   <span class="c1"># now durable across owner restarts</span>
 </code></pre></div>
 <p>Nothing else changes — the same <code>queue</code> / <code>worker</code> / <code>enqueue</code> code becomes
 durable purely by giving the app durable storage.</p>
+<p>The queue is built to scale: claiming, enqueueing, acking and nacking are all
+<code>O(log n)</code> in the number of jobs (a set of internal heaps), with no scans of the
+whole queue on the hot path — a deep backlog doesn't slow down the next claim.</p>
+<h2 id="high-availability-owner-failover">High availability: owner failover<a class="headerlink" href="#high-availability-owner-failover" title="Permanent link">&para;</a></h2>
+<p>One owner is a single point for its queue. With <code>ha=True</code> you run several owner
+replicas that elect a single leader over Zenoh liveliness; the leader binds the
+queue and the others stand by. If the leader dies, its liveliness token drops, a
+standby is elected in its place, and it recovers the jobs and keeps serving:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># on every replica — same queue, same shared storage</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="n">app</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="n">RedisStoragePlugin</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;redis://…&quot;</span><span class="p">))</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">app</span><span class="o">.</span><span class="n">queue</span><span class="p">(</span><span class="s2">&quot;jobs/email&quot;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<p>HA needs <strong>shared</strong> storage (Redis/SQLAlchemy) so the new leader can recover the
+in-flight jobs — with the in-memory default each replica is an island. Election is
+leaderless-recovery, not consensus: during the brief handover window two owners
+can momentarily overlap, which (like the rest of the queue) is at-least-once, not
+exactly-once. Producers and workers don't change — they reach whichever replica is
+currently the leader.</p>
 <h2 id="guarantees-plainly">Guarantees, plainly<a class="headerlink" href="#guarantees-plainly" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>At-least-once</strong>, not exactly-once. A job is delivered until it's acked;
@@ -3651,9 +4041,9 @@ durable purely by giving the app durable storage.</p>
   hold the same job concurrently.</li>
 <li><strong>Bounded retries.</strong> A failing job is retried up to <code>max_attempts</code>, then
   dead-lettered — it can't spin forever.</li>
-<li><strong>The owner is a single point for its queue.</strong> That's inherent to work-queue
-  semantics — someone has to track ack state. Give it durable storage so a restart
-  doesn't lose the queue, and run it where you'd run any stateful service.</li>
+<li><strong>The owner tracks ack state</strong>, because someone has to. Give it durable storage
+  so a restart doesn't lose the queue, and run <code>ha=True</code> replicas so a crash fails
+  over to a standby instead of taking the queue down.</li>
 </ul>
 <h2 id="when-to-reach-for-pubsub-instead">When to reach for pub/sub instead<a class="headerlink" href="#when-to-reach-for-pubsub-instead" title="Permanent link">&para;</a></h2>
 <p>If you want <em>every</em> interested party to see a message, that's an event — use

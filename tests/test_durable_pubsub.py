@@ -6,8 +6,8 @@ import asyncio
 import pytest
 import zenoh
 
-from istos.core.publish import publish_wrapper
-from istos.core.subscribe import subscribe_wrapper
+from istos.primitives.publish import publish_wrapper
+from istos.primitives.subscribe import subscribe_wrapper
 from istos.communication.durable import (
     declare_durable_publisher,
     declare_durable_subscriber,

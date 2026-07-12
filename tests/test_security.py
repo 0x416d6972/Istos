@@ -12,7 +12,7 @@ from istos import (
     current_principal,
     current_token,
 )
-from istos.core.authz import check_authorized
+from istos.security.authz import check_authorized
 from istos.messages.serialization import JsonSerializer
 
 

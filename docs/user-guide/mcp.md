@@ -88,4 +88,4 @@ reply = await mcp.handle(
 
 - [HTTP Gateway](http-gateway.md) — probes, SSE, co-host
 - [Capability Discovery](capabilities.md) — broader catalog than MCP
-- [API: MCP](../api/mcp.md)
+- [API: MCP](../api/http/mcp.md)

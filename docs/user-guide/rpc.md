@@ -136,7 +136,7 @@ This is idempotency of *processing*, complementary to the durable *transport* in
 ### `authorizer` — the auth gate
 
 ```python
-from istos.core.authz import TokenAuthorizer
+from istos.security.authz import TokenAuthorizer
 
 @app.handle("admin/reset", authorizer=TokenAuthorizer("s3cret"))
 async def reset(): ...

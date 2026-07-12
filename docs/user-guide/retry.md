@@ -27,7 +27,7 @@ def on_reading(data):
 For fine-grained control, use the `RetryPolicy` class:
 
 ```python
-from istos.core.retry import RetryPolicy
+from istos.retry import RetryPolicy
 
 @istos.query("weather/forecast", retry=RetryPolicy(
     max_retries=10,
@@ -86,4 +86,4 @@ def critical_query(result):
 
 - [Handlers & Queries (RPC)](rpc.md)
 - [Publish & Subscribe](pubsub.md)
-- [API: Retry](../api/core/retry.md)
+- [API: Retry](../api/retry.md)

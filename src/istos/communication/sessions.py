@@ -29,7 +29,7 @@ def _warn_insecure_default() -> None:
     ``warnings`` deduplicates by default, so this effectively fires once per
     process without a hand-rolled flag; users can filter or escalate it.
     """
-    from istos.core.errors import IstosSecurityWarning
+    from istos.errors import IstosSecurityWarning
 
     warnings.warn(_INSECURE_DEFAULT_MSG, IstosSecurityWarning, stacklevel=3)
 
@@ -184,7 +184,7 @@ class IstosZenohConfig(BaseSettings):
 
         self._validate(has_auth, tls_conf)
 
-        from istos.core.errors import IstosSecurityWarning
+        from istos.errors import IstosSecurityWarning
 
         if not has_auth and not tls_conf:
             warnings.warn(

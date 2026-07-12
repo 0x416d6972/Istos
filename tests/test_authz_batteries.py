@@ -16,7 +16,7 @@ from istos import (
     UnauthorizedError,
     require_roles,
 )
-from istos.core.authz import check_authorized, combine_authorizers
+from istos.security.authz import check_authorized, combine_authorizers
 
 jwt = pytest.importorskip("jwt")  # PyJWT (istos[jwt])
 

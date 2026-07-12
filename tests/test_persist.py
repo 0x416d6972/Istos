@@ -16,7 +16,7 @@ from istos.communication.persist import (
     PersistRole,
     parse_store_url,
 )
-from istos.core.subscribe import subscribe_wrapper
+from istos.primitives.subscribe import subscribe_wrapper
 from istos.messages.serialization import JsonSerializer
 
 

@@ -5,7 +5,7 @@ import asyncio
 import pytest
 
 from istos import Istos
-from istos.gateway import parse_http_spec, sse_event
+from istos.http.gateway import parse_http_spec, sse_event
 
 
 # ---------------------------------------------------------------------------

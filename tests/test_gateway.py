@@ -10,7 +10,7 @@ import asyncio
 import pytest
 
 from istos import Istos
-from istos.gateway import (
+from istos.http.gateway import (
     HttpRoute,
     build_selector,
     decode_params,

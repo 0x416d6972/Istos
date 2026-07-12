@@ -2,9 +2,9 @@
 
 import pytest
 from istos import Istos, IstosError, IstosTestClient
-from istos.core.errors import ErrorResponse
-from istos.core.validation import SchemaValidationError
-from istos.health import HealthState
+from istos.errors import ErrorResponse
+from istos.validation import SchemaValidationError
+from istos.http.health import HealthState
 from istos.observability.metrics import MetricsCollector, PrometheusMiddleware
 from istos.middleware.base import MiddlewareStack
 

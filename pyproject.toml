@@ -130,6 +130,6 @@ src = ["src", "tests"]
 # stays off by default — the codebase favors readable long lines.
 [tool.ruff.lint.per-file-ignores]
 # Guarded `import` used only to test dependency availability (HAS_PYDANTIC pattern).
-"src/istos/core/asyncapi.py" = ["F401"]
-"src/istos/core/validation.py" = ["F401"]
-"src/istos/core/handler.py" = ["F401"]
+"src/istos/discovery/asyncapi.py" = ["F401"]
+"src/istos/validation.py" = ["F401"]
+"src/istos/primitives/handler.py" = ["F401"]

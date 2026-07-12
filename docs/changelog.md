@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `@channel(durable=True)` + `SessionStore` — resumable conversations over the app storage ledger
 - HTTP gateway (`http_port`) for `@handle(..., http=…)` and `@stream(..., http=…)` (SSE)
 - `Istos(enable_mcp=True)` — MCP JSON-RPC tools from `@handle` endpoints (`/mcp`; batch + 202 notifications)
-- `istos.asgi.lifespan` / `Istos.serving(serve_http=…)` — co-host the mesh inside FastAPI/Starlette
+- `istos.http.asgi.lifespan` / `Istos.serving(serve_http=…)` — co-host the mesh inside FastAPI/Starlette
 - `GET /livez`, `/readyz`, `/metrics` when `http_port` is set
 - `.istos/capabilities` + `export_capabilities()` (includes `channel` + optional `websocket`)
 - AsyncAPI / `serve_docs()` includes `@stream` and `@channel`
@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `authorizer=` on subscribers
 - `token=` on `@query`, `query_once`, `publish_once`, `stream_query`, `open_channel`
 - `@publish(persist="s3://…")` / `app.persist(...)` / `app.replay(...)` (`istos[s3]`)
-- Work queues — `app.queue(...)` owner, `@app.worker(...)` competing consumers, `app.enqueue(...)`, `app.dead_letters(...)` (lease-based redelivery + dead-letter; durable via the storage plugin)
+- Work queues — `app.queue(...)` owner, `@app.worker(...)` competing consumers, `app.enqueue(...)`, `app.dead_letters(...)`. Lease-based redelivery, exponential-backoff retries, dead-letter, delayed jobs (`delay_s`) + priorities, result backend (`keep_results` / `app.result(...)`), periodic scheduling (`app.schedule(...)`, interval or `cron=`), workflows (`app.chain` / `app.group` / `app.chord`), owner failover (`ha=True`, liveliness leader election), O(log n) heap store, push-nudge delivery; durable via the storage plugin
 - `RateLimitMiddleware` — token-bucket rate limits
 - Middleware wraps `@handle`, `@stream`, `@channel`, `@subscribe` (stream/channel once per session)
 - Structured logging (`log_level`, `json_logs`)

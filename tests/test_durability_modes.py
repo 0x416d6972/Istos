@@ -2,7 +2,7 @@
 
 import pytest
 
-from istos.core.handler import handler_wrapper
+from istos.primitives.handler import handler_wrapper
 from istos.consistency.storage import Durability, InMemoryStoragePlugin
 from istos.messages.serialization import JsonSerializer
 

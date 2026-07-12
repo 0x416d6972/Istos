@@ -111,24 +111,24 @@ Other guides: [capabilities](user-guide/capabilities.md), [liveliness](user-guid
 
 | Feature | Guide | API |
 |---------|-------|-----|
-| `@handle` / `@query` | [RPC](user-guide/rpc.md) | [Handler](api/core/handler.md), [Query](api/core/query.md) |
-| `@stream` | [RPC](user-guide/rpc.md), [HTTP](user-guide/http-gateway.md) | [Stream](api/core/stream.md) |
-| `@channel` / `open_channel` | [Channels](user-guide/channels.md) | [Channel](api/core/channel.md) |
-| `@publish` / `@subscribe` | [Pub/Sub](user-guide/pubsub.md) | [Publish](api/core/publish.md), [Subscribe](api/core/subscribe.md) |
+| `@handle` / `@query` | [RPC](user-guide/rpc.md) | [Handler](api/primitives/handler.md), [Query](api/primitives/query.md) |
+| `@stream` | [RPC](user-guide/rpc.md), [HTTP](user-guide/http-gateway.md) | [Stream](api/primitives/stream.md) |
+| `@channel` / `open_channel` | [Channels](user-guide/channels.md) | [Channel](api/primitives/channel.md) |
+| `@publish` / `@subscribe` | [Pub/Sub](user-guide/pubsub.md) | [Publish](api/primitives/publish.md), [Subscribe](api/primitives/subscribe.md) |
 | Durable + S3 persist / `replay()` | [Durable messaging](user-guide/durable-messaging.md) | [Durable](api/communication/durable.md), [Persist](api/communication/persist.md) |
-| Liveliness | [Liveliness](user-guide/liveliness.md) | [Liveliness](api/core/liveliness.md) |
+| Liveliness | [Liveliness](user-guide/liveliness.md) | [Liveliness](api/primitives/liveliness.md) |
 | Capabilities | [Capabilities](user-guide/capabilities.md) | [Istos](api/istos.md) |
-| HTTP / SSE / WS / MCP / ASGI | [HTTP Gateway](user-guide/http-gateway.md), [MCP](user-guide/mcp.md) | [Istos](api/istos.md), [ASGI](api/asgi.md), [MCP](api/mcp.md) |
-| Validation | [Validation](user-guide/validation.md) | [Validation](api/core/validation.md) |
-| Retry | [Retry](user-guide/retry.md) | [Retry](api/core/retry.md) |
-| TLS / authz | [Security](user-guide/security.md), [Authorization](user-guide/authorization.md) | [Config](api/communication/config.md), [Authz](api/core/authz.md) |
+| HTTP / SSE / WS / MCP / ASGI | [HTTP Gateway](user-guide/http-gateway.md), [MCP](user-guide/mcp.md) | [Istos](api/istos.md), [ASGI](api/http/asgi.md), [MCP](api/http/mcp.md) |
+| Validation | [Validation](user-guide/validation.md) | [Validation](api/validation.md) |
+| Retry | [Retry](user-guide/retry.md) | [Retry](api/retry.md) |
+| TLS / authz | [Security](user-guide/security.md), [Authorization](user-guide/authorization.md) | [Config](api/communication/config.md), [Authz](api/security/authz.md) |
 | `Depends` | [DI](user-guide/dependency-injection.md) | [Depends](api/di/depends.md) |
-| Middleware / errors | [Middleware](user-guide/middleware.md) | [Middleware](api/middleware/base.md), [Errors](api/core/errors.md) |
-| Health / metrics / OTel | [Observability](user-guide/observability.md) | [Health](api/health.md), [Metrics](api/observability/metrics.md), [Tracing](api/observability/tracing.md) |
+| Middleware / errors | [Middleware](user-guide/middleware.md) | [Middleware](api/middleware/base.md), [Errors](api/errors.md) |
+| Health / metrics / OTel | [Observability](user-guide/observability.md) | [Health](api/http/health.md), [Metrics](api/observability/metrics.md), [Tracing](api/observability/tracing.md) |
 | Storage plugins | [Storage](user-guide/storage.md) | [Storage](api/consistency/storage.md) |
 | App databases | [Application DBs](user-guide/application-databases.md) | [Databases](api/consistency/databases.md) |
 | Serialization | [DI](user-guide/dependency-injection.md) | [Serialization](api/messages/serialization.md) |
-| AsyncAPI | Getting Started | [AsyncAPI](api/core/asyncapi.md) |
+| AsyncAPI | Getting Started | [AsyncAPI](api/discovery/asyncapi.md) |
 | Routers | [DI](user-guide/dependency-injection.md) | [IstosRouter](api/router.md) |
 | Test client | [Testing](user-guide/testing.md) | [TestClient](api/testing/testclient.md) |
 | CLI | [CLI](user-guide/cli.md) | [CLI](api/cli.md) |
@@ -175,10 +175,10 @@ More: [Deployment](user-guide/deployment.md) · [Security](user-guide/security.m
 ## API index
 
 - **App:** [Istos](api/istos.md) · [Router](api/router.md) · [TestClient](api/testing/testclient.md) · [CLI](api/cli.md)
-- **Core:** [Handler](api/core/handler.md) · [Query](api/core/query.md) · [Stream](api/core/stream.md) · [Channel](api/core/channel.md) · [Publish](api/core/publish.md) · [Subscribe](api/core/subscribe.md) · [Liveliness](api/core/liveliness.md) · [Retry](api/core/retry.md) · [Validation](api/core/validation.md) · [AsyncAPI](api/core/asyncapi.md) · [Authz](api/core/authz.md) · [Errors](api/core/errors.md) · [SessionStore](api/core/session_store.md)
+- **Core:** [Handler](api/primitives/handler.md) · [Query](api/primitives/query.md) · [Stream](api/primitives/stream.md) · [Channel](api/primitives/channel.md) · [Publish](api/primitives/publish.md) · [Subscribe](api/primitives/subscribe.md) · [Liveliness](api/primitives/liveliness.md) · [Retry](api/retry.md) · [Validation](api/validation.md) · [AsyncAPI](api/discovery/asyncapi.md) · [Authz](api/security/authz.md) · [Errors](api/errors.md) · [SessionStore](api/primitives/session_store.md)
 - **Communication:** [Sessions](api/communication/sessions.md) · [Config](api/communication/config.md) · [Durable](api/communication/durable.md) · [Persist](api/communication/persist.md)
 - **Consistency:** [Storage](api/consistency/storage.md) · [Redis](api/consistency/redis_storage.md) · [SQLAlchemy](api/consistency/sqlalchemy_storage.md) · [DB Config](api/consistency/config.md) · [Registry](api/consistency/databases.md)
-- **Other:** [Serialization](api/messages/serialization.md) · [Depends](api/di/depends.md) · [Middleware](api/middleware/base.md) · [Context](api/context.md) · [Health](api/health.md) · [Logging](api/logging.md) · [Metrics](api/observability/metrics.md) · [Tracing](api/observability/tracing.md) · [ASGI](api/asgi.md) · [MCP](api/mcp.md) · [Gateway](api/gateway.md)
+- **Other:** [Serialization](api/messages/serialization.md) · [Depends](api/di/depends.md) · [Middleware](api/middleware/base.md) · [Context](api/context.md) · [Health](api/http/health.md) · [Logging](api/logging.md) · [Metrics](api/observability/metrics.md) · [Tracing](api/observability/tracing.md) · [ASGI](api/http/asgi.md) · [MCP](api/http/mcp.md) · [Gateway](api/http/gateway.md)
 
 ## Links
 

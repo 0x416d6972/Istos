@@ -39,7 +39,7 @@ if __name__ == "__main__":
 # gateway.py
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from istos import Istos
-from istos.asgi import lifespan
+from istos.http.asgi import lifespan
 from istos.communication.config import IstosZenohConfig
 
 mesh = Istos(

@@ -8,9 +8,9 @@ from typing import Any, AsyncIterator, List, Optional
 
 from istos.app import Istos
 from istos.context import RequestContext, RequestEnvelope, set_request_context
-from istos.core.authz import AuthContext, check_authorized
-from istos.core.channel import ChannelClosed, ChannelSession
-from istos.core.validation import validate_params
+from istos.security.authz import AuthContext, check_authorized
+from istos.primitives.channel import ChannelClosed, ChannelSession
+from istos.validation import validate_params
 from istos.di.depends import resolve_dependencies
 
 

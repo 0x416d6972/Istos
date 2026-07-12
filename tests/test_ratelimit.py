@@ -5,7 +5,7 @@ import asyncio
 import pytest
 
 from istos.context import RequestContext
-from istos.core.errors import RateLimitError
+from istos.errors import RateLimitError
 from istos.middleware import RateLimitMiddleware
 from istos.middleware.base import RequestScope
 

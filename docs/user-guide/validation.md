@@ -46,7 +46,7 @@ Istos validates and coerces parameters at the **network boundary** — before yo
 | `@subscribe` | Published payload (when typed) |
 | `@query` / `@publish` | Return processing as configured; outbound kwargs build selectors |
 
-Return-type annotations can also drive response validation when configured via the handler wrapper (see [Validation API](../api/core/validation.md)).
+Return-type annotations can also drive response validation when configured via the handler wrapper (see [Validation API](../api/validation.md)).
 
 ## Errors on the wire
 
@@ -54,10 +54,10 @@ Validation failures become a standardized error response (`code`, `message`, `co
 
 ## AsyncAPI schemas
 
-Type hints and Pydantic models feed the [AsyncAPI](../api/core/asyncapi.md) generator used by `export_asyncapi()` / `serve_docs()`.
+Type hints and Pydantic models feed the [AsyncAPI](../api/discovery/asyncapi.md) generator used by `export_asyncapi()` / `serve_docs()`.
 
 ## Next Steps
 
 - [Handlers & Queries (RPC)](rpc.md)
 - [Dependency Injection](dependency-injection.md)
-- [API: Validation](../api/core/validation.md)
+- [API: Validation](../api/validation.md)

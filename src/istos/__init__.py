@@ -1,6 +1,6 @@
 from .app import Istos
 from .routing import IstosRouter
-from .core.errors import (
+from .errors import (
     IstosError,
     IstosSecurityWarning,
     IstosSecurityError,
@@ -11,7 +11,7 @@ from .core.errors import (
     ErrorResponse,
     exception_handler,
 )
-from .core.authz import (
+from .security.authz import (
     Authorizer,
     AuthContext,
     Principal,
@@ -21,11 +21,11 @@ from .core.authz import (
     Public,
 )
 from .communication.persist import ObjectStore, InMemoryObjectStore, S3ObjectStore, PersistRole, ReplayEvent
-from .core.channel import ChannelSession, ChannelClosed
-from .core.channel_fabric import ChannelClient
-from .core.session_store import SessionStore
-from .core.queue import QueueStore, QueueRole, JobState, JobRecord
-from .mcp import MCPServer
+from .primitives.channel import ChannelSession, ChannelClosed
+from .primitives.channel_fabric import ChannelClient
+from .primitives.session_store import SessionStore
+from .queue import QueueStore, QueueRole, JobState, JobRecord
+from .http.mcp import MCPServer
 from .di import Depends, DependencyCycleError, current_principal, current_request, current_token
 from .logging import configure_logging, get_logger
 from .testing import IstosTestClient

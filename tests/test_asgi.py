@@ -3,7 +3,7 @@
 import pytest
 
 from istos import Istos
-from istos.asgi import lifespan
+from istos.http.asgi import lifespan
 
 
 def _mesh() -> Istos:

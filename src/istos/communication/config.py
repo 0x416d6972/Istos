@@ -115,7 +115,7 @@ class IstosZenohConfig(BaseSettings):
             )
 
         # Developer-facing security warnings, emitted once at construction.
-        from istos.core.errors import IstosSecurityWarning
+        from istos.errors import IstosSecurityWarning
 
         has_auth = bool(self.username and self.password is not None)
         has_tls = any([

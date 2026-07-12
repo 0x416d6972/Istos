@@ -9,7 +9,7 @@ import asyncio
 import pytest
 
 from istos import Istos, IstosError
-from istos.core.stream import stream_wrapper
+from istos.primitives.stream import stream_wrapper
 from istos.messages.serialization import JsonSerializer
 
 

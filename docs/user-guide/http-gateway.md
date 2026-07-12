@@ -113,7 +113,7 @@ async def move_robot(token: str):
 
 The gateway above is one process talking to another. For an API gateway that
 *is* the mesh, run Istos inside the FastAPI process and let FastAPI own the HTTP
-port. `istos.asgi.lifespan` opens the Zenoh session on startup and closes it on
+port. `istos.http.asgi.lifespan` opens the Zenoh session on startup and closes it on
 shutdown; your routes then reach the whole mesh in-process — no sidecar, no
 second port:
 
@@ -121,7 +121,7 @@ second port:
 from fastapi import FastAPI
 from istos import Istos
 from istos.communication.config import IstosZenohConfig
-from istos.asgi import lifespan
+from istos.http.asgi import lifespan
 
 mesh = Istos(
     config=IstosZenohConfig(

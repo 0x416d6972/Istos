@@ -88,4 +88,4 @@ def track_services(key_expr: str, is_alive: bool):
 
 - [Observability](observability.md) — `.istos/health` / `.istos/ready`
 - [Security & TLS](security.md)
-- [API: Liveliness](../api/core/liveliness.md)
+- [API: Liveliness](../api/primitives/liveliness.md)

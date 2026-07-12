@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock
 from pydantic import BaseModel
-from istos.core.validation import validate_params, SchemaValidationError
+from istos.validation import validate_params, SchemaValidationError
 
 
 # ------------------------------------------------------------------

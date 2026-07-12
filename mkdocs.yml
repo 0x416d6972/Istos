@@ -107,24 +107,28 @@ nav:
     - IstosRouter: api/router.md
     - TestClient: api/testing/testclient.md
     - CLI: api/cli.md
-    - ASGI: api/asgi.md
-    - MCP: api/mcp.md
-    - Gateway: api/gateway.md
-    - Core:
-      - Handler: api/core/handler.md
-      - Query: api/core/query.md
-      - Stream: api/core/stream.md
-      - Channel: api/core/channel.md
-      - SessionStore: api/core/session_store.md
-      - Work Queue: api/core/queue.md
-      - Publish: api/core/publish.md
-      - Subscribe: api/core/subscribe.md
-      - Liveliness: api/core/liveliness.md
-      - Retry Policy: api/core/retry.md
-      - Validation: api/core/validation.md
-      - AsyncAPI Generator: api/core/asyncapi.md
-      - Authorization: api/core/authz.md
-      - Errors: api/core/errors.md
+    - Errors: api/errors.md
+    - Retry Policy: api/retry.md
+    - Validation: api/validation.md
+    - Primitives:
+      - Handler: api/primitives/handler.md
+      - Query: api/primitives/query.md
+      - Stream: api/primitives/stream.md
+      - Channel: api/primitives/channel.md
+      - SessionStore: api/primitives/session_store.md
+      - Publish: api/primitives/publish.md
+      - Subscribe: api/primitives/subscribe.md
+      - Liveliness: api/primitives/liveliness.md
+    - Work Queue: api/queue/index.md
+    - Security:
+      - Authorization: api/security/authz.md
+    - Discovery:
+      - AsyncAPI Generator: api/discovery/asyncapi.md
+    - HTTP:
+      - Gateway: api/http/gateway.md
+      - ASGI: api/http/asgi.md
+      - MCP: api/http/mcp.md
+      - Health: api/http/health.md
     - Communication:
       - Sessions: api/communication/sessions.md
       - Zenoh Config: api/communication/config.md
@@ -143,7 +147,6 @@ nav:
     - Middleware: api/middleware/base.md
     - RateLimitMiddleware: api/middleware/ratelimit.md
     - Context: api/context.md
-    - Health: api/health.md
     - Logging: api/logging.md
     - Observability:
       - Metrics: api/observability/metrics.md

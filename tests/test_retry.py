@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from istos.core.retry import RetryPolicy, execute_with_retry
+from istos.retry import RetryPolicy, execute_with_retry
 
 
 # ------------------------------------------------------------------

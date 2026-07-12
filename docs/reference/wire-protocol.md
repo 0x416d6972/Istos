@@ -284,4 +284,4 @@ Payloads are the channel serializer's bytes (JSON UTF-8 by default). Closing:
 drop the liveliness token / unsubscribe; the peer's `receive` / `async for`
 ends with a closed session.
 
-Wire details and Python helpers live in `istos.core.channel_fabric`.
+Wire details and Python helpers live in `istos.primitives.channel_fabric`.

@@ -9,7 +9,7 @@ import asyncio
 import time
 from typing import Callable, Dict, Optional, Tuple
 
-from istos.core.errors import RateLimitError
+from istos.errors import RateLimitError
 from istos.middleware.base import HandlerCallable, RequestScope
 
 
