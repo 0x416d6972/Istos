@@ -53,20 +53,37 @@ class ChannelSession:
         principal: Any = None,
         correlation_id: Optional[str] = None,
         attachment: Optional[bytes] = None,
+        store: Any = None,
+        conversation_id: Optional[str] = None,
     ) -> None:
         self._serializer = serializer
         self._send = send_sink
         self.principal = principal
         self.correlation_id = correlation_id
         self.attachment = attachment
+        self._store = store
+        self._conversation_id = conversation_id
         self._inbound: asyncio.Queue = asyncio.Queue()
         self._closed = False
+
+    @property
+    def conversation_id(self) -> Optional[str]:
+        return self._conversation_id
+
+    async def history(self, limit: int = 1000) -> list:
+        """Prior messages for this conversation, oldest-first. Empty unless the
+        channel is durable (``@channel(durable=True)``)."""
+        if self._store is None or self._conversation_id is None:
+            return []
+        return list(await self._store.history(self._conversation_id, limit=limit))
 
     async def send(self, data: Any) -> None:
         """Push a message to the peer."""
         if self._closed:
             raise ChannelClosed("channel is closed")
         await self._send(self._serializer.serialize(data))
+        if self._store is not None and self._conversation_id is not None:
+            await self._store.append(self._conversation_id, "out", data)
 
     async def receive(self) -> Any:
         """Wait for the next message from the peer, or raise ChannelClosed."""
@@ -74,7 +91,10 @@ class ChannelSession:
         if item is _CLOSE:
             self._inbound.put_nowait(_CLOSE)  # keep every later receive() closed too
             raise ChannelClosed()
-        return self._serializer.deserialize(item)
+        data = self._serializer.deserialize(item)
+        if self._store is not None and self._conversation_id is not None:
+            await self._store.append(self._conversation_id, "in", data)
+        return data
 
     def __aiter__(self) -> "ChannelSession":
         return self
@@ -115,6 +135,8 @@ class channel_wrapper:
         authorizer: Optional[Authorizer] = None,
         exception_registry: Optional[ExceptionHandlerRegistry] = None,
         dependency_overrides: Optional[dict] = None,
+        durable: bool = False,
+        session_store: Any = None,
     ) -> None:
         if not inspect.iscoroutinefunction(func):
             raise TypeError(
@@ -124,6 +146,8 @@ class channel_wrapper:
         self.func = func
         self.prefix = prefix
         self.serializer = serializer
+        self.durable = durable
+        self.session_store = session_store if durable else None
         self._authorizer = authorizer
         self._exception_registry = exception_registry or get_default_registry()
         self._logger = get_logger("channel")

@@ -45,10 +45,12 @@ class ChannelClient:
         sid: str,
         serializer: Serialize,
         loop: asyncio.AbstractEventLoop,
+        conversation_id: Optional[str] = None,
     ) -> None:
         self._session = session
         self._serializer = serializer
         self._loop = loop
+        self.conversation_id = conversation_id
         self._up_key = f"{prefix}/{sid}/up"
         self._down_key = f"{prefix}/{sid}/down"
         self._live_key = f"{prefix}/{sid}"
@@ -170,6 +172,7 @@ class FabricChannelServer:
             query.reply(key, self._serializer.serialize(reply))
 
     async def _open(self, sid: str, attachment: Optional[bytes], params: dict) -> dict:
+        conversation_id = params.pop("conversation_id", None)
         try:
             principal = await self._wrapper.authorize(attachment, params)
         except UnauthorizedError as e:
@@ -181,7 +184,8 @@ class FabricChannelServer:
             await asyncio.to_thread(self._session.put, down_key, raw)
 
         chan = ChannelSession(
-            self._serializer, sink, principal=principal, attachment=attachment
+            self._serializer, sink, principal=principal, attachment=attachment,
+            store=self._wrapper.session_store, conversation_id=conversation_id,
         )
 
         def up_cb(sample: zenoh.Sample) -> None:

@@ -203,6 +203,29 @@ traffic when the node is actually ready. Register custom readiness checks with
 (request counts and latency histograms via the `PrometheusMiddleware`). Scrape it
 directly — no extra dependency required.
 
+## MCP tools
+
+`Istos(enable_mcp=True)` serves the node's `@handle` endpoints as
+[Model Context Protocol](https://modelcontextprotocol.io) tools, so an LLM client
+can discover and call them. It's a JSON-RPC endpoint at `/mcp` (change with
+`mcp_path=`) on the same HTTP surface:
+
+```python
+app = Istos(http_port=8080, enable_mcp=True, authorizer=jwt)
+
+@app.handle("math/add")
+async def add(a: int, b: int) -> int:
+    """Add two integers."""
+    return a + b
+```
+
+`tools/list` builds each tool from the handler's name, docstring and parameter
+schema (`math/add` → tool `math-add`); `tools/call` routes to the handler through
+the mesh via `query_once`, forwarding the `Authorization` bearer token so the
+authorizer still runs. Plumbing endpoints (`.istos/*`) are hidden. The tool
+result is the handler's reply as text content, with `isError` set when the reply
+is an error envelope.
+
 ## Next steps
 
 - [Authorization](authorization.md) — the gate the gateway forwards tokens to

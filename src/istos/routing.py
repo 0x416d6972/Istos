@@ -85,12 +85,12 @@ class IstosRouter:
             return proxy
         return decorator
 
-    def channel(self, prefix: str, serializer: Optional[Serialize] = None, authorizer: Optional[Authorizer] = None, ws: Optional[Union[bool, str]] = None) -> Callable:
+    def channel(self, prefix: str, serializer: Optional[Serialize] = None, authorizer: Optional[Authorizer] = None, ws: Optional[Union[bool, str]] = None, durable: bool = False) -> Callable:
         full_prefix = self._apply_prefix(prefix)
         def decorator(func: Callable) -> Callable:
             proxy = RouterProxy(func.__name__)
             def action(app: "Istos"):
-                proxy._real_wrapper = app.channel(full_prefix, serializer=serializer, authorizer=authorizer, ws=ws)(func)
+                proxy._real_wrapper = app.channel(full_prefix, serializer=serializer, authorizer=authorizer, ws=ws, durable=durable)(func)
             self._actions.append(action)
             return proxy
         return decorator

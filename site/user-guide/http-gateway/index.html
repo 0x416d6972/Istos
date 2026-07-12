@@ -816,6 +816,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mcp-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP tools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3184,6 +3195,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mcp-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP tools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3395,6 +3417,24 @@ traffic when the node is actually ready. Register custom readiness checks with
 <p><code>GET /metrics</code> returns the built-in <code>MetricsCollector</code> in Prometheus text format
 (request counts and latency histograms via the <code>PrometheusMiddleware</code>). Scrape it
 directly — no extra dependency required.</p>
+<h2 id="mcp-tools">MCP tools<a class="headerlink" href="#mcp-tools" title="Permanent link">&para;</a></h2>
+<p><code>Istos(enable_mcp=True)</code> serves the node's <code>@handle</code> endpoints as
+<a href="https://modelcontextprotocol.io">Model Context Protocol</a> tools, so an LLM client
+can discover and call them. It's a JSON-RPC endpoint at <code>/mcp</code> (change with
+<code>mcp_path=</code>) on the same HTTP surface:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">app</span> <span class="o">=</span> <span class="n">Istos</span><span class="p">(</span><span class="n">http_port</span><span class="o">=</span><span class="mi">8080</span><span class="p">,</span> <span class="n">enable_mcp</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">authorizer</span><span class="o">=</span><span class="n">jwt</span><span class="p">)</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nd">@app</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="s2">&quot;math/add&quot;</span><span class="p">)</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add two integers.&quot;&quot;&quot;</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+</code></pre></div>
+<p><code>tools/list</code> builds each tool from the handler's name, docstring and parameter
+schema (<code>math/add</code> → tool <code>math-add</code>); <code>tools/call</code> routes to the handler through
+the mesh via <code>query_once</code>, forwarding the <code>Authorization</code> bearer token so the
+authorizer still runs. Plumbing endpoints (<code>.istos/*</code>) are hidden. The tool
+result is the handler's reply as text content, with <code>isError</code> set when the reply
+is an error envelope.</p>
 <h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../authorization/">Authorization</a> — the gate the gateway forwards tokens to</li>

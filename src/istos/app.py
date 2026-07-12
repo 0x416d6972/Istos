@@ -24,6 +24,7 @@ from istos.core.stream import stream_wrapper
 from istos.core.channel import ChannelSession, channel_wrapper
 from istos.core.channel_fabric import ChannelClient, FabricChannelServer
 from istos.core.client_decorators import stream_client_wrapper, channel_client_wrapper
+from istos.core.session_store import SessionStore
 from istos.core.liveliness import liveliness_wrapper
 from istos.core.retry import RetryPolicy
 from istos.core.asyncapi import AsyncApiGenerator, get_asyncapi_ui_html
@@ -97,6 +98,8 @@ class Istos:
         require_auth: bool = False,
         configure_logging: Optional[bool] = None,
         http_port: Optional[int] = None,
+        enable_mcp: bool = False,
+        mcp_path: str = "/mcp",
     ):
         # configure_logging=True installs now; None defers to run(); False = never.
         self._log_level = log_level
@@ -201,6 +204,8 @@ class Istos:
         self._channels: List[channel_wrapper] = []
         self._ws_channel_routes: List[tuple] = []
         self._channel_servers: List[FabricChannelServer] = []
+        self._enable_mcp = enable_mcp
+        self._mcp_path = mcp_path
 
     def _get_or_init_shm(self) -> Any:
         if self._shm_provider is None:
@@ -397,6 +402,7 @@ class Istos:
         serializer: Optional[Serialize] = None,
         authorizer: Optional[Authorizer] = None,
         ws: Optional[Union[bool, str]] = None,
+        durable: bool = False,
     ) -> Callable:
         """
         Decorator for a **bidirectional** handler — a full-duplex session for
@@ -413,6 +419,11 @@ class Istos:
         HTTP surface (needs ``Istos(http_port=...)``); the ``Authorization`` header
         and trace headers from the handshake feed the usual authorizer/envelope.
         Auth, validation and DI work like ``@handle``.
+
+        ``durable=True`` persists every message to a conversation log (over the
+        app's storage), so a session resumes after a disconnect: the caller
+        reconnects with the same ``conversation_id`` and the handler reads prior
+        turns with ``await session.history()``.
         """
         def decorator(func: Callable) -> channel_wrapper:
             wrapper = channel_wrapper(
@@ -420,6 +431,7 @@ class Istos:
                 authorizer=combine_authorizers(self._authorizer, authorizer),
                 exception_registry=self._exception_registry,
                 dependency_overrides=self.dependency_overrides,
+                durable=durable, session_store=SessionStore(self._storage),
             )
             self._channels.append(wrapper)
             if ws is not None:
@@ -523,6 +535,7 @@ class Istos:
         prefix: str,
         *,
         token: Optional[Union[bytes, str]] = None,
+        conversation_id: Optional[str] = None,
         timeout_s: float = 5.0,
         serializer: Optional[Serialize] = None,
         **params: Any,
@@ -538,6 +551,10 @@ class Istos:
 
         Runs the open handshake (authorized via ``token``), then keeps the session
         alive with a liveliness token until you ``close()`` (or the process exits).
+
+        For a durable channel, pass a ``conversation_id`` to resume an earlier
+        conversation (one is generated otherwise and set on the returned client);
+        the handler then sees prior turns via ``session.history()``.
         """
         session = self._session_manager.session
         if session is None:
@@ -546,6 +563,7 @@ class Istos:
             )
         serializer = serializer or JsonSerializer()
         sid = uuid.uuid4().hex
+        conversation_id = conversation_id or uuid.uuid4().hex
         loop = asyncio.get_running_loop()
 
         tok = None
@@ -558,11 +576,13 @@ class Istos:
             traceparent=ctx.traceparent if ctx else None,
         ).to_attachment()
 
-        client = ChannelClient(session, prefix, sid, serializer, loop)
+        client = ChannelClient(session, prefix, sid, serializer, loop, conversation_id)
         # Subscribe to the down channel before opening so no early reply is lost.
         client._subscribe_down()
 
-        selector = build_selector(f"{prefix}/{sid}/open", params)
+        open_params = dict(params)
+        open_params["conversation_id"] = conversation_id
+        selector = build_selector(f"{prefix}/{sid}/open", open_params)
 
         def _open() -> Optional[bytes]:
             kwargs: dict = {"timeout": timeout_s}
@@ -1155,6 +1175,10 @@ class Istos:
         for path, wrapper in self._ws_channel_routes:
             app.router.add_get(path, self._make_ws_channel_handler(wrapper))
 
+        # MCP endpoint: @handle tools over JSON-RPC.
+        if self._enable_mcp:
+            app.router.add_post(self._mcp_path, self._make_mcp_handler())
+
         if self._docs_prefix is not None:
             html = get_asyncapi_ui_html(title="Istos Network Docs", schema_url="/asyncapi.yaml")
 
@@ -1362,6 +1386,9 @@ class Istos:
                 traceparent=request.headers.get("traceparent"),
             ).to_attachment()
             params = decode_params(dict(request.query))
+            conversation_id = params.pop("conversation_id", None)
+            if wrapper.durable and conversation_id is None:
+                conversation_id = uuid.uuid4().hex
 
             async def sink(raw: bytes) -> None:
                 # Prefer text frames (browser-friendly JSON); fall back to binary.
@@ -1370,7 +1397,10 @@ class Istos:
                 except UnicodeDecodeError:
                     await ws.send_bytes(raw)
 
-            session = ChannelSession(wrapper.serializer, sink, attachment=attachment)
+            session = ChannelSession(
+                wrapper.serializer, sink, attachment=attachment,
+                store=wrapper.session_store, conversation_id=conversation_id,
+            )
 
             async def pump_inbound() -> None:
                 async for msg in ws:
@@ -1403,6 +1433,34 @@ class Istos:
                 with contextlib.suppress(Exception):
                     await ws.close()
             return ws
+
+        return _handler
+
+    def _make_mcp_handler(self) -> Any:
+        """aiohttp POST handler speaking MCP JSON-RPC over the mesh's tools."""
+        from aiohttp import web
+
+        from istos.mcp import MCPServer
+
+        server = MCPServer(self)
+
+        async def _handler(request: web.Request) -> web.StreamResponse:
+            token = extract_bearer(request.headers.get("Authorization"))
+            try:
+                body = await request.json()
+            except Exception:
+                return web.json_response(
+                    {"jsonrpc": "2.0", "id": None,
+                     "error": {"code": -32700, "message": "Parse error"}},
+                    status=400,
+                )
+            if isinstance(body, list):
+                out = [r for m in body if (r := await server.handle(m, token=token)) is not None]
+                return web.json_response(out)
+            resp = await server.handle(body, token=token)
+            if resp is None:
+                return web.Response(status=202)
+            return web.json_response(resp)
 
         return _handler
 
@@ -1449,8 +1507,11 @@ class Istos:
         """
         from istos.core.asyncapi import get_function_schemas
 
-        def _describe(prefix: str, kind: str, func: Callable, skip: Optional[set] = None) -> dict:
-            schemas = get_function_schemas(func, skip_params=skip)
+        def _describe(prefix: str, kind: str, func: Callable) -> dict:
+            try:
+                schemas = get_function_schemas(func)
+            except Exception:
+                schemas = {}
             entry: dict = {
                 "prefix": prefix,
                 "kind": kind,
@@ -1470,7 +1531,7 @@ class Istos:
         for s in self._streams:
             capabilities.append(_describe(s.prefix, "stream", s.func))
         for c in self._channels:
-            entry = _describe(c.prefix, "channel", c.func, skip=c._injected_params)
+            entry = _describe(c.prefix, "channel", c.func)
             ws_path = next((p for p, w in self._ws_channel_routes if w is c), None)
             if ws_path is not None:
                 entry["websocket"] = ws_path

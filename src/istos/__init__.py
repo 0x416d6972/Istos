@@ -23,6 +23,8 @@ from .core.authz import (
 from .communication.persist import ObjectStore, InMemoryObjectStore, S3ObjectStore, PersistRole
 from .core.channel import ChannelSession, ChannelClosed
 from .core.channel_fabric import ChannelClient
+from .core.session_store import SessionStore
+from .mcp import MCPServer
 from .di import Depends, DependencyCycleError, current_principal, current_request, current_token
 from .logging import configure_logging, get_logger
 from .testing import IstosTestClient
@@ -54,6 +56,8 @@ __all__ = [
     "ChannelSession",
     "ChannelClosed",
     "ChannelClient",
+    "SessionStore",
+    "MCPServer",
     "Depends",
     "DependencyCycleError",
     "current_principal",

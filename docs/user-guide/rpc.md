@@ -382,6 +382,33 @@ the client `close()`s or crashes, the server tears the session down and the
 handler's `async for` ends. So a FastAPI gateway can bridge a browser WebSocket
 straight through to a remote agent: pump the socket into `open_channel` and back.
 
+### Resumable sessions
+
+`@channel(durable=True)` persists every message to a conversation log (over the
+app's storage — Redis/SQL in production, in-memory otherwise), so a session
+survives a disconnect. Each session has a `conversation_id`; reconnect with the
+same one and the handler reloads prior turns with `await session.history()`:
+
+```python
+@app.channel("agent/chat", durable=True)
+async def chat(s: ChannelSession):
+    context = [turn["data"] for turn in await s.history()]   # rebuild LLM context
+    async for msg in s:
+        reply = await agent.step(msg, context)
+        await s.send(reply)
+```
+
+```python
+chan = await app.open_channel("agent/chat")     # one is generated…
+save(chan.conversation_id)                       # …persist it client-side
+# later, after a reload / crash:
+chan = await app.open_channel("agent/chat", conversation_id=load())   # resume
+```
+
+`history()` returns entries oldest-first as `{dir: "in"|"out", data, ts}`. The
+handler decides what to do with them — Istos stores the transcript and hands it
+back; it doesn't replay old messages into the live loop.
+
 ### Declarative clients
 
 `stream_query` and `open_channel` are the imperative way. For a service that's a

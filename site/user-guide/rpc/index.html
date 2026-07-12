@@ -838,6 +838,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#resumable-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resumable sessions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#declarative-clients" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3412,6 +3423,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#resumable-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resumable sessions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#declarative-clients" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3875,23 +3897,43 @@ per-session pub/sub pair, and a liveliness token keeps the session alive — whe
 the client <code>close()</code>s or crashes, the server tears the session down and the
 handler's <code>async for</code> ends. So a FastAPI gateway can bridge a browser WebSocket
 straight through to a remote agent: pump the socket into <code>open_channel</code> and back.</p>
+<h3 id="resumable-sessions">Resumable sessions<a class="headerlink" href="#resumable-sessions" title="Permanent link">&para;</a></h3>
+<p><code>@channel(durable=True)</code> persists every message to a conversation log (over the
+app's storage — Redis/SQL in production, in-memory otherwise), so a session
+survives a disconnect. Each session has a <code>conversation_id</code>; reconnect with the
+same one and the handler reloads prior turns with <code>await session.history()</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nd">@app</span><span class="o">.</span><span class="n">channel</span><span class="p">(</span><span class="s2">&quot;agent/chat&quot;</span><span class="p">,</span> <span class="n">durable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="n">ChannelSession</span><span class="p">):</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    <span class="n">context</span> <span class="o">=</span> <span class="p">[</span><span class="n">turn</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">turn</span> <span class="ow">in</span> <span class="k">await</span> <span class="n">s</span><span class="o">.</span><span class="n">history</span><span class="p">()]</span>   <span class="c1"># rebuild LLM context</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    <span class="k">async</span> <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">s</span><span class="p">:</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>        <span class="n">reply</span> <span class="o">=</span> <span class="k">await</span> <span class="n">agent</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>        <span class="k">await</span> <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">reply</span><span class="p">)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">chan</span> <span class="o">=</span> <span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">open_channel</span><span class="p">(</span><span class="s2">&quot;agent/chat&quot;</span><span class="p">)</span>     <span class="c1"># one is generated…</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="n">save</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">conversation_id</span><span class="p">)</span>                       <span class="c1"># …persist it client-side</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="c1"># later, after a reload / crash:</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">chan</span> <span class="o">=</span> <span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">open_channel</span><span class="p">(</span><span class="s2">&quot;agent/chat&quot;</span><span class="p">,</span> <span class="n">conversation_id</span><span class="o">=</span><span class="n">load</span><span class="p">())</span>   <span class="c1"># resume</span>
+</code></pre></div>
+<p><code>history()</code> returns entries oldest-first as <code>{dir: "in"|"out", data, ts}</code>. The
+handler decides what to do with them — Istos stores the transcript and hands it
+back; it doesn't replay old messages into the live loop.</p>
 <h3 id="declarative-clients">Declarative clients<a class="headerlink" href="#declarative-clients" title="Permanent link">&para;</a></h3>
 <p><code>stream_query</code> and <code>open_channel</code> are the imperative way. For a service that's a
 mix of senders and receivers, attach the receiving side declaratively too — the
 client counterparts to <code>@query</code>, available on the app and on a router:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nd">@app</span><span class="o">.</span><span class="n">stream_client</span><span class="p">(</span><span class="s2">&quot;llm/generate&quot;</span><span class="p">)</span>     <span class="c1"># reaches a @stream</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="n">chunks</span><span class="p">):</span>            <span class="c1"># body gets the live chunk iterator</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    <span class="k">async</span> <span class="k">for</span> <span class="n">tok</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>        <span class="nb">print</span><span class="p">(</span><span class="n">tok</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="nd">@app</span><span class="o">.</span><span class="n">channel_client</span><span class="p">(</span><span class="s2">&quot;agent/chat&quot;</span><span class="p">)</span>      <span class="c1"># reaches a @channel</span>
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">session</span><span class="p">):</span>               <span class="c1"># body gets an open ChannelClient</span>
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s2">&quot;hi&quot;</span><span class="p">)</span>
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    <span class="k">async</span> <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">session</span><span class="p">:</span>
-<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>        <span class="n">render</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>
-<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="k">await</span> <span class="n">generate</span><span class="p">(</span><span class="n">prompt</span><span class="o">=</span><span class="s2">&quot;hi&quot;</span><span class="p">)</span>            <span class="c1"># call kwargs → params, like @query</span>
-<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="k">await</span> <span class="n">chat</span><span class="p">(</span><span class="n">token</span><span class="o">=</span><span class="n">jwt</span><span class="p">)</span>                  <span class="c1"># session closes when the body returns</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nd">@app</span><span class="o">.</span><span class="n">stream_client</span><span class="p">(</span><span class="s2">&quot;llm/generate&quot;</span><span class="p">)</span>     <span class="c1"># reaches a @stream</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="n">chunks</span><span class="p">):</span>            <span class="c1"># body gets the live chunk iterator</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    <span class="k">async</span> <span class="k">for</span> <span class="n">tok</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>        <span class="nb">print</span><span class="p">(</span><span class="n">tok</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="nd">@app</span><span class="o">.</span><span class="n">channel_client</span><span class="p">(</span><span class="s2">&quot;agent/chat&quot;</span><span class="p">)</span>      <span class="c1"># reaches a @channel</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">session</span><span class="p">):</span>               <span class="c1"># body gets an open ChannelClient</span>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s2">&quot;hi&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>    <span class="k">async</span> <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">session</span><span class="p">:</span>
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>        <span class="n">render</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a><span class="k">await</span> <span class="n">generate</span><span class="p">(</span><span class="n">prompt</span><span class="o">=</span><span class="s2">&quot;hi&quot;</span><span class="p">)</span>            <span class="c1"># call kwargs → params, like @query</span>
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a><span class="k">await</span> <span class="n">chat</span><span class="p">(</span><span class="n">token</span><span class="o">=</span><span class="n">jwt</span><span class="p">)</span>                  <span class="c1"># session closes when the body returns</span>
 </code></pre></div>
 <p>Call kwargs become the stream/channel params and <code>token=</code> carries auth, exactly
 as with <code>@query</code>. On a router, use <code>@router.stream_client(...)</code> /
