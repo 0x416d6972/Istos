@@ -9,6 +9,9 @@ COPY src/ src/
 
 RUN uv pip install --system -e ".[all]"
 
-COPY examples/demo_service.py main.py
+# Add your Istos service as main.py (scaffold one with `istos new`), then it runs
+# on container start. The istos-service block in docker-compose.yml builds this
+# image and runs `python main.py`.
+# COPY main.py ./
 
 CMD ["python", "main.py"]

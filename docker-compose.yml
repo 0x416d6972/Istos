@@ -1,6 +1,6 @@
 services:
   zenoh-router:
-    image: eclipse/zenoh:1.1.1
+    image: eclipse/zenoh:1.7.2
     container_name: istos-zenoh-router
     ports:
       - "7447:7447"
