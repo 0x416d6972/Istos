@@ -1,0 +1,4458 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Decorator-first Python services on Eclipse Zenoh — RPC, streaming, duplex channels, and durable pub/sub.">
+      
+      
+        <meta name="author" content="Amir Rezaei">
+      
+      
+      
+        <link rel="prev" href="../cli/">
+      
+      
+        <link rel="next" href="../errors/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Fitness Functions API - Istos Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#fitness-functions-api-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Istos Documentation" class="md-header__button md-logo" aria-label="Istos Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Istos Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Fitness Functions API
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/0x416d6972/Istos" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    0x416d6972/Istos
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../installation/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Installation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user-guide/getting-started/" class="md-tabs__link">
+          
+  
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../recipes/" class="md-tabs__link">
+          
+  
+  
+  Recipes
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../reference/wire-protocol/" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../istos/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../license/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  License
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Istos Documentation" class="md-nav__button md-logo" aria-label="Istos Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Istos Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/0x416d6972/Istos" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    0x416d6972/Istos
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/rpc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Handlers & Queries (RPC)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/channels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Channels & Agent Sessions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/pubsub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publish & Subscribe
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/durable-messaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brokerless Durable Messaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/work-queues/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Queues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/http-gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP Gateway & Probes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capability Discovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security & TLS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/authorization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authorization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/liveliness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Liveliness Tracking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/retry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Retry Policies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/dependency-injection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependency Injection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/application-databases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Databases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/middleware/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Middleware
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/architecture-health/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Health
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Recipes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Recipes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../recipes/rpc-lifespan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RPC with lifespan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../recipes/pubsub-telemetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pub/Sub telemetry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../recipes/durable-orders/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Durable orders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../recipes/agent-channel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent channel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../recipes/secure-rpc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Secure RPC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../recipes/redis-storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../recipes/health-checks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Health checks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../recipes/custom-middleware/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Custom middleware
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../recipes/production-service/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../recipes/scaffold-service/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scaffold a service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/wire-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wire Protocol (Polyglot)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../istos/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Istos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../router/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IstosRouter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/testclient/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TestClient
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fitness Functions
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fitness Functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#istos.fitness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fitness
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#istos.fitness.Component" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Component
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#istos.fitness.Report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Report
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#istos.fitness.analyze" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        analyze
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#istos.fitness.find_package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        find_package
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#istos.fitness.format_report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        format_report
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../errors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../retry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Retry Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_9" id="__nav_6_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Primitives
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../primitives/handler/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Handler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../primitives/query/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Query
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../primitives/stream/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stream
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../primitives/channel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Channel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../primitives/session_store/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SessionStore
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../primitives/publish/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publish
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../primitives/subscribe/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Subscribe
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../primitives/liveliness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Liveliness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../queue/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Queue
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_11" id="__nav_6_11_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/authz/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authorization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_12" id="__nav_6_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Discovery
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Discovery
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../discovery/asyncapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AsyncAPI Generator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_13" id="__nav_6_13_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    HTTP
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http/gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gateway
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http/asgi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ASGI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http/mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http/health/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Health
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_14" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_14" id="__nav_6_14_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Communication
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Communication
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../communication/sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sessions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../communication/config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zenoh Config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../communication/durable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Durable Pub/Sub
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../communication/persist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_15" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_15" id="__nav_6_15_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Consistency
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_15_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_15">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Consistency
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../consistency/storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../consistency/redis_storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis Storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../consistency/sqlalchemy_storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SQLAlchemy Storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../consistency/config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../consistency/databases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_16" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_16" id="__nav_6_16_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Messages
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_16_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_16">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Messages
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../messages/serialization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serialization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_17" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_17" id="__nav_6_17_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependency Injection
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_17_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_17">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dependency Injection
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../di/depends/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Depends
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../middleware/base/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Middleware
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../middleware/ratelimit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RateLimitMiddleware
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../logging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_22" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_22" id="__nav_6_22_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_22_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_22">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Observability
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability/tracing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tracing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#istos.fitness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fitness
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#istos.fitness.Component" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Component
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#istos.fitness.Report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Report
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#istos.fitness.analyze" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        analyze
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#istos.fitness.find_package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        find_package
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#istos.fitness.format_report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        format_report
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="fitness-functions-api-reference">Fitness Functions API Reference<a class="headerlink" href="#fitness-functions-api-reference" title="Permanent link">&para;</a></h1>
+<p>Architecture fitness functions: measure component health with Robert Martin's
+Abstractness / Instability / Distance metrics, adapted for Python. Drives the
+<code>istos analyze</code> command; also importable for custom checks.</p>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="istos.fitness"></a>
+    <div class="doc doc-contents first">
+
+        <p>Architecture fitness functions for measuring component health.</p>
+<p>Implements Robert Martin's Abstractness / Instability / Distance metrics as
+described in "Software Architecture: The Hard Parts" (ch. 4), adapted for
+Python: a type counts as abstract when it is a <code>typing.Protocol</code>, an
+<code>abc.ABC</code>, or carries an <code>@abstractmethod</code> -- the real seams of a Python
+codebase, rather than Java-style interfaces.</p>
+<p>A <em>component</em> is a top-level subpackage or module of the package under
+analysis (e.g. <code>istos.consistency</code>, <code>istos.routing</code>), never an individual
+line or class. For each component we measure:</p>
+<div class="highlight"><pre><span></span><code>Ce  efferent coupling   other components it imports from
+Ca  afferent coupling   other components that import it
+I   instability         Ce / (Ce + Ca)          0 = stable .. 1 = unstable
+A   abstractness        abstract types / all types
+D   distance            |A + I - 1|             0 = on the main sequence
+</code></pre></div>
+<p>Distance is diagnostic, not a score to drive to zero. Concrete leaf utilities
+in Python legitimately sit at A=0, I=0 (D=1); that only signals pain when the
+component is also large and volatile. Read the numbers, don't optimise them.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="istos.fitness.Component" class="doc doc-heading">
+            <code>Component</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#istos.fitness.Component" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Health metrics for one package-level component.</p>
+
+
+
+
+
+
+
+
+              <details class="mkdocstrings-source">
+                <summary>Source code in <code>src/istos/fitness.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-46">46</a></span>
+<span class="normal"><a href="#__codelineno-0-47">47</a></span>
+<span class="normal"><a href="#__codelineno-0-48">48</a></span>
+<span class="normal"><a href="#__codelineno-0-49">49</a></span>
+<span class="normal"><a href="#__codelineno-0-50">50</a></span>
+<span class="normal"><a href="#__codelineno-0-51">51</a></span>
+<span class="normal"><a href="#__codelineno-0-52">52</a></span>
+<span class="normal"><a href="#__codelineno-0-53">53</a></span>
+<span class="normal"><a href="#__codelineno-0-54">54</a></span>
+<span class="normal"><a href="#__codelineno-0-55">55</a></span>
+<span class="normal"><a href="#__codelineno-0-56">56</a></span>
+<span class="normal"><a href="#__codelineno-0-57">57</a></span>
+<span class="normal"><a href="#__codelineno-0-58">58</a></span>
+<span class="normal"><a href="#__codelineno-0-59">59</a></span>
+<span class="normal"><a href="#__codelineno-0-60">60</a></span>
+<span class="normal"><a href="#__codelineno-0-61">61</a></span>
+<span class="normal"><a href="#__codelineno-0-62">62</a></span>
+<span class="normal"><a href="#__codelineno-0-63">63</a></span>
+<span class="normal"><a href="#__codelineno-0-64">64</a></span>
+<span class="normal"><a href="#__codelineno-0-65">65</a></span>
+<span class="normal"><a href="#__codelineno-0-66">66</a></span>
+<span class="normal"><a href="#__codelineno-0-67">67</a></span>
+<span class="normal"><a href="#__codelineno-0-68">68</a></span>
+<span class="normal"><a href="#__codelineno-0-69">69</a></span>
+<span class="normal"><a href="#__codelineno-0-70">70</a></span>
+<span class="normal"><a href="#__codelineno-0-71">71</a></span>
+<span class="normal"><a href="#__codelineno-0-72">72</a></span>
+<span class="normal"><a href="#__codelineno-0-73">73</a></span>
+<span class="normal"><a href="#__codelineno-0-74">74</a></span>
+<span class="normal"><a href="#__codelineno-0-75">75</a></span>
+<span class="normal"><a href="#__codelineno-0-76">76</a></span>
+<span class="normal"><a href="#__codelineno-0-77">77</a></span>
+<span class="normal"><a href="#__codelineno-0-78">78</a></span>
+<span class="normal"><a href="#__codelineno-0-79">79</a></span>
+<span class="normal"><a href="#__codelineno-0-80">80</a></span>
+<span class="normal"><a href="#__codelineno-0-81">81</a></span>
+<span class="normal"><a href="#__codelineno-0-82">82</a></span>
+<span class="normal"><a href="#__codelineno-0-83">83</a></span>
+<span class="normal"><a href="#__codelineno-0-84">84</a></span>
+<span class="normal"><a href="#__codelineno-0-85">85</a></span>
+<span class="normal"><a href="#__codelineno-0-86">86</a></span>
+<span class="normal"><a href="#__codelineno-0-87">87</a></span>
+<span class="normal"><a href="#__codelineno-0-88">88</a></span>
+<span class="normal"><a href="#__codelineno-0-89">89</a></span>
+<span class="normal"><a href="#__codelineno-0-90">90</a></span>
+<span class="normal"><a href="#__codelineno-0-91">91</a></span>
+<span class="normal"><a href="#__codelineno-0-92">92</a></span>
+<span class="normal"><a href="#__codelineno-0-93">93</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="k">class</span><span class="w"> </span><span class="nc">Component</span><span class="p">:</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Health metrics for one package-level component.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49"></a>
+<a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51"></a>    <span class="n">efferent</span><span class="p">:</span> <span class="nb">int</span>          <span class="c1"># Ce</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52"></a>    <span class="n">afferent</span><span class="p">:</span> <span class="nb">int</span>          <span class="c1"># Ca</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53"></a>    <span class="n">abstract_types</span><span class="p">:</span> <span class="nb">int</span>    <span class="c1"># m_a</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54"></a>    <span class="n">concrete_types</span><span class="p">:</span> <span class="nb">int</span>    <span class="c1"># m_c</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55"></a>    <span class="n">loc</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56"></a>    <span class="n">modules</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57"></a>
+<a id="__codelineno-0-58" name="__codelineno-0-58"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">instability</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60"></a>        <span class="n">total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">efferent</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">afferent</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">efferent</span> <span class="o">/</span> <span class="n">total</span> <span class="k">if</span> <span class="n">total</span> <span class="k">else</span> <span class="mf">0.0</span>
+<a id="__codelineno-0-62" name="__codelineno-0-62"></a>
+<a id="__codelineno-0-63" name="__codelineno-0-63"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">abstractness</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65"></a>        <span class="n">total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">abstract_types</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">concrete_types</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">abstract_types</span> <span class="o">/</span> <span class="n">total</span> <span class="k">if</span> <span class="n">total</span> <span class="k">else</span> <span class="mf">0.0</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67"></a>
+<a id="__codelineno-0-68" name="__codelineno-0-68"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">distance</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a>        <span class="k">return</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">abstractness</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">instability</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">zone</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">distance</span> <span class="o">&lt;=</span> <span class="n">MAIN_SEQUENCE_TOLERANCE</span><span class="p">:</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a>            <span class="k">return</span> <span class="s2">&quot;balanced&quot;</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">abstractness</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">instability</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a>            <span class="k">return</span> <span class="s2">&quot;uselessness&quot;</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span> <span class="o">&gt;=</span> <span class="n">PAIN_LOC</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">afferent</span> <span class="o">&gt;=</span> <span class="n">PAIN_CA</span><span class="p">:</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79"></a>            <span class="k">return</span> <span class="s2">&quot;pain&quot;</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80"></a>        <span class="k">return</span> <span class="s2">&quot;leaf&quot;</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81"></a>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">as_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a>        <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a>            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+<a id="__codelineno-0-85" name="__codelineno-0-85"></a>            <span class="s2">&quot;modules&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modules</span><span class="p">,</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86"></a>            <span class="s2">&quot;loc&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">loc</span><span class="p">,</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87"></a>            <span class="s2">&quot;ce&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">efferent</span><span class="p">,</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88"></a>            <span class="s2">&quot;ca&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">afferent</span><span class="p">,</span>
+<a id="__codelineno-0-89" name="__codelineno-0-89"></a>            <span class="s2">&quot;instability&quot;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">instability</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90"></a>            <span class="s2">&quot;abstractness&quot;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">abstractness</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91"></a>            <span class="s2">&quot;distance&quot;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">distance</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92"></a>            <span class="s2">&quot;zone&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">zone</span><span class="p">,</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93"></a>        <span class="p">}</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="istos.fitness.Report" class="doc doc-heading">
+            <code>Report</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#istos.fitness.Report" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>The full result of analysing a package.</p>
+
+
+
+
+
+
+
+
+              <details class="mkdocstrings-source">
+                <summary>Source code in <code>src/istos/fitness.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-96"> 96</a></span>
+<span class="normal"><a href="#__codelineno-0-97"> 97</a></span>
+<span class="normal"><a href="#__codelineno-0-98"> 98</a></span>
+<span class="normal"><a href="#__codelineno-0-99"> 99</a></span>
+<span class="normal"><a href="#__codelineno-0-100">100</a></span>
+<span class="normal"><a href="#__codelineno-0-101">101</a></span>
+<span class="normal"><a href="#__codelineno-0-102">102</a></span>
+<span class="normal"><a href="#__codelineno-0-103">103</a></span>
+<span class="normal"><a href="#__codelineno-0-104">104</a></span>
+<span class="normal"><a href="#__codelineno-0-105">105</a></span>
+<span class="normal"><a href="#__codelineno-0-106">106</a></span>
+<span class="normal"><a href="#__codelineno-0-107">107</a></span>
+<span class="normal"><a href="#__codelineno-0-108">108</a></span>
+<span class="normal"><a href="#__codelineno-0-109">109</a></span>
+<span class="normal"><a href="#__codelineno-0-110">110</a></span>
+<span class="normal"><a href="#__codelineno-0-111">111</a></span>
+<span class="normal"><a href="#__codelineno-0-112">112</a></span>
+<span class="normal"><a href="#__codelineno-0-113">113</a></span>
+<span class="normal"><a href="#__codelineno-0-114">114</a></span>
+<span class="normal"><a href="#__codelineno-0-115">115</a></span>
+<span class="normal"><a href="#__codelineno-0-116">116</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="k">class</span><span class="w"> </span><span class="nc">Report</span><span class="p">:</span>
+<a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;The full result of analysing a package.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a>    <span class="n">package</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101"></a>    <span class="n">components</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Component</span><span class="p">]</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a>    <span class="n">cycles</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a>    <span class="n">god_modules</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span>   <span class="c1"># (dotted module, loc)</span>
+<a id="__codelineno-0-104" name="__codelineno-0-104"></a>
+<a id="__codelineno-0-105" name="__codelineno-0-105"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">mean_distance</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107"></a>        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">distance</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span> <span class="k">else</span> <span class="mf">0.0</span>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a>
+<a id="__codelineno-0-109" name="__codelineno-0-109"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">as_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a>        <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111"></a>            <span class="s2">&quot;package&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">package</span><span class="p">,</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a>            <span class="s2">&quot;mean_distance&quot;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mean_distance</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113"></a>            <span class="s2">&quot;components&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">as_dict</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">],</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114"></a>            <span class="s2">&quot;cycles&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cycles</span><span class="p">,</span>
+<a id="__codelineno-0-115" name="__codelineno-0-115"></a>            <span class="s2">&quot;god_modules&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;module&quot;</span><span class="p">:</span> <span class="n">m</span><span class="p">,</span> <span class="s2">&quot;loc&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">}</span> <span class="k">for</span> <span class="n">m</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">god_modules</span><span class="p">],</span>
+<a id="__codelineno-0-116" name="__codelineno-0-116"></a>        <span class="p">}</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="istos.fitness.analyze" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">analyze</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">package</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#istos.fitness.analyze" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Analyse a package and return per-component health metrics.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/istos/fitness.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-250">250</a></span>
+<span class="normal"><a href="#__codelineno-0-251">251</a></span>
+<span class="normal"><a href="#__codelineno-0-252">252</a></span>
+<span class="normal"><a href="#__codelineno-0-253">253</a></span>
+<span class="normal"><a href="#__codelineno-0-254">254</a></span>
+<span class="normal"><a href="#__codelineno-0-255">255</a></span>
+<span class="normal"><a href="#__codelineno-0-256">256</a></span>
+<span class="normal"><a href="#__codelineno-0-257">257</a></span>
+<span class="normal"><a href="#__codelineno-0-258">258</a></span>
+<span class="normal"><a href="#__codelineno-0-259">259</a></span>
+<span class="normal"><a href="#__codelineno-0-260">260</a></span>
+<span class="normal"><a href="#__codelineno-0-261">261</a></span>
+<span class="normal"><a href="#__codelineno-0-262">262</a></span>
+<span class="normal"><a href="#__codelineno-0-263">263</a></span>
+<span class="normal"><a href="#__codelineno-0-264">264</a></span>
+<span class="normal"><a href="#__codelineno-0-265">265</a></span>
+<span class="normal"><a href="#__codelineno-0-266">266</a></span>
+<span class="normal"><a href="#__codelineno-0-267">267</a></span>
+<span class="normal"><a href="#__codelineno-0-268">268</a></span>
+<span class="normal"><a href="#__codelineno-0-269">269</a></span>
+<span class="normal"><a href="#__codelineno-0-270">270</a></span>
+<span class="normal"><a href="#__codelineno-0-271">271</a></span>
+<span class="normal"><a href="#__codelineno-0-272">272</a></span>
+<span class="normal"><a href="#__codelineno-0-273">273</a></span>
+<span class="normal"><a href="#__codelineno-0-274">274</a></span>
+<span class="normal"><a href="#__codelineno-0-275">275</a></span>
+<span class="normal"><a href="#__codelineno-0-276">276</a></span>
+<span class="normal"><a href="#__codelineno-0-277">277</a></span>
+<span class="normal"><a href="#__codelineno-0-278">278</a></span>
+<span class="normal"><a href="#__codelineno-0-279">279</a></span>
+<span class="normal"><a href="#__codelineno-0-280">280</a></span>
+<span class="normal"><a href="#__codelineno-0-281">281</a></span>
+<span class="normal"><a href="#__codelineno-0-282">282</a></span>
+<span class="normal"><a href="#__codelineno-0-283">283</a></span>
+<span class="normal"><a href="#__codelineno-0-284">284</a></span>
+<span class="normal"><a href="#__codelineno-0-285">285</a></span>
+<span class="normal"><a href="#__codelineno-0-286">286</a></span>
+<span class="normal"><a href="#__codelineno-0-287">287</a></span>
+<span class="normal"><a href="#__codelineno-0-288">288</a></span>
+<span class="normal"><a href="#__codelineno-0-289">289</a></span>
+<span class="normal"><a href="#__codelineno-0-290">290</a></span>
+<span class="normal"><a href="#__codelineno-0-291">291</a></span>
+<span class="normal"><a href="#__codelineno-0-292">292</a></span>
+<span class="normal"><a href="#__codelineno-0-293">293</a></span>
+<span class="normal"><a href="#__codelineno-0-294">294</a></span>
+<span class="normal"><a href="#__codelineno-0-295">295</a></span>
+<span class="normal"><a href="#__codelineno-0-296">296</a></span>
+<span class="normal"><a href="#__codelineno-0-297">297</a></span>
+<span class="normal"><a href="#__codelineno-0-298">298</a></span>
+<span class="normal"><a href="#__codelineno-0-299">299</a></span>
+<span class="normal"><a href="#__codelineno-0-300">300</a></span>
+<span class="normal"><a href="#__codelineno-0-301">301</a></span>
+<span class="normal"><a href="#__codelineno-0-302">302</a></span>
+<span class="normal"><a href="#__codelineno-0-303">303</a></span>
+<span class="normal"><a href="#__codelineno-0-304">304</a></span>
+<span class="normal"><a href="#__codelineno-0-305">305</a></span>
+<span class="normal"><a href="#__codelineno-0-306">306</a></span>
+<span class="normal"><a href="#__codelineno-0-307">307</a></span>
+<span class="normal"><a href="#__codelineno-0-308">308</a></span>
+<span class="normal"><a href="#__codelineno-0-309">309</a></span>
+<span class="normal"><a href="#__codelineno-0-310">310</a></span>
+<span class="normal"><a href="#__codelineno-0-311">311</a></span>
+<span class="normal"><a href="#__codelineno-0-312">312</a></span>
+<span class="normal"><a href="#__codelineno-0-313">313</a></span>
+<span class="normal"><a href="#__codelineno-0-314">314</a></span>
+<span class="normal"><a href="#__codelineno-0-315">315</a></span>
+<span class="normal"><a href="#__codelineno-0-316">316</a></span>
+<span class="normal"><a href="#__codelineno-0-317">317</a></span>
+<span class="normal"><a href="#__codelineno-0-318">318</a></span>
+<span class="normal"><a href="#__codelineno-0-319">319</a></span>
+<span class="normal"><a href="#__codelineno-0-320">320</a></span>
+<span class="normal"><a href="#__codelineno-0-321">321</a></span>
+<span class="normal"><a href="#__codelineno-0-322">322</a></span>
+<span class="normal"><a href="#__codelineno-0-323">323</a></span>
+<span class="normal"><a href="#__codelineno-0-324">324</a></span>
+<span class="normal"><a href="#__codelineno-0-325">325</a></span>
+<span class="normal"><a href="#__codelineno-0-326">326</a></span>
+<span class="normal"><a href="#__codelineno-0-327">327</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-250" name="__codelineno-0-250"></a><span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">package</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Report</span><span class="p">:</span>
+<a id="__codelineno-0-251" name="__codelineno-0-251"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Analyse a package and return per-component health metrics.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-252" name="__codelineno-0-252"></a>    <span class="n">pkg_name</span><span class="p">,</span> <span class="n">pkg_dir</span> <span class="o">=</span> <span class="n">find_package</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">package</span><span class="p">)</span>
+<a id="__codelineno-0-253" name="__codelineno-0-253"></a>
+<a id="__codelineno-0-254" name="__codelineno-0-254"></a>    <span class="n">abstract</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-255" name="__codelineno-0-255"></a>    <span class="n">concrete</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-256" name="__codelineno-0-256"></a>    <span class="n">loc</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a>    <span class="n">modules</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a>    <span class="n">edges</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-259" name="__codelineno-0-259"></a>    <span class="n">god_modules</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a>
+<a id="__codelineno-0-261" name="__codelineno-0-261"></a>    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">pkg_dir</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="s2">&quot;*.py&quot;</span><span class="p">)):</span>
+<a id="__codelineno-0-262" name="__codelineno-0-262"></a>        <span class="n">rel</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">pkg_dir</span><span class="p">)</span>
+<a id="__codelineno-0-263" name="__codelineno-0-263"></a>        <span class="c1"># Skip the package facade: it re-exports rather than being a component.</span>
+<a id="__codelineno-0-264" name="__codelineno-0-264"></a>        <span class="k">if</span> <span class="n">rel</span> <span class="o">==</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;__init__.py&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a>            <span class="k">continue</span>
+<a id="__codelineno-0-266" name="__codelineno-0-266"></a>        <span class="n">comp</span> <span class="o">=</span> <span class="n">_component_of_file</span><span class="p">(</span><span class="n">rel</span><span class="p">)</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a>            <span class="n">tree</span> <span class="o">=</span> <span class="n">ast</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+<a id="__codelineno-0-269" name="__codelineno-0-269"></a>        <span class="k">except</span> <span class="p">(</span><span class="ne">SyntaxError</span><span class="p">,</span> <span class="ne">UnicodeDecodeError</span><span class="p">):</span>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a>            <span class="k">continue</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a>        <span class="n">file_loc</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span> <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a>        <span class="n">loc</span><span class="p">[</span><span class="n">comp</span><span class="p">]</span> <span class="o">=</span> <span class="n">loc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">file_loc</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a>        <span class="n">modules</span><span class="p">[</span><span class="n">comp</span><span class="p">]</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a>        <span class="n">abstract</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-0-276" name="__codelineno-0-276"></a>        <span class="n">concrete</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a>        <span class="n">edges</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="nb">set</span><span class="p">())</span>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a>        <span class="k">if</span> <span class="n">file_loc</span> <span class="o">&gt;</span> <span class="n">GOD_MODULE_LOC</span><span class="p">:</span>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a>            <span class="n">dotted</span> <span class="o">=</span> <span class="n">pkg_name</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rel</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">parts</span><span class="p">)</span>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a>            <span class="n">god_modules</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">dotted</span><span class="p">,</span> <span class="n">file_loc</span><span class="p">))</span>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a>        <span class="n">abstract</span><span class="p">[</span><span class="n">comp</span><span class="p">]</span> <span class="o">+=</span> <span class="n">_callable_aliases</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a>        <span class="n">tc_lines</span> <span class="o">=</span> <span class="n">_type_checking_lines</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+<a id="__codelineno-0-284" name="__codelineno-0-284"></a>        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">ast</span><span class="o">.</span><span class="n">walk</span><span class="p">(</span><span class="n">tree</span><span class="p">):</span>
+<a id="__codelineno-0-285" name="__codelineno-0-285"></a>            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">ast</span><span class="o">.</span><span class="n">ClassDef</span><span class="p">):</span>
+<a id="__codelineno-0-286" name="__codelineno-0-286"></a>                <span class="k">if</span> <span class="n">_is_abstract</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>
+<a id="__codelineno-0-287" name="__codelineno-0-287"></a>                    <span class="n">abstract</span><span class="p">[</span><span class="n">comp</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a>                <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a>                    <span class="n">concrete</span><span class="p">[</span><span class="n">comp</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+<a id="__codelineno-0-290" name="__codelineno-0-290"></a>            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="p">(</span><span class="n">ast</span><span class="o">.</span><span class="n">Import</span><span class="p">,</span> <span class="n">ast</span><span class="o">.</span><span class="n">ImportFrom</span><span class="p">)):</span>
+<a id="__codelineno-0-291" name="__codelineno-0-291"></a>                <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">lineno</span> <span class="ow">in</span> <span class="n">tc_lines</span><span class="p">:</span>
+<a id="__codelineno-0-292" name="__codelineno-0-292"></a>                    <span class="k">continue</span>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a>                <span class="k">for</span> <span class="n">dotted</span> <span class="ow">in</span> <span class="n">_imported_modules</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">rel</span><span class="p">,</span> <span class="n">pkg_name</span><span class="p">):</span>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a>                    <span class="n">target</span> <span class="o">=</span> <span class="n">_component_of_module</span><span class="p">(</span><span class="n">dotted</span><span class="p">,</span> <span class="n">pkg_name</span><span class="p">)</span>
+<a id="__codelineno-0-295" name="__codelineno-0-295"></a>                    <span class="k">if</span> <span class="n">target</span> <span class="ow">and</span> <span class="n">target</span> <span class="o">!=</span> <span class="n">comp</span><span class="p">:</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a>                        <span class="n">edges</span><span class="p">[</span><span class="n">comp</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a>
+<a id="__codelineno-0-298" name="__codelineno-0-298"></a>    <span class="n">afferent</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="n">c</span><span class="p">:</span> <span class="nb">set</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">edges</span><span class="p">}</span>
+<a id="__codelineno-0-299" name="__codelineno-0-299"></a>    <span class="k">for</span> <span class="n">src</span><span class="p">,</span> <span class="n">targets</span> <span class="ow">in</span> <span class="n">edges</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-0-300" name="__codelineno-0-300"></a>        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">:</span>
+<a id="__codelineno-0-301" name="__codelineno-0-301"></a>            <span class="n">afferent</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="nb">set</span><span class="p">())</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+<a id="__codelineno-0-302" name="__codelineno-0-302"></a>
+<a id="__codelineno-0-303" name="__codelineno-0-303"></a>    <span class="n">components</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-0-304" name="__codelineno-0-304"></a>        <span class="n">Component</span><span class="p">(</span>
+<a id="__codelineno-0-305" name="__codelineno-0-305"></a>            <span class="n">name</span><span class="o">=</span><span class="n">c</span><span class="p">,</span>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a>            <span class="n">efferent</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="nb">set</span><span class="p">())),</span>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a>            <span class="n">afferent</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">afferent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="nb">set</span><span class="p">())),</span>
+<a id="__codelineno-0-308" name="__codelineno-0-308"></a>            <span class="n">abstract_types</span><span class="o">=</span><span class="n">abstract</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a>            <span class="n">concrete_types</span><span class="o">=</span><span class="n">concrete</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+<a id="__codelineno-0-310" name="__codelineno-0-310"></a>            <span class="n">loc</span><span class="o">=</span><span class="n">loc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+<a id="__codelineno-0-311" name="__codelineno-0-311"></a>            <span class="n">modules</span><span class="o">=</span><span class="n">modules</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+<a id="__codelineno-0-312" name="__codelineno-0-312"></a>        <span class="p">)</span>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a>        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">loc</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">afferent</span><span class="p">))</span>
+<a id="__codelineno-0-314" name="__codelineno-0-314"></a>    <span class="p">]</span>
+<a id="__codelineno-0-315" name="__codelineno-0-315"></a>    <span class="c1"># Drop empty placeholder packages (no code, no coupling) -- they carry no signal.</span>
+<a id="__codelineno-0-316" name="__codelineno-0-316"></a>    <span class="n">components</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-0-317" name="__codelineno-0-317"></a>        <span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">components</span>
+<a id="__codelineno-0-318" name="__codelineno-0-318"></a>        <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">loc</span> <span class="ow">or</span> <span class="n">c</span><span class="o">.</span><span class="n">abstract_types</span> <span class="ow">or</span> <span class="n">c</span><span class="o">.</span><span class="n">concrete_types</span> <span class="ow">or</span> <span class="n">c</span><span class="o">.</span><span class="n">efferent</span> <span class="ow">or</span> <span class="n">c</span><span class="o">.</span><span class="n">afferent</span>
+<a id="__codelineno-0-319" name="__codelineno-0-319"></a>    <span class="p">]</span>
+<a id="__codelineno-0-320" name="__codelineno-0-320"></a>    <span class="n">components</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">distance</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a>    <span class="k">return</span> <span class="n">Report</span><span class="p">(</span>
+<a id="__codelineno-0-323" name="__codelineno-0-323"></a>        <span class="n">package</span><span class="o">=</span><span class="n">pkg_name</span><span class="p">,</span>
+<a id="__codelineno-0-324" name="__codelineno-0-324"></a>        <span class="n">components</span><span class="o">=</span><span class="n">components</span><span class="p">,</span>
+<a id="__codelineno-0-325" name="__codelineno-0-325"></a>        <span class="n">cycles</span><span class="o">=</span><span class="n">_find_cycles</span><span class="p">(</span><span class="n">edges</span><span class="p">),</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a>        <span class="n">god_modules</span><span class="o">=</span><span class="nb">sorted</span><span class="p">(</span><span class="n">god_modules</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a>    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="istos.fitness.find_package" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">find_package</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">package</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#istos.fitness.find_package" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Locate the importable package to analyse under <code>path</code>.</p>
+<p>Looks for <code>src/&lt;pkg&gt;/__init__.py</code> first (the src layout), then a
+top-level <code>&lt;pkg&gt;/__init__.py</code>. Pass <code>package</code> to disambiguate when a
+project ships more than one.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/istos/fitness.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-119">119</a></span>
+<span class="normal"><a href="#__codelineno-0-120">120</a></span>
+<span class="normal"><a href="#__codelineno-0-121">121</a></span>
+<span class="normal"><a href="#__codelineno-0-122">122</a></span>
+<span class="normal"><a href="#__codelineno-0-123">123</a></span>
+<span class="normal"><a href="#__codelineno-0-124">124</a></span>
+<span class="normal"><a href="#__codelineno-0-125">125</a></span>
+<span class="normal"><a href="#__codelineno-0-126">126</a></span>
+<span class="normal"><a href="#__codelineno-0-127">127</a></span>
+<span class="normal"><a href="#__codelineno-0-128">128</a></span>
+<span class="normal"><a href="#__codelineno-0-129">129</a></span>
+<span class="normal"><a href="#__codelineno-0-130">130</a></span>
+<span class="normal"><a href="#__codelineno-0-131">131</a></span>
+<span class="normal"><a href="#__codelineno-0-132">132</a></span>
+<span class="normal"><a href="#__codelineno-0-133">133</a></span>
+<span class="normal"><a href="#__codelineno-0-134">134</a></span>
+<span class="normal"><a href="#__codelineno-0-135">135</a></span>
+<span class="normal"><a href="#__codelineno-0-136">136</a></span>
+<span class="normal"><a href="#__codelineno-0-137">137</a></span>
+<span class="normal"><a href="#__codelineno-0-138">138</a></span>
+<span class="normal"><a href="#__codelineno-0-139">139</a></span>
+<span class="normal"><a href="#__codelineno-0-140">140</a></span>
+<span class="normal"><a href="#__codelineno-0-141">141</a></span>
+<span class="normal"><a href="#__codelineno-0-142">142</a></span>
+<span class="normal"><a href="#__codelineno-0-143">143</a></span>
+<span class="normal"><a href="#__codelineno-0-144">144</a></span>
+<span class="normal"><a href="#__codelineno-0-145">145</a></span>
+<span class="normal"><a href="#__codelineno-0-146">146</a></span>
+<span class="normal"><a href="#__codelineno-0-147">147</a></span>
+<span class="normal"><a href="#__codelineno-0-148">148</a></span>
+<span class="normal"><a href="#__codelineno-0-149">149</a></span>
+<span class="normal"><a href="#__codelineno-0-150">150</a></span>
+<span class="normal"><a href="#__codelineno-0-151">151</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="k">def</span><span class="w"> </span><span class="nf">find_package</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">package</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]:</span>
+<a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Locate the importable package to analyse under ``path``.</span>
+<a id="__codelineno-0-121" name="__codelineno-0-121"></a>
+<a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="sd">    Looks for ``src/&lt;pkg&gt;/__init__.py`` first (the src layout), then a</span>
+<a id="__codelineno-0-123" name="__codelineno-0-123"></a><span class="sd">    top-level ``&lt;pkg&gt;/__init__.py``. Pass ``package`` to disambiguate when a</span>
+<a id="__codelineno-0-124" name="__codelineno-0-124"></a><span class="sd">    project ships more than one.</span>
+<a id="__codelineno-0-125" name="__codelineno-0-125"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-126" name="__codelineno-0-126"></a>    <span class="n">path</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+<a id="__codelineno-0-127" name="__codelineno-0-127"></a>    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+<a id="__codelineno-0-128" name="__codelineno-0-128"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> is a file; pass a project or package directory&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-129" name="__codelineno-0-129"></a>
+<a id="__codelineno-0-130" name="__codelineno-0-130"></a>    <span class="k">if</span> <span class="p">(</span><span class="n">path</span> <span class="o">/</span> <span class="s2">&quot;__init__.py&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+<a id="__codelineno-0-131" name="__codelineno-0-131"></a>        <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span>
+<a id="__codelineno-0-132" name="__codelineno-0-132"></a>
+<a id="__codelineno-0-133" name="__codelineno-0-133"></a>    <span class="n">roots</span> <span class="o">=</span> <span class="p">[</span><span class="n">path</span> <span class="o">/</span> <span class="s2">&quot;src&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">]</span>
+<a id="__codelineno-0-134" name="__codelineno-0-134"></a>    <span class="n">candidates</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-135" name="__codelineno-0-135"></a>    <span class="k">for</span> <span class="n">root</span> <span class="ow">in</span> <span class="n">roots</span><span class="p">:</span>
+<a id="__codelineno-0-136" name="__codelineno-0-136"></a>        <span class="k">if</span> <span class="n">root</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+<a id="__codelineno-0-137" name="__codelineno-0-137"></a>            <span class="n">candidates</span> <span class="o">+=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">parent</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">root</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*/__init__.py&quot;</span><span class="p">)]</span>
+<a id="__codelineno-0-138" name="__codelineno-0-138"></a>        <span class="k">if</span> <span class="n">candidates</span><span class="p">:</span>
+<a id="__codelineno-0-139" name="__codelineno-0-139"></a>            <span class="k">break</span>
+<a id="__codelineno-0-140" name="__codelineno-0-140"></a>
+<a id="__codelineno-0-141" name="__codelineno-0-141"></a>    <span class="k">if</span> <span class="n">package</span><span class="p">:</span>
+<a id="__codelineno-0-142" name="__codelineno-0-142"></a>        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
+<a id="__codelineno-0-143" name="__codelineno-0-143"></a>            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">package</span><span class="p">:</span>
+<a id="__codelineno-0-144" name="__codelineno-0-144"></a>                <span class="k">return</span> <span class="n">package</span><span class="p">,</span> <span class="n">c</span>
+<a id="__codelineno-0-145" name="__codelineno-0-145"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;package </span><span class="si">{</span><span class="n">package</span><span class="si">!r}</span><span class="s2"> not found under </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-146" name="__codelineno-0-146"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">candidates</span><span class="p">:</span>
+<a id="__codelineno-0-147" name="__codelineno-0-147"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;no importable package found under </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-148" name="__codelineno-0-148"></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">candidates</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+<a id="__codelineno-0-149" name="__codelineno-0-149"></a>        <span class="n">names</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">))</span>
+<a id="__codelineno-0-150" name="__codelineno-0-150"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;multiple packages found (</span><span class="si">{</span><span class="n">names</span><span class="si">}</span><span class="s2">); pass --package to choose&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-151" name="__codelineno-0-151"></a>    <span class="k">return</span> <span class="n">candidates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">candidates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="istos.fitness.format_report" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">format_report</span><span class="p">(</span><span class="n">report</span><span class="p">)</span></code>
+
+<a href="#istos.fitness.format_report" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Render a report as a human-readable table.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/istos/fitness.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-367">367</a></span>
+<span class="normal"><a href="#__codelineno-0-368">368</a></span>
+<span class="normal"><a href="#__codelineno-0-369">369</a></span>
+<span class="normal"><a href="#__codelineno-0-370">370</a></span>
+<span class="normal"><a href="#__codelineno-0-371">371</a></span>
+<span class="normal"><a href="#__codelineno-0-372">372</a></span>
+<span class="normal"><a href="#__codelineno-0-373">373</a></span>
+<span class="normal"><a href="#__codelineno-0-374">374</a></span>
+<span class="normal"><a href="#__codelineno-0-375">375</a></span>
+<span class="normal"><a href="#__codelineno-0-376">376</a></span>
+<span class="normal"><a href="#__codelineno-0-377">377</a></span>
+<span class="normal"><a href="#__codelineno-0-378">378</a></span>
+<span class="normal"><a href="#__codelineno-0-379">379</a></span>
+<span class="normal"><a href="#__codelineno-0-380">380</a></span>
+<span class="normal"><a href="#__codelineno-0-381">381</a></span>
+<span class="normal"><a href="#__codelineno-0-382">382</a></span>
+<span class="normal"><a href="#__codelineno-0-383">383</a></span>
+<span class="normal"><a href="#__codelineno-0-384">384</a></span>
+<span class="normal"><a href="#__codelineno-0-385">385</a></span>
+<span class="normal"><a href="#__codelineno-0-386">386</a></span>
+<span class="normal"><a href="#__codelineno-0-387">387</a></span>
+<span class="normal"><a href="#__codelineno-0-388">388</a></span>
+<span class="normal"><a href="#__codelineno-0-389">389</a></span>
+<span class="normal"><a href="#__codelineno-0-390">390</a></span>
+<span class="normal"><a href="#__codelineno-0-391">391</a></span>
+<span class="normal"><a href="#__codelineno-0-392">392</a></span>
+<span class="normal"><a href="#__codelineno-0-393">393</a></span>
+<span class="normal"><a href="#__codelineno-0-394">394</a></span>
+<span class="normal"><a href="#__codelineno-0-395">395</a></span>
+<span class="normal"><a href="#__codelineno-0-396">396</a></span>
+<span class="normal"><a href="#__codelineno-0-397">397</a></span>
+<span class="normal"><a href="#__codelineno-0-398">398</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-367" name="__codelineno-0-367"></a><span class="k">def</span><span class="w"> </span><span class="nf">format_report</span><span class="p">(</span><span class="n">report</span><span class="p">:</span> <span class="n">Report</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-368" name="__codelineno-0-368"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Render a report as a human-readable table.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-369" name="__codelineno-0-369"></a>    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Architecture health for &#39;</span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">package</span><span class="si">}</span><span class="s2">&#39;  (main sequence: A + I = 1)&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">]</span>
+<a id="__codelineno-0-370" name="__codelineno-0-370"></a>    <span class="n">header</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;component&#39;</span><span class="si">:</span><span class="s2">&lt;16</span><span class="si">}{</span><span class="s1">&#39;mods&#39;</span><span class="si">:</span><span class="s2">&gt;5</span><span class="si">}{</span><span class="s1">&#39;loc&#39;</span><span class="si">:</span><span class="s2">&gt;6</span><span class="si">}{</span><span class="s1">&#39;Ce&#39;</span><span class="si">:</span><span class="s2">&gt;4</span><span class="si">}{</span><span class="s1">&#39;Ca&#39;</span><span class="si">:</span><span class="s2">&gt;4</span><span class="si">}{</span><span class="s1">&#39;I&#39;</span><span class="si">:</span><span class="s2">&gt;7</span><span class="si">}{</span><span class="s1">&#39;A&#39;</span><span class="si">:</span><span class="s2">&gt;7</span><span class="si">}{</span><span class="s1">&#39;D&#39;</span><span class="si">:</span><span class="s2">&gt;7</span><span class="si">}</span><span class="s2">  zone&quot;</span>
+<a id="__codelineno-0-371" name="__codelineno-0-371"></a>    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+<a id="__codelineno-0-372" name="__codelineno-0-372"></a>    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">header</span><span class="p">))</span>
+<a id="__codelineno-0-373" name="__codelineno-0-373"></a>    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">report</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+<a id="__codelineno-0-374" name="__codelineno-0-374"></a>        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+<a id="__codelineno-0-375" name="__codelineno-0-375"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">name</span><span class="si">:</span><span class="s2">&lt;16</span><span class="si">}{</span><span class="n">c</span><span class="o">.</span><span class="n">modules</span><span class="si">:</span><span class="s2">&gt;5</span><span class="si">}{</span><span class="n">c</span><span class="o">.</span><span class="n">loc</span><span class="si">:</span><span class="s2">&gt;6</span><span class="si">}{</span><span class="n">c</span><span class="o">.</span><span class="n">efferent</span><span class="si">:</span><span class="s2">&gt;4</span><span class="si">}{</span><span class="n">c</span><span class="o">.</span><span class="n">afferent</span><span class="si">:</span><span class="s2">&gt;4</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-376" name="__codelineno-0-376"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">instability</span><span class="si">:</span><span class="s2">&gt;7.2f</span><span class="si">}{</span><span class="n">c</span><span class="o">.</span><span class="n">abstractness</span><span class="si">:</span><span class="s2">&gt;7.2f</span><span class="si">}{</span><span class="n">c</span><span class="o">.</span><span class="n">distance</span><span class="si">:</span><span class="s2">&gt;7.2f</span><span class="si">}</span><span class="s2">  </span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">zone</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-377" name="__codelineno-0-377"></a>        <span class="p">)</span>
+<a id="__codelineno-0-378" name="__codelineno-0-378"></a>    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">header</span><span class="p">))</span>
+<a id="__codelineno-0-379" name="__codelineno-0-379"></a>    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mean D = </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">mean_distance</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> over </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">components</span><span class="p">)</span><span class="si">}</span><span class="s2"> components&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-380" name="__codelineno-0-380"></a>
+<a id="__codelineno-0-381" name="__codelineno-0-381"></a>    <span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">cycles</span><span class="p">:</span>
+<a id="__codelineno-0-382" name="__codelineno-0-382"></a>        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-383" name="__codelineno-0-383"></a>        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Dependency cycles (break these -- they defeat modular deployment):&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-384" name="__codelineno-0-384"></a>        <span class="k">for</span> <span class="n">scc</span> <span class="ow">in</span> <span class="n">report</span><span class="o">.</span><span class="n">cycles</span><span class="p">:</span>
+<a id="__codelineno-0-385" name="__codelineno-0-385"></a>            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;  &quot;</span> <span class="o">+</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">scc</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; -&gt; &quot;</span> <span class="o">+</span> <span class="n">scc</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<a id="__codelineno-0-386" name="__codelineno-0-386"></a>    <span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">god_modules</span><span class="p">:</span>
+<a id="__codelineno-0-387" name="__codelineno-0-387"></a>        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-388" name="__codelineno-0-388"></a>        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;God-module candidates (&gt; </span><span class="si">{</span><span class="n">GOD_MODULE_LOC</span><span class="si">}</span><span class="s2"> loc):&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-389" name="__codelineno-0-389"></a>        <span class="k">for</span> <span class="n">mod</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">report</span><span class="o">.</span><span class="n">god_modules</span><span class="p">:</span>
+<a id="__codelineno-0-390" name="__codelineno-0-390"></a>            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">mod</span><span class="si">}</span><span class="s2">  (</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> loc)&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-391" name="__codelineno-0-391"></a>
+<a id="__codelineno-0-392" name="__codelineno-0-392"></a>    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-393" name="__codelineno-0-393"></a>    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+<a id="__codelineno-0-394" name="__codelineno-0-394"></a>        <span class="s2">&quot;Zones: &#39;balanced&#39; near the main sequence; &#39;leaf&#39; a small stable concrete &quot;</span>
+<a id="__codelineno-0-395" name="__codelineno-0-395"></a>        <span class="s2">&quot;utility (fine); &#39;pain&#39; a large, widely-imported concrete blob (extract &quot;</span>
+<a id="__codelineno-0-396" name="__codelineno-0-396"></a>        <span class="s2">&quot;seams); &#39;uselessness&#39; an abstraction with no callers (delete it).&quot;</span>
+<a id="__codelineno-0-397" name="__codelineno-0-397"></a>    <span class="p">)</span>
+<a id="__codelineno-0-398" name="__codelineno-0-398"></a>    <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

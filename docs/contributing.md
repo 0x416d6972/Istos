@@ -22,7 +22,7 @@ There are many ways to contribute to Istos:
 
 2. Clone your fork locally:
    ```bash
-   git clone https://github.com/A111ir/Istos.git
+   git clone https://github.com/0x416d6972/Istos.git
    cd Istos
    ```
 

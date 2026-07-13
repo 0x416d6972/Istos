@@ -55,6 +55,33 @@ async def test_status():
     print("  test_main.py  — example test with IstosTestClient")
 
 
+def _cmd_analyze(args: argparse.Namespace) -> None:
+    import json
+    from istos.fitness import analyze, format_report
+
+    try:
+        report = analyze(Path(args.path), package=args.package)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.json:
+        print(json.dumps(report.as_dict(), indent=2))
+    else:
+        print(format_report(report))
+
+    failed = []
+    if args.max_distance is not None:
+        over = [c.name for c in report.components if c.distance > args.max_distance]
+        if over:
+            failed.append(f"distance > {args.max_distance}: {', '.join(over)}")
+    if args.no_cycles and report.cycles:
+        failed.append(f"{len(report.cycles)} dependency cycle(s)")
+    if failed:
+        print("\nFitness check failed: " + "; ".join(failed), file=sys.stderr)
+        sys.exit(1)
+
+
 def _cmd_docs(args: argparse.Namespace) -> None:
     import subprocess
     cmd = ["mkdocs", "serve", "-a", f"127.0.0.1:{args.port}"]
@@ -74,6 +101,22 @@ def main(argv: list[str] | None = None) -> None:
     new_p = sub.add_parser("new", help="Scaffold a new Istos service")
     new_p.add_argument("name", help="Project directory name")
     new_p.set_defaults(func=_cmd_new)
+
+    an_p = sub.add_parser(
+        "analyze", help="Measure component health (abstractness/instability/distance)"
+    )
+    an_p.add_argument("path", nargs="?", default=".", help="Project or package directory")
+    an_p.add_argument("--package", default=None, help="Package name if the project ships several")
+    an_p.add_argument("--json", action="store_true", help="Emit JSON instead of a table")
+    an_p.add_argument(
+        "--max-distance", type=float, default=None,
+        help="Exit non-zero if any component's distance exceeds this (CI gate)",
+    )
+    an_p.add_argument(
+        "--no-cycles", action="store_true",
+        help="Exit non-zero if any dependency cycle exists (CI gate)",
+    )
+    an_p.set_defaults(func=_cmd_analyze)
 
     docs_p = sub.add_parser("docs", help="Serve documentation locally")
     docs_p.add_argument("--port", type=int, default=8000)

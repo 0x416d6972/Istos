@@ -76,7 +76,8 @@ class MsgPackSerializer:
     """
 
     def serialize(self, message: Any) -> bytes:
-        return msgpack.packb(message, use_bin_type=True)
+        packed: bytes = msgpack.packb(message, use_bin_type=True)
+        return packed
 
     def deserialize(self, data: bytes) -> Any:
         return msgpack.unpackb(data, raw=False)
@@ -91,7 +92,8 @@ class ProtobufSerializer:
         self.message_type = message_type
 
     def serialize(self, message: Any) -> bytes:
-        return message.SerializeToString()
+        packed: bytes = message.SerializeToString()
+        return packed
 
     def deserialize(self, data: bytes) -> Any:
         message = self.message_type()

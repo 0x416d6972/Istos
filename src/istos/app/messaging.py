@@ -478,7 +478,7 @@ class _MessagingMixin(IstosBase):
                             asyncio.run_coroutine_threadsafe(w.handle_miss(source, nb), loop)
                     return _miss
 
-                sub = declare_durable_subscriber(
+                sub: Any = declare_durable_subscriber(
                     session, wrapper.prefix, make_callback(),
                     replay=wrapper.replay, recover=wrapper.recover,
                     on_miss=make_miss_callback(),

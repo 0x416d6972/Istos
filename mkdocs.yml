@@ -1,8 +1,8 @@
 site_name: Istos Documentation
 site_description: Decorator-first Python services on Eclipse Zenoh — RPC, streaming, duplex channels, and durable pub/sub.
 site_author: Amir Rezaei
-repo_url: https://github.com/A111ir/Istos
-repo_name: A111ir/Istos
+repo_url: https://github.com/0x416d6972/Istos
+repo_name: 0x416d6972/Istos
 
 theme:
   name: material
@@ -87,6 +87,7 @@ nav:
     - Observability: user-guide/observability.md
     - Storage: user-guide/storage.md
     - Testing: user-guide/testing.md
+    - Architecture Health: user-guide/architecture-health.md
     - CLI: user-guide/cli.md
   - Recipes:
     - Overview: recipes/index.md
@@ -107,6 +108,7 @@ nav:
     - IstosRouter: api/router.md
     - TestClient: api/testing/testclient.md
     - CLI: api/cli.md
+    - Fitness Functions: api/fitness.md
     - Errors: api/errors.md
     - Retry Policy: api/retry.md
     - Validation: api/validation.md

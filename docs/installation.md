@@ -54,7 +54,7 @@ AsyncAPI's embedded UI uses `aiohttp`, which is a **core** dependency — no sep
 For the latest development version:
 
 ```bash
-git clone https://github.com/A111ir/Istos.git
+git clone https://github.com/0x416d6972/Istos.git
 cd Istos
 uv pip install -e .
 ```
@@ -64,7 +64,7 @@ uv pip install -e .
 For development and testing:
 
 ```bash
-git clone https://github.com/A111ir/Istos.git
+git clone https://github.com/0x416d6972/Istos.git
 cd Istos
 uv pip install -e ".[dev]"
 ```

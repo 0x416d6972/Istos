@@ -12,7 +12,7 @@ Print the installed package version:
 
 ```bash
 istos version
-# istos 0.2.0
+# istos 0.1.0
 ```
 
 ## `istos new`
@@ -37,6 +37,18 @@ uv pip install istos pytest pytest-asyncio
 pytest test_main.py
 python main.py
 ```
+
+## `istos analyze`
+
+Measure the structural health of a package — abstractness, instability, distance
+from the main sequence, dependency cycles, and god-module candidates:
+
+```bash
+istos analyze
+istos analyze --no-cycles --max-distance 0.4   # gate CI on architecture drift
+```
+
+See [Architecture Health](architecture-health.md) for how to read the metrics.
 
 ## `istos docs`
 

@@ -139,11 +139,11 @@ async def resolve_dependencies(
 
             # Execute, managing yield-dependency lifecycles on the exit stack.
             if inspect.isasyncgenfunction(dependency_func):
-                cm = asynccontextmanager(dependency_func)(**dep_kwargs)
-                result = await exit_stack.enter_async_context(cm)
+                acm = asynccontextmanager(dependency_func)(**dep_kwargs)
+                result = await exit_stack.enter_async_context(acm)
             elif inspect.isgeneratorfunction(dependency_func):
-                cm = contextmanager(dependency_func)(**dep_kwargs)
-                result = await exit_stack.enter_async_context(_sync_cm_in_thread(cm))
+                scm = contextmanager(dependency_func)(**dep_kwargs)
+                result = await exit_stack.enter_async_context(_sync_cm_in_thread(scm))
             elif inspect.iscoroutinefunction(dependency_func):
                 result = await dependency_func(**dep_kwargs)
             else:
@@ -198,7 +198,7 @@ def positional_param_names(func: Callable[..., Any]) -> list:
     Excludes ``self``, ``Depends(...)`` parameters, and *args/**kwargs — i.e. the
     slots a wrapper fills with a payload (message data, query result, ...).
     """
-    names = []
+    names: list[str] = []
     try:
         params = inspect.signature(func).parameters
     except (TypeError, ValueError):

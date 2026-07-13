@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, Type
+from typing import Any, Callable, Dict, Optional, Type, cast
 
 from istos.validation import SchemaValidationError
 
@@ -106,15 +106,16 @@ class ExceptionHandlerRegistry:
                 details=getattr(e, "errors", None),
             ),
         )
-        self.register(
-            IstosError,
-            lambda e: ErrorResponse(
-                error=e.code,
-                code=e.code,
-                message=e.message,
-                details=e.details,
-            ),
-        )
+        def _from_istos_error(e: Exception) -> ErrorResponse:
+            err = cast(IstosError, e)
+            return ErrorResponse(
+                error=err.code,
+                code=err.code,
+                message=err.message,
+                details=err.details,
+            )
+
+        self.register(IstosError, _from_istos_error)
 
     def register(
         self,

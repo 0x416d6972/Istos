@@ -77,9 +77,10 @@ def validate_params(
         return params
 
     try:
-        DynamicModel = create_model("DynamicValidation", **field_definitions)
+        DynamicModel = create_model("DynamicValidation", **field_definitions)  # type: ignore[call-overload]
         validated = DynamicModel.model_validate(params)
-        return validated.model_dump()
+        dumped: Dict[str, Any] = validated.model_dump()
+        return dumped
     except ValidationError as e:
         raise SchemaValidationError(e.errors()) from e
 

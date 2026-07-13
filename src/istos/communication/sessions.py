@@ -3,7 +3,7 @@ import asyncio
 import re
 import time
 import warnings
-from typing import Optional, Any, Protocol, runtime_checkable
+from typing import Optional, Any, Protocol, cast, runtime_checkable
 import json
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -159,6 +159,7 @@ class IstosZenohConfig(BaseSettings):
 
         has_auth = bool(self.username and self.password is not None)
         if has_auth:
+            assert self.password is not None
             transport_conf["auth"] = {
                 "usrpwd": {
                     "user": self.username,
@@ -208,7 +209,7 @@ class IstosZenohConfig(BaseSettings):
             self._deep_merge(conf_dict, self.additional_config)
 
         json_str = json.dumps(conf_dict)
-        return zenoh.Config.from_json5(json_str)
+        return cast("zenoh.Config", zenoh.Config.from_json5(json_str))
 
 
 class ZenohSession:
@@ -372,7 +373,7 @@ class AsyncZenohSession:
     async def get(self, key_expr: str, **kwargs):
         if not self._internal_session:
             raise RuntimeError("No active Zenoh session")
-        return await asyncio.to_thread(self._internal_session.get, key_expr, **kwargs)
+        return await asyncio.to_thread(self._internal_session.get, key_expr, **kwargs)  # type: ignore[arg-type]
 
     async def delete(self, key_expr: str, **kwargs):
         if not self._internal_session:

@@ -1,10 +1,18 @@
 # Istos
 
 <p align="center">
-  <em>Decorator-first Python services on <a href="https://zenoh.io/">Eclipse Zenoh</a> — RPC, streaming, duplex channels, and durable pub/sub for microservices and agents.</em>
+  <a href="https://pypi.org/project/istos/"><img alt="PyPI" src="https://img.shields.io/pypi/v/istos.svg"></a>
+  <a href="https://github.com/0x416d6972/Istos/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/0x416d6972/Istos/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="Python" src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue">
+  <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-green">
+  <img alt="Status" src="https://img.shields.io/badge/status-0.1.0%20Beta-orange">
 </p>
 
-**Istos** maps network operations onto Python decorators so you can wire request/reply, token streams, interactive agent sessions, and events without standing up a message broker.
+<p align="center">
+  <em>Decorator-first Python services on <a href="https://zenoh.io/">Eclipse Zenoh</a> — RPC, streaming, duplex channels, work queues, and durable pub/sub.</em>
+</p>
+
+**Istos** is for building clean-architecture software and AI agents. A small, explicit decorator surface keeps your codebase maintainable and right-sized — modules that stay easy to analyze, debug, and develop, including with vibe coding, where the machine writes more of the code and readable, well-bounded components are what keep it under control. It maps network operations onto Python decorators so you can wire request/reply, token streams, interactive agent sessions, jobs, and events without standing up a message broker.
 
 ---
 
@@ -53,7 +61,7 @@ This project uses modern Python packaging via [`uv`](https://github.com/astral-s
 uv pip install istos
 
 # Or install from source:
-git clone https://github.com/A111ir/Istos.git
+git clone https://github.com/0x416d6972/Istos.git
 cd istos
 uv pip install -e .
 
