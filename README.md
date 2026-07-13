@@ -36,6 +36,8 @@ write a decorated function, `run()`.
 - **Decorators first**: `@handle`, `@stream`, `@channel`, `@publish`, `@subscribe`.
 - **Streaming RPC**: `@stream` yields chunks; `stream_query` / `@stream_client` consume them.
 - **Duplex channels**: `@channel` + `open_channel` / `@channel_client` for multi-turn agents (WebSocket or fabric).
+- **Work queues**: `@worker` / `@queue` / `enqueue` — one worker per job, leases with redelivery, retries, a dead-letter list, and workflow chains/chords. Brokerless, on the same fabric.
+- **Scheduling**: `schedule(..., every_s=)` or `schedule(..., cron="0 0 * * *")` for periodic jobs.
 - **HTTP gateway**: `Istos(http_port=8080)` plus `http=` / `ws=` — JSON, SSE, WebSocket. Co-host inside FastAPI with `istos.asgi.lifespan`. Optional MCP tools from `@handle`.
 - **Smart selectors**: Query params like `?limit=5` land on your Python arguments.
 - **Schema validation**: Type hints / Pydantic at the edge.
@@ -43,6 +45,7 @@ write a decorated function, `run()`.
 - **Brokerless durability**: `durable=True` replay caches; `persist="s3://…"` / `app.replay(...)` when the producer itself can die.
 - **Security**: TLS/mTLS at the transport; `TokenAuthorizer` / `JWTAuthorizer` / `require_roles` on handlers. Default is still open — use `require_auth=True` when you mean it.
 - **Pluggable storage**: in-memory, Redis, or SQLAlchemy (bring your async driver).
+- **Architecture fitness**: `istos analyze` scores your own package on abstractness / instability / distance and flags dependency cycles and god-modules — keep the codebase right-sized as it grows.
 
 ## The Mental Model
 
@@ -50,6 +53,7 @@ write a decorated function, `run()`.
 - **`@stream`**: 1-to-1 streaming RPC (SLM/LLM tokens)
 - **`@channel`**: full-duplex sessions (agents)
 - **`@publish` & `@subscribe`**: 1-to-many events
+- **`@worker` & `enqueue`**: 1-of-N jobs, processed once (work queues)
 - **`@on_liveliness`**: node discovery & health
 
 ##  Installation
@@ -168,6 +172,25 @@ async def on_created(event): ...
 The producer *is* the log (Zenoh advanced pub/sub); pair it with the idempotency
 ledger for effectively-once processing. See [Brokerless Durable Messaging](docs/user-guide/durable-messaging.md).
 
+**Work queues (jobs, not events).** An event fans out to *every* subscriber; a job
+goes to *one* worker, gets acknowledged, and is redelivered if that worker dies. One
+node owns the queue; workers compete for jobs from anywhere on the fabric:
+
+```python
+istos.queue("jobs/resize", max_attempts=3)    # this node owns the queue's state
+
+@istos.worker("jobs/resize")                  # any node; return to ack, raise to retry
+async def resize(job):
+    await do_resize(job["path"])
+
+# from anywhere on the mesh:
+await istos.enqueue("jobs/resize", {"path": "/img/1.png"})
+```
+
+Leases reclaim jobs from dead workers, poison jobs land in a dead-letter list, and
+`schedule("jobs/resize", {...}, cron="0 * * * *")` fires them periodically. See
+[Work Queues](docs/user-guide/work-queues.md).
+
 ### 4. Liveliness Tracking (Heartbeats)
 Detect when nodes connect or drop off the network without polling.
 
@@ -261,7 +284,7 @@ Dependencies are cached per invocation (`use_cache=True` by default), sync depen
 Add automatic retries with exponential backoff to any query or subscriber. Pass a simple integer or a full `RetryPolicy` for fine-grained control.
 
 ```python
-from istos.core.retry import RetryPolicy
+from istos.retry import RetryPolicy
 
 # Simple — retry up to 5 times with default exponential backoff
 @istos.query("weather/forecast", retry=5)
@@ -478,6 +501,7 @@ pytest tests/                         # includes network integration tests
 
 ```bash
 istos new my-service    # Scaffold a new project
+istos analyze           # Score component health (abstractness/instability/distance, cycles)
 istos docs              # Serve documentation locally
 istos version           # Print installed version
 ```

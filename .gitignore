@@ -10,3 +10,6 @@ wheels/
 .venv
 .mypy_cache
 .pytest_cache
+
+# MkDocs build output — regenerated and deployed to gh-pages by CI
+site/

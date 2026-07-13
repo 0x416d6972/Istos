@@ -2,8 +2,8 @@
 
 !!! tip "Istos Framework"
     **Decorator-first apps on [Eclipse Zenoh](https://zenoh.io/)** — RPC, streaming
-    replies, duplex channels, pub/sub, durable messaging, and an optional
-    HTTP / SSE / WebSocket / MCP surface.
+    replies, duplex channels, pub/sub, durable messaging, work queues, and an
+    optional HTTP / SSE / WebSocket / MCP surface.
 
     ![Python](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12%20|%203.13%20|%203.14-blue)
     ![License](https://img.shields.io/badge/license-Apache--2.0-green)
@@ -36,6 +36,7 @@ graph LR
     S["@stream"] -->|1-to-1 chunks| T["Streaming reply"]
     CH["@channel"] -->|duplex| U["Agent session"]
     C["@publish & @subscribe"] -->|1-to-N| D["Events"]
+    Q["@worker & enqueue"] -->|1-of-N, once| V["Work queue / jobs"]
     E["@on_liveliness"] -->|presence| F["Who is up"]
 ```
 
@@ -45,6 +46,8 @@ graph LR
 | Streaming RPC | `@stream`, `stream_query` | one request, many chunks (optional SSE) |
 | Duplex | `@channel`, `open_channel` | interactive agent sessions (optional WebSocket) |
 | Events | `@publish`, `@subscribe` | fire-and-forget |
+| Work queues | `@worker`, `@queue`, `enqueue` | one worker per job, leases, retries, dead-letter |
+| Scheduling | `schedule(..., every_s=/cron=)` | periodic jobs on an interval or cron |
 | Discovery | liveliness + `.istos/capabilities` | who's up, what they expose |
 | Durability | `durable=True`, `persist="s3://…"`, `replay()`, storage plugins | replay / survive crashes / idempotency |
 | HTTP | `http_port`, `http=` / `ws=`, ASGI co-host, MCP | JSON + SSE + WebSocket + tools for outside callers |
@@ -94,16 +97,18 @@ if __name__ == "__main__":
 2. [Getting Started](user-guide/getting-started.md)
 3. [RPC](user-guide/rpc.md) (`@handle` / `@query` / `@stream`)
 4. [Pub/Sub](user-guide/pubsub.md)
-5. [Durable messaging](user-guide/durable-messaging.md)
-6. [HTTP gateway](user-guide/http-gateway.md)
-7. [Security](user-guide/security.md) · [Authorization](user-guide/authorization.md)
-8. [Deployment](user-guide/deployment.md)
+5. [Work queues](user-guide/work-queues.md) (`@worker` / `@queue` / `enqueue`)
+6. [Durable messaging](user-guide/durable-messaging.md)
+7. [HTTP gateway](user-guide/http-gateway.md)
+8. [Security](user-guide/security.md) · [Authorization](user-guide/authorization.md)
+9. [Deployment](user-guide/deployment.md)
 
 Other guides: [capabilities](user-guide/capabilities.md), [liveliness](user-guide/liveliness.md),
 [retry](user-guide/retry.md), [validation](user-guide/validation.md),
 [DI](user-guide/dependency-injection.md), [databases](user-guide/application-databases.md),
 [middleware](user-guide/middleware.md), [observability](user-guide/observability.md),
-[storage](user-guide/storage.md), [testing](user-guide/testing.md), [CLI](user-guide/cli.md).
+[storage](user-guide/storage.md), [architecture health](user-guide/architecture-health.md),
+[testing](user-guide/testing.md), [CLI](user-guide/cli.md).
 
 [Recipes](recipes/index.md) if you want copy-paste starters.
 
@@ -115,6 +120,8 @@ Other guides: [capabilities](user-guide/capabilities.md), [liveliness](user-guid
 | `@stream` | [RPC](user-guide/rpc.md), [HTTP](user-guide/http-gateway.md) | [Stream](api/primitives/stream.md) |
 | `@channel` / `open_channel` | [Channels](user-guide/channels.md) | [Channel](api/primitives/channel.md) |
 | `@publish` / `@subscribe` | [Pub/Sub](user-guide/pubsub.md) | [Publish](api/primitives/publish.md), [Subscribe](api/primitives/subscribe.md) |
+| `@worker` / `@queue` / `enqueue` (leases, DLQ, chords) | [Work Queues](user-guide/work-queues.md) | [Work Queue](api/queue/index.md) |
+| `schedule(every_s=/cron=)` | [Work Queues](user-guide/work-queues.md) | [Work Queue](api/queue/index.md) |
 | Durable + S3 persist / `replay()` | [Durable messaging](user-guide/durable-messaging.md) | [Durable](api/communication/durable.md), [Persist](api/communication/persist.md) |
 | Liveliness | [Liveliness](user-guide/liveliness.md) | [Liveliness](api/primitives/liveliness.md) |
 | Capabilities | [Capabilities](user-guide/capabilities.md) | [Istos](api/istos.md) |
@@ -131,6 +138,7 @@ Other guides: [capabilities](user-guide/capabilities.md), [liveliness](user-guid
 | AsyncAPI | Getting Started | [AsyncAPI](api/discovery/asyncapi.md) |
 | Routers | [DI](user-guide/dependency-injection.md) | [IstosRouter](api/router.md) |
 | Test client | [Testing](user-guide/testing.md) | [TestClient](api/testing/testclient.md) |
+| Architecture fitness (`istos analyze`) | [Architecture Health](user-guide/architecture-health.md) | [Fitness](api/fitness.md) |
 | CLI | [CLI](user-guide/cli.md) | [CLI](api/cli.md) |
 
 ## Built-in endpoints
@@ -174,8 +182,8 @@ More: [Deployment](user-guide/deployment.md) · [Security](user-guide/security.m
 
 ## API index
 
-- **App:** [Istos](api/istos.md) · [Router](api/router.md) · [TestClient](api/testing/testclient.md) · [CLI](api/cli.md)
-- **Core:** [Handler](api/primitives/handler.md) · [Query](api/primitives/query.md) · [Stream](api/primitives/stream.md) · [Channel](api/primitives/channel.md) · [Publish](api/primitives/publish.md) · [Subscribe](api/primitives/subscribe.md) · [Liveliness](api/primitives/liveliness.md) · [Retry](api/retry.md) · [Validation](api/validation.md) · [AsyncAPI](api/discovery/asyncapi.md) · [Authz](api/security/authz.md) · [Errors](api/errors.md) · [SessionStore](api/primitives/session_store.md)
+- **App:** [Istos](api/istos.md) · [Router](api/router.md) · [TestClient](api/testing/testclient.md) · [CLI](api/cli.md) · [Fitness](api/fitness.md)
+- **Core:** [Handler](api/primitives/handler.md) · [Query](api/primitives/query.md) · [Stream](api/primitives/stream.md) · [Channel](api/primitives/channel.md) · [Publish](api/primitives/publish.md) · [Subscribe](api/primitives/subscribe.md) · [Work Queue](api/queue/index.md) · [Liveliness](api/primitives/liveliness.md) · [Retry](api/retry.md) · [Validation](api/validation.md) · [AsyncAPI](api/discovery/asyncapi.md) · [Authz](api/security/authz.md) · [Errors](api/errors.md) · [SessionStore](api/primitives/session_store.md)
 - **Communication:** [Sessions](api/communication/sessions.md) · [Config](api/communication/config.md) · [Durable](api/communication/durable.md) · [Persist](api/communication/persist.md)
 - **Consistency:** [Storage](api/consistency/storage.md) · [Redis](api/consistency/redis_storage.md) · [SQLAlchemy](api/consistency/sqlalchemy_storage.md) · [DB Config](api/consistency/config.md) · [Registry](api/consistency/databases.md)
 - **Other:** [Serialization](api/messages/serialization.md) · [Depends](api/di/depends.md) · [Middleware](api/middleware/base.md) · [Context](api/context.md) · [Health](api/http/health.md) · [Logging](api/logging.md) · [Metrics](api/observability/metrics.md) · [Tracing](api/observability/tracing.md) · [ASGI](api/http/asgi.md) · [MCP](api/http/mcp.md) · [Gateway](api/http/gateway.md)
