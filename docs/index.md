@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="Istos" width="280">
+</p>
+
 # Istos Documentation
 
 !!! tip "Istos Framework"

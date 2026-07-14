@@ -1,33 +1,22 @@
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Istos" width="280">
+</p>
+
 # Istos
 
-<p align="center">
-  <a href="https://pypi.org/project/istos/"><img alt="PyPI" src="https://img.shields.io/pypi/v/istos.svg"></a>
-  <a href="https://github.com/0x416d6972/Istos/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/0x416d6972/Istos/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Python" src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue">
-  <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-green">
-  <img alt="Status" src="https://img.shields.io/badge/status-0.1.0%20Beta-orange">
-</p>
+*Decorator-first Python services on [Eclipse Zenoh](https://zenoh.io/) (as a network backbone)— RPC, streaming, duplex channels, work queues, and durable pub/sub.*
 
-<p align="center">
-  <em>Decorator-first Python services on <a href="https://zenoh.io/">Eclipse Zenoh</a> — RPC, streaming, duplex channels, work queues, and durable pub/sub.</em>
-</p>
-
-**Istos** is for building clean-architecture software and AI agents. A small, explicit decorator surface keeps your codebase maintainable and right-sized — modules that stay easy to analyze, debug, and develop, including with vibe coding, where the machine writes more of the code and readable, well-bounded components are what keep it under control. It maps network operations onto Python decorators so you can wire request/reply, token streams, interactive agent sessions, jobs, and events without standing up a message broker.
+**Istos** helps you ship **agile** distributed software and AI agents — code that stays **maintainable** and **scalable**, with a short **time to market** and a surface that is **easy to develop**, debug, and analyze (including with AI-assisted workflows). One small decorator API maps the network onto ordinary Python functions, so you wire RPC, streams, channels, jobs, and events without broker glue or framework sprawl standing between you and the product.
 
 ---
 
+
+
 ## Why Istos
 
-Distributed systems are hard enough without spending your design budget on
-message brokers. Istos lets you reason about *services that answer requests*
-and *events that fan out* — you draw the boxes and arrows; Istos **is** the
-arrows. A two-service prototype and a hundred-service fleet are the same
-mental model, just more decorators.
+Distributed systems get hard when the messaging layer eats your design budget. Istos keeps the architecture explicit: *services that answer requests*, *streams that yield*, *channels that converse*, *jobs that run once*, *events that fan out*. You draw the boxes and arrows; Istos **is** the arrows. A two-service prototype and a hundred-service fleet share the same mental model — just more decorators — so you can grow without rewriting how the team thinks about the system.
 
-There is no Kafka, RabbitMQ, NATS, or Redis Streams cluster to provision.
-Durability lives in the *peers* — via [Eclipse Zenoh](https://zenoh.io/)'s
-advanced pub/sub — not in a central log you have to operate. `pip install`,
-write a decorated function, `run()`.
+That is the agility story: **maintainability** from clear, bounded endpoints; **scalability** from the same fabric patterns at any size; **time to market** from `pip install`, decorate, `run()` — no cluster to stand up first; **ease of development** (and AI-friendly iteration) because each unit of work is a readable function on a key expression, not a maze of adapters.
 
 ---
 
@@ -49,16 +38,16 @@ write a decorated function, `run()`.
 
 ## The Mental Model
 
-- **`@handle` & `@query`**: 1-to-1 RPC
-- **`@stream`**: 1-to-1 streaming RPC (SLM/LLM tokens)
-- **`@channel`**: full-duplex sessions (agents)
-- **`@publish` & `@subscribe`**: 1-to-many events
-- **`@worker` & `enqueue`**: 1-of-N jobs, processed once (work queues)
-- **`@on_liveliness`**: node discovery & health
+- `**@handle` & `@query**`: 1-to-1 RPC
+- `**@stream**`: 1-to-1 streaming RPC (SLM/LLM tokens)
+- `**@channel**`: full-duplex sessions (agents)
+- `**@publish` & `@subscribe**`: 1-to-many events
+- `**@worker` & `enqueue**`: 1-of-N jobs, processed once (work queues)
+- `**@on_liveliness**`: node discovery & health
 
-##  Installation
+## Installation
 
-This project uses modern Python packaging via [`uv`](https://github.com/astral-sh/uv).
+This project uses modern Python packaging via `[uv](https://github.com/astral-sh/uv)`.
 
 ```bash
 # Standard installation
@@ -73,9 +62,10 @@ uv pip install -e .
 uv pip install -e ".[all]"
 ```
 
-##  Quick Start
+## Quick Start
 
 ### 1. Registering a Handler
+
 Handlers sit on the network and respond to incoming queries. Istos automatically parses query parameters into your function's arguments.
 
 ```python
@@ -98,6 +88,7 @@ if __name__ == "__main__":
 ```
 
 ### 2. Querying the Network
+
 You can easily query handlers registered anywhere on the Zenoh network using `kwargs` to build Zenoh Selectors.
 
 ```python
@@ -128,6 +119,7 @@ if __name__ == "__main__":
 > `@query`/`@publish` before the service is running raises a clear `RuntimeError`.
 
 ### 3. Publishing & Subscribing (Event-Driven)
+
 React to real-time events efficiently.
 
 ```python
@@ -192,6 +184,7 @@ Leases reclaim jobs from dead workers, poison jobs land in a dead-letter list, a
 [Work Queues](docs/user-guide/work-queues.md).
 
 ### 4. Liveliness Tracking (Heartbeats)
+
 Detect when nodes connect or drop off the network without polling.
 
 ```python
@@ -208,6 +201,7 @@ def status_changed(key_expr: str, is_alive: bool):
 ```
 
 ### 5. One-Shot Commands & State Clearing
+
 Use raw async functions when you want to act imperatively rather than relying on events.
 
 ```python
@@ -219,6 +213,7 @@ await istos.delete_once("robot/cache/old_logs")
 ```
 
 ### 6. High-Performance Shared Memory (Zero-Copy)
+
 When sending large data arrays (like HD video frames) between handlers on the same hardware, enable POSIX shared memory allocations to avoid copies.
 
 ```python
@@ -230,6 +225,7 @@ def send_frame():
 ```
 
 ### 7. Dependency Injection & Pluggability
+
 Set global defaults on startup, or override them per-endpoint for polyglot persistence and sagas:
 
 ```python
@@ -281,6 +277,7 @@ Dependencies are cached per invocation (`use_cache=True` by default), sync depen
 > **Streaming note:** on `@subscribe`/`@publish`, dependencies resolve **per message** — so a `yield` dependency opens/closes its resource on every message. For an expensive, long-lived resource (DB pool, sensor socket), create it once in the `lifespan` and inject the shared instance with a cheap `Depends` that just returns it; reserve per-message `yield` deps for genuinely per-message setup.
 
 ### 8. Retry Policies
+
 Add automatic retries with exponential backoff to any query or subscriber. Pass a simple integer or a full `RetryPolicy` for fine-grained control.
 
 ```python
@@ -308,6 +305,7 @@ def get_forecast(result):
 ```
 
 ### 9. Schema Validation
+
 Istos automatically validates and type-coerces incoming parameters at the network boundary — before your business logic runs. Supports three modes:
 
 ```python
@@ -353,10 +351,12 @@ async def echo(message):
 > ```
 >
 > Before deploying, do **both** of the following:
+>
 > 1. **Secure the transport** — authenticate and encrypt the fabric (below).
 > 2. **Authorize handlers** — gate who may invoke them (further below).
 
 #### Transport Security & Authentication
+
 Secure the system without hard-coding secrets. `IstosZenohConfig` loads properties from your environment (`.env` file or environment variables) using `pydantic-settings`.
 
 ```env
@@ -380,7 +380,7 @@ ISTOS_ZENOH_ROOT_CA_CERTIFICATE=/path/to/ca.pem
 # ISTOS_ZENOH_MULTICAST_SCOUTING=false
 ```
 
-`IstosZenohConfig` is a Pydantic `BaseSettings` model, so it validates **at construction** (via field/model validators) and fails fast on structurally broken security config (malformed endpoints, a TLS cert without its key, mTLS without a CA, an invalid `mode`), warns when credentials are configured without TLS, and rejects unknown `ISTOS_ZENOH_*` variables so a typo can't silently disable auth. Secrets (`password`, `listen_private_key`) are `SecretStr`, so they don't leak into logs or reprs. For knobs the builder doesn't model, deep-merge raw Zenoh config via `additional_config={...}`. Session managers also accept `open_retries`/`open_retry_delay_s` to wait out a router that isn't up yet at startup.
+`IstosZenohConfig` is a Pydantic `BaseSettings` model, so it validates **at construction** (via field/model validators) and fails fast on structurally broken security config (malformed endpoints, a TLS cert without its key, mTLS without a CA, an invalid `mode`), warns when credentials are configured without TLS, and rejects unknown `ISTOS_ZENOH_`* variables so a typo can't silently disable auth. Secrets (`password`, `listen_private_key`) are `SecretStr`, so they don't leak into logs or reprs. For knobs the builder doesn't model, deep-merge raw Zenoh config via `additional_config={...}`. Session managers also accept `open_retries`/`open_retry_delay_s` to wait out a router that isn't up yet at startup.
 
 Then pass it straight to Istos — it builds the session for you:
 
@@ -402,6 +402,7 @@ istos = Istos(session_manager=AsyncZenohSession(config.build()))
 ```
 
 #### Advanced Security: Vault & Secret Managers (Programmatic Raw PEM)
+
 For zero-trust environments, Zenoh accepts **raw multiline PEM strings** natively, so you don't need to write files to disk. You can bypass `.env` and pull secrets into `IstosZenohConfig` at startup:
 
 ```python
@@ -421,6 +422,7 @@ istos = Istos(session_manager=AsyncZenohSession(config.build()))
 ```
 
 #### Authorization
+
 Securing the transport controls *who joins the fabric*. **Authorization** controls *what a joined peer may invoke*. Istos gives every handler an authorization hook. An **authorizer** receives an `AuthContext` (the key expression, parameters, and any attachment/token the caller sent) and returns `True` to allow the request, or `False`/raises `UnauthorizedError` to deny it. Sync and async authorizers are both supported. Denied requests never reach your handler and are answered with an `unauthorized` error.
 
 ```python
@@ -452,11 +454,12 @@ await istos.query_once("fleet/shutdown", attachment="alice-key")
 > protect them.
 
 #### A note on serialization
+
 Istos ships `JsonSerializer` (default), `RawSerializer` (bytes/str passthrough for pre-encoded or binary payloads), `MsgPackSerializer`, `PydanticSerializer`, `ProtobufSerializer`, `YamlSerializer`, and a `Base64Serializer` wrapper. `JsonSerializer` tolerates common types like `datetime`, `Decimal`, and `UUID` (stringified), and `MsgPackSerializer` pins string decoding for cross-version consistency.
 
 It does **not** ship a pickle-based serializer: `pickle.loads` executes arbitrary code embedded in its input, which on a fabric where any peer can publish to a key is remote code execution by design.
 
-##  Testing
+## Testing
 
 Istos includes `IstosTestClient` for in-process testing without a Zenoh network:
 
@@ -482,9 +485,9 @@ pytest tests/ -m "not integration"   # unit tests
 pytest tests/                         # includes network integration tests
 ```
 
-##  Production Features
+## Production Features
 
-- **Logging** — text or JSON under `istos.*`. We don't reconfigure your root logger unless you ask (`configure_logging=True` / `configure_logging()`).
+- **Logging** — text or JSON under `istos.`*. We don't reconfigure your root logger unless you ask (`configure_logging=True` / `configure_logging()`).
 - **Health** — `.istos/health` / `.istos/ready` (and `/livez` / `/readyz` with `http_port`)
 - **Metrics** — `.istos/metrics` (and `/metrics`)
 - **Capabilities** — `.istos/capabilities` lists handlers/streams with schemas
@@ -497,7 +500,7 @@ pytest tests/                         # includes network integration tests
 
 [Deployment](docs/user-guide/deployment.md) · [HTTP Gateway](docs/user-guide/http-gateway.md)
 
-##  CLI
+## CLI
 
 ```bash
 istos new my-service    # Scaffold a new project
@@ -507,6 +510,7 @@ istos version           # Print installed version
 ```
 
 ## Contributing
+
 Contributions and pull requests are welcome! Ensure tests pass and type hints are satisfied.
 
 1. Fork the repository
@@ -516,6 +520,7 @@ Contributions and pull requests are welcome! Ensure tests pass and type hints ar
 5. Open a Pull Request
 
 ---
+
 **License**: Apache-2.0
 
 **Python**: 3.10, 3.11, 3.12, 3.13, and 3.14
