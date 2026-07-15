@@ -144,3 +144,39 @@ async def test_stream_error_mid_stream_raises_after_partial():
         assert chunks == [{"i": 0}]  # partial output delivered before the error
     finally:
         await _stop(task)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_stream_ends_when_the_generator_does():
+    """A finished stream must end now, not when the query times out.
+
+    Zenoh ends a get() once every matching queryable has finished, and a
+    queryable finishes when its Query is dropped. Leaving that drop to
+    refcounting is not enough — the handler's frame and its closure over the
+    query keep it alive until a cycle-GC pass, and until then the consumer
+    cannot tell "still generating" from "done" and waits out the whole timeout.
+    Over SSE that stranded every client for `http_timeout_s` after its last
+    chunk.
+    """
+    app = Istos(enable_health=False, enable_metrics=False)
+
+    @app.stream("istos/test/finishes")
+    async def gen():
+        yield {"i": 0}
+        yield {"i": 1}
+
+    task = _bg(app)
+    try:
+        await asyncio.sleep(1.2)
+        started = asyncio.get_running_loop().time()
+        chunks = await _drain(app.stream_query("istos/test/finishes", timeout_s=10.0))
+        elapsed = asyncio.get_running_loop().time() - started
+
+        assert [c["i"] for c in chunks] == [0, 1]
+        assert elapsed < 2.0, (
+            f"the stream took {elapsed:.1f}s to close on a 10s timeout — it is "
+            f"waiting for the timeout instead of ending with the generator"
+        )
+    finally:
+        await _stop(task)

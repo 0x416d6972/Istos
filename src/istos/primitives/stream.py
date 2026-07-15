@@ -17,7 +17,7 @@ open for the whole stream.
 
 import asyncio
 import inspect
-from contextlib import AsyncExitStack
+from contextlib import AsyncExitStack, suppress
 from typing import Any, Callable, Iterable, Optional, Tuple, cast
 
 import zenoh
@@ -171,6 +171,19 @@ class stream_wrapper:
                 exc_info=True, extra={"prefix": self.prefix},
             )
             self._reply_error(query, key, e)
+        finally:
+            # End the query the moment the generator is done.
+            #
+            # Zenoh finishes a query when its Query is dropped, and the consumer's
+            # get() only returns once every matching queryable has finished. Left
+            # to refcounting that drop is not prompt: this coroutine's frame, the
+            # _drive closure over `query`, and the traceback on the error path all
+            # keep it alive until a cycle-GC pass. Meanwhile the consumer sits
+            # there — and since it cannot tell "still thinking" from "finished",
+            # it waits out the full timeout. Every SSE client would hang for
+            # `http_timeout_s` after its last chunk.
+            with suppress(Exception):
+                query.drop()
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """In-process invocation returns the underlying async generator (used by

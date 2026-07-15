@@ -111,6 +111,67 @@ same; run `python evidence.py --lens spec` to put one lens on its own box.
 A full run takes a few minutes — a 9B on consumer hardware is not fast, and the
 loop makes eight or so calls.
 
+## Drive it with curl
+
+`--serve` keeps the orchestrator up and puts the loop behind HTTP instead of
+running it once:
+
+```bash
+python orchestrator.py --serve          # or --serve 9000 for another port
+```
+
+```bash
+curl -N http://127.0.0.1:8080/run
+```
+
+The phases arrive as they happen:
+
+```
+data: {"phase": "classify", "shape": "task", "trivial": false, ...}
+data: {"phase": "done", "criterion": "Running `python report.py` prints 2 for ...
+data: {"phase": "evidence", "lens": "spec", "finding": "The rules require ...
+data: {"phase": "intent", "intent_line": "INTENT: code does ...", "agree": false ...
+data: {"phase": "verified", "verdict": "VERIFIED", "attempts_taken": 1, ...}
+event: end
+```
+
+Pass your own ask, and mind the `-N` — without it curl buffers and the stream
+looks like a hang:
+
+```bash
+curl -N --get http://127.0.0.1:8080/run \
+     --data-urlencode "task=Why does report.py disagree with billing?"
+```
+
+That is one decorator:
+
+```python
+@app.stream("fable/run", http="GET /run", http_timeout_s=1800)
+async def run(task: str = DEFAULT_TASK):
+    async for event in run_loop(app, task):
+        yield event
+```
+
+`@stream` is a multi-reply queryable on the fabric; `http=` also hangs it off the
+gateway, where each yielded event becomes one SSE frame and the stream closes
+with `event: end`. **`http_timeout_s` matters here** — it defaults to 60s, which
+would cut a real run off somewhere around the evidence round.
+
+Streaming is not decoration. A run takes minutes, and a single blocking response
+spends most of its life indistinguishable from a hang.
+
+`http_port` also gets you the usual probes for free, which is the cheap way to
+check the mesh is alive before you commit to a four-minute run:
+
+```bash
+curl -s http://127.0.0.1:8080/livez     # 200 once the process is up
+curl -s http://127.0.0.1:8080/readyz    # 200 when the session is ready
+curl -s http://127.0.0.1:8080/metrics   # Prometheus text
+```
+
+The other three nodes stay exactly as they were. Only the orchestrator grew an
+HTTP surface, because only it runs the loop.
+
 ## What you should see
 
 ```
@@ -223,7 +284,7 @@ memory, so its dead-letter list dies with it; give the app a
 
 | | |
 |---|---|
-| `orchestrator.py` | owns the queues; classify → done → evidence → intent gate → report |
+| `orchestrator.py` | owns the queues; classify → done → evidence → intent gate → report. `--serve` puts it behind SSE |
 | `evidence.py` | the four lenses: spec, code, runtime, api |
 | `executor.py` | proposes an edit, applies it, runs it; `--lie` to fake it |
 | `judge.py` | re-runs from source and rules; a separate process on purpose |
