@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-07-15
+
+### Fixed
+- `@stream` now ends its Zenoh query as soon as the generator finishes, instead of leaving it to be garbage-collected. The consumer's `get()` returns only once every matching queryable has finished, so the lingering query left every `stream_query` / SSE client waiting out the full timeout after the last chunk — a browser `EventSource` sat idle for `http_timeout_s` (60s by default) on a stream that had already completed, and `event: end` arrived only when the timeout expired. Streams now close immediately; the test suite dropped from 260s to 67s as a side effect.
+
+### Added
+- `examples/fable-workflow` gained `--serve`: the loop behind `GET /run` as SSE, so it can be driven with `curl -N` instead of the CLI.
+
 ## [0.1.1] - 2026-07-15
 
 ### Added
