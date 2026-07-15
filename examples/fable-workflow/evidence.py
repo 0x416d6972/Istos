@@ -1,10 +1,12 @@
 """Evidence gatherers — one lens per primary source.
 
-Run one of these, or three on three machines. Each lens has its own queue, so a
-node only ever claims work it can actually do; a claim is blind, and a single
-shared queue would hand a `spec` node a `code` job that it could only nack.
+    python evidence.py
 
-The three lenses are not arbitrary. The method's intent gate reads:
+Each lens has its own queue, so a node only ever claims work it can actually do.
+Run a second copy and the two compete for the same queues, which is how you add
+capacity — no coordination, the owner is the arbiter.
+
+The three main lenses are not arbitrary. The method's intent gate reads:
 
     INTENT: code does <X>; the task expects <Y>; the spec says <Z>
 
@@ -18,30 +20,37 @@ happily derive Z from X — it reads the code, decides that must have been the
 intent, and the gate passes while the spec was never opened. Three nodes with
 three inputs cannot do that.
 
-Usage:
-    python evidence.py                # serve all three lenses
-    python evidence.py --lens spec    # serve one, to spread across machines
+The fourth lens, `api`, answers the follow-up round and asks the model nothing.
 """
 
-import argparse
-import asyncio
+from contextlib import asynccontextmanager
 
 import apidocs
 import llm
 import method
+import queues
 import sandbox
 from istos import Istos
 
-LENSES = ("spec", "code", "runtime", "api")
+istos = Istos(service_name="fable-evidence")
 
 
-def queue_for(lens: str) -> str:
-    return f"jobs/fable/evidence/{lens}"
+@asynccontextmanager
+async def on_start(app):
+    # Fail here rather than three phases into someone else's run.
+    await llm.preflight()
+    print("evidence node up — spec, code, runtime, api", flush=True)
+    yield
 
 
-async def gather_spec(job):
+istos.lifespan = on_start
+
+
+@istos.worker(queues.evidence_queue("spec"))
+async def spec_lens(job):
     """Z — what the rules actually say. Never sees the code."""
-    return await llm.ask(
+    print("  [evidence:spec] gathering…", flush=True)
+    found = await llm.ask(
         method.EVIDENCE_SYSTEM,
         f"Your lens: the SPEC. You are reading the project's stated rules.\n"
         f"You have NOT seen the code and must not speculate about it.\n\n"
@@ -51,11 +60,14 @@ async def gather_spec(job):
         schema=method.EVIDENCE_SCHEMA,
         schema_name="evidence",
     )
+    return _done("spec", found)
 
 
-async def gather_code(job):
+@istos.worker(queues.evidence_queue("code"))
+async def code_lens(job):
     """X — what the code does. Never sees the spec."""
-    return await llm.ask(
+    print("  [evidence:code] gathering…", flush=True)
+    found = await llm.ask(
         method.EVIDENCE_SYSTEM,
         f"Your lens: the CODE. You are reading the source as written.\n"
         f"You have NOT seen the spec. Do not guess what it is supposed to do —\n"
@@ -68,13 +80,16 @@ async def gather_code(job):
         schema=method.EVIDENCE_SCHEMA,
         schema_name="evidence",
     )
+    return _done("code", found)
 
 
-async def gather_runtime(job):
+@istos.worker(queues.evidence_queue("runtime"))
+async def runtime_lens(job):
     """Y — what actually comes out. Runs it rather than reasoning about it."""
+    print("  [evidence:runtime] running it…", flush=True)
     run = await sandbox.run_report(job["source"], job["fixtures"])
 
-    distilled = await llm.ask(
+    found = await llm.ask(
         method.EVIDENCE_SYSTEM,
         f"Your lens: the RUNTIME. This output is not a prediction — it is what\n"
         f"the program printed just now.\n\n"
@@ -89,11 +104,12 @@ async def gather_runtime(job):
     )
     # The raw run travels with the distillation. Downstream compares against the
     # numbers, not the model's paraphrase of them.
-    distilled["observed"] = run
-    return distilled
+    found["observed"] = run
+    return _done("runtime", found)
 
 
-async def gather_api(job):
+@istos.worker(queues.evidence_queue("api"))
+async def api_lens(job):
     """What the APIs really are, read off the installed stdlib.
 
     The only lens that asks the model nothing. The names come in from the
@@ -101,58 +117,25 @@ async def gather_api(job):
     about what a signature says, and inviting one would just add a second chance
     to misremember it.
     """
+    print(f"  [evidence:api] looking up {len(job['names'])} name(s)…", flush=True)
     entries = apidocs.look_up_all(job["names"])
     bogus = [e["name"] for e in entries if e["status"] == "not_found"]
-    return {
-        "finding": f"Looked up {len(entries)} API name(s) against this interpreter's stdlib.",
-        "citations": [apidocs.render(entries)],
-        "surprises": [f"{name} does not exist — it was misremembered" for name in bogus],
-        "entries": entries,
-    }
-
-
-GATHERERS = {
-    "spec": gather_spec,
-    "code": gather_code,
-    "runtime": gather_runtime,
-    "api": gather_api,
-}
-
-
-def build_app(lenses) -> Istos:
-    app = Istos(service_name=f"fable-evidence-{'-'.join(lenses)}")
-
-    for lens in lenses:
-        # Bind late: the loop variable must not leak into the closure.
-        def make(lens=lens):
-            @app.worker(queue_for(lens))
-            async def gather(job):
-                print(f"  [evidence:{lens}] gathering…", flush=True)
-                result = await GATHERERS[lens](job)
-                result["lens"] = lens
-                print(f"  [evidence:{lens}] {result['finding'][:90]}", flush=True)
-                return result
-
-        make()
-
-    return app
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Fable evidence gatherer")
-    parser.add_argument(
-        "--lens",
-        choices=(*LENSES, "all"),
-        default="all",
-        help="Which lens this node serves. Default: all three in one process.",
+    return _done(
+        "api",
+        {
+            "finding": f"Looked up {len(entries)} API name(s) against this interpreter's stdlib.",
+            "citations": [apidocs.render(entries)],
+            "surprises": [f"{name} does not exist — it was misremembered" for name in bogus],
+            "entries": entries,
+        },
     )
-    args = parser.parse_args()
-    lenses = LENSES if args.lens == "all" else (args.lens,)
 
-    asyncio.run(llm.preflight())
-    print(f"evidence node up — serving {', '.join(lenses)}", flush=True)
-    build_app(lenses).run()
+
+def _done(lens: str, found: dict) -> dict:
+    found["lens"] = lens
+    print(f"  [evidence:{lens}] {found['finding'][:90]}", flush=True)
+    return found
 
 
 if __name__ == "__main__":
-    main()
+    istos.run()

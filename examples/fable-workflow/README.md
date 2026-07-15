@@ -84,14 +84,27 @@ spec was never opened. Three nodes with three inputs cannot do that.
 
 ## What you need
 
-- **LM Studio** on `http://127.0.0.1:1234` with `qwen/qwen3.5-9b` loaded.
-  Override with `FABLE_LLM_URL` / `FABLE_LLM_MODEL`. Any OpenAI-compatible
-  endpoint works — Ollama, vLLM, a hosted API.
+- **LM Studio** on `http://127.0.0.1:1234` with `qwen/qwen3.5-9b` loaded. Any
+  OpenAI-compatible endpoint works — Ollama, vLLM, a hosted API.
 - Nothing else. The client is aiohttp, which Istos already depends on.
 
 ```bash
 pip install istos      # or: uv pip install istos
 ```
+
+Nodes are configured by environment, so a node stays a node and nothing has to be
+threaded through a constructor:
+
+| | |
+|---|---|
+| `FABLE_LLM_URL` | the OpenAI-compatible endpoint (default `http://127.0.0.1:1234/v1`) |
+| `FABLE_LLM_MODEL` | model id (default `qwen/qwen3.5-9b`) |
+| `FABLE_LLM_TIMEOUT_S` | per-call timeout (default 300) |
+| `FABLE_HTTP_PORT` | orchestrator's HTTP port (default 8080) |
+| `FABLE_LIE` | `1` makes the executor fake it — see below |
+
+Each node checks the model is actually reachable in its `lifespan`, so a missing
+LM Studio fails at startup rather than three phases into someone's run.
 
 ## Run it
 
@@ -102,23 +115,35 @@ from, so it goes last.
 python evidence.py       # the four lenses
 python judge.py          # the adversary
 python executor.py       # acts, but cannot bless its own work
-python orchestrator.py   # the loop
+python orchestrator.py   # the loop, behind GET /run
 ```
 
-Each is an ordinary Istos node. Split them across machines and it behaves the
-same; run `python evidence.py --lens spec` to put one lens on its own box.
+Every one is an ordinary Istos app — a module-level `istos = Istos(...)`, its
+handlers declared with decorators, `istos.lifespan` for startup, and
+`istos.run()` at the bottom. Nothing builds an app or drives the loop by hand:
 
-A full run takes a few minutes — a 9B on consumer hardware is not fast, and the
-loop makes eight or so calls.
+```python
+istos = Istos(service_name="fable-judge")
+
+@istos.worker(queues.JUDGE)
+async def judge(job):
+    ...
+
+if __name__ == "__main__":
+    istos.run()
+```
+
+They are nodes, so they come up and stay up. Split them across machines and it
+behaves the same. Run a second `evidence.py` and the two compete for the same
+queues — that is how you add capacity, with the queue owner as the arbiter and no
+coordination between them.
+
+A full run takes a minute or several — a 9B on consumer hardware is not fast, and
+the loop makes eight or so calls.
 
 ## Drive it with curl
 
-`--serve` keeps the orchestrator up and puts the loop behind HTTP instead of
-running it once:
-
-```bash
-python orchestrator.py --serve          # or --serve 9000 for another port
-```
+A run is a request. The orchestrator is already listening:
 
 ```bash
 curl -N http://127.0.0.1:8080/run
@@ -143,13 +168,15 @@ curl -N --get http://127.0.0.1:8080/run \
      --data-urlencode "task=Why does report.py disagree with billing?"
 ```
 
-That is one decorator:
+The orchestrator's own terminal shows the same run rendered as a report, because
+the loop yields events and the stream handler does both jobs with them:
 
 ```python
-@app.stream("fable/run", http="GET /run", http_timeout_s=1800)
+@istos.stream("fable/run", http="GET /run", http_timeout_s=1800)
 async def run(task: str = DEFAULT_TASK):
-    async for event in run_loop(app, task):
-        yield event
+    async for event in run_loop(task):
+        render(event)   # this node's terminal
+        yield event     # the caller's stream
 ```
 
 `@stream` is a multi-reply queryable on the fabric; `http=` also hangs it off the
@@ -161,7 +188,7 @@ Streaming is not decoration. A run takes minutes, and a single blocking response
 spends most of its life indistinguishable from a hang.
 
 `http_port` also gets you the usual probes for free, which is the cheap way to
-check the mesh is alive before you commit to a four-minute run:
+check the mesh is alive before committing to a full run:
 
 ```bash
 curl -s http://127.0.0.1:8080/livez     # 200 once the process is up
@@ -169,10 +196,13 @@ curl -s http://127.0.0.1:8080/readyz    # 200 when the session is ready
 curl -s http://127.0.0.1:8080/metrics   # Prometheus text
 ```
 
-The other three nodes stay exactly as they were. Only the orchestrator grew an
-HTTP surface, because only it runs the loop.
+Only the orchestrator has an HTTP surface, because only it runs the loop. The
+other three are pure fabric nodes: they claim from queues and answer to nobody
+over HTTP.
 
 ## What you should see
+
+In the orchestrator's terminal, while curl streams the same run as JSON:
 
 ```
 ── intent gate ──
@@ -199,8 +229,10 @@ What it prints now, observed by the judge on its own machine:
 
 ### Watch the judge earn its keep
 
+Restart the executor with one environment variable, then curl again:
+
 ```bash
-python executor.py --lie
+FABLE_LIE=1 python executor.py
 ```
 
 The executor now changes nothing, runs nothing, and reports the numbers the task
@@ -284,9 +316,9 @@ memory, so its dead-letter list dies with it; give the app a
 
 | | |
 |---|---|
-| `orchestrator.py` | owns the queues; classify → done → evidence → intent gate → report. `--serve` puts it behind SSE |
+| `orchestrator.py` | owns the queues; serves `GET /run`; classify → done → evidence → intent gate → report |
 | `evidence.py` | the four lenses: spec, code, runtime, api |
-| `executor.py` | proposes an edit, applies it, runs it; `--lie` to fake it |
+| `executor.py` | proposes an edit, applies it, runs it; `FABLE_LIE=1` to fake it |
 | `judge.py` | re-runs from source and rules; a separate process on purpose |
 | `method.py` | the method's steps as prompts and schemas |
 | `queues.py` | the queue topology, and why the bound lives there |

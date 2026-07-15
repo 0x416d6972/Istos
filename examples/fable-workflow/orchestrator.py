@@ -1,5 +1,8 @@
 """The orchestrator — fable-loop's bookends, and the node that owns the queues.
 
+    python orchestrator.py
+    curl -N http://127.0.0.1:8080/run
+
 It runs the plan (classify, define done, gather evidence, fill the intent gate),
 hands the work to the mesh, and reports what came back. It does not do the work
 itself and it does not judge it.
@@ -8,19 +11,17 @@ Istos has no broker, so one node holds each queue's jobs, leases and dead-letter
 list. That is this one. Start it last: it owns the queues the other nodes are
 waiting on.
 
-    python orchestrator.py                  # run the loop once, print, exit
-    python orchestrator.py --task "..."     # your own ask, against the same fixture
-    python orchestrator.py --serve          # stay up; drive it over HTTP instead
-
-The loop is an async generator of progress events. Nothing in it prints. The CLI
-renders those events to a terminal and the SSE route forwards them to curl — two
-front-ends over one loop, rather than a copy of the loop per front-end.
+It is a node like the other three — it comes up and stays up. A run is a request:
+`GET /run` drives the loop and streams each phase back as it happens. The loop
+yields events, this node renders them to its own terminal, and the same events go
+to the caller as SSE — one loop, two audiences, rather than a copy of the loop
+per audience.
 """
 
-import argparse
 import asyncio
-import sys
+import os
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import llm
@@ -29,6 +30,7 @@ import queues
 from istos import Istos
 
 SCENARIO = Path(__file__).parent / "scenario"
+HTTP_PORT = int(os.environ.get("FABLE_HTTP_PORT", "8080"))
 
 # The default ask. Billing's numbers are the reference, and they are correct —
 # the trap is that 2026-06-01 reads 5 either way, so an agent that spot-checks a
@@ -42,9 +44,50 @@ DEFAULT_TASK = (
 
 REFERENCE_OUTPUT = "2026-05-31 2\n2026-06-01 5\n2026-06-02 1"
 
-# A full run is four or five minutes against a local 9B. The SSE default of 60s
-# would cut the stream off somewhere around the evidence round.
-HTTP_STREAM_TIMEOUT_S = 1800.0
+# A full run is a few minutes against a local 9B. The SSE default of 60s would
+# cut the stream off somewhere around the evidence round.
+RUN_TIMEOUT_S = 1800.0
+
+istos = Istos(service_name="fable-orchestrator", http_port=HTTP_PORT)
+
+# This node owns every queue: the jobs, the leases, the dead-letter lists.
+for _lens in ("spec", "code", "runtime", "api"):
+    istos.queue(queues.evidence_queue(_lens), keep_results=True, lease_s=600)
+
+# One delivery is one fix-verify cycle, so the method's hard bound is this
+# number. Spend it and the job dead-letters — which is the hand-back.
+istos.queue(
+    queues.ACT,
+    keep_results=True,
+    max_attempts=queues.MAX_FIX_VERIFY_CYCLES,
+    lease_s=900,
+    retry_backoff_s=1.0,
+)
+istos.queue(queues.JUDGE, keep_results=True, lease_s=600)
+
+
+@asynccontextmanager
+async def on_start(app):
+    await llm.preflight()
+    print(f"orchestrator up — curl -N http://127.0.0.1:{HTTP_PORT}/run", flush=True)
+    yield
+
+
+istos.lifespan = on_start
+
+
+@istos.stream("fable/run", http="GET /run", http_timeout_s=RUN_TIMEOUT_S)
+async def run(task: str = DEFAULT_TASK):
+    """Drive the loop, streaming each phase out as it happens.
+
+    Over the fabric this is a multi-reply queryable; over HTTP the gateway turns
+    each yielded event into an SSE frame. A run takes minutes, so streaming is
+    not a flourish — a single blocking response would spend most of its life
+    looking indistinguishable from a hang.
+    """
+    async for event in run_loop(task):
+        render(event)   # this node's own terminal
+        yield event     # the caller's stream
 
 
 def load_scenario() -> dict:
@@ -55,39 +98,7 @@ def load_scenario() -> dict:
     }
 
 
-def build_app(*, http_port: int = None) -> Istos:
-    app = Istos(service_name="fable-orchestrator", http_port=http_port)
-
-    for lens in ("spec", "code", "runtime", "api"):
-        app.queue(queues.evidence_queue(lens), keep_results=True, lease_s=600)
-
-    # One delivery is one fix-verify cycle, so the method's hard bound is this
-    # number. Spend it and the job dead-letters — which is the hand-back.
-    app.queue(
-        queues.ACT,
-        keep_results=True,
-        max_attempts=queues.MAX_FIX_VERIFY_CYCLES,
-        lease_s=900,
-        retry_backoff_s=1.0,
-    )
-    app.queue(queues.JUDGE, keep_results=True, lease_s=600)
-
-    @app.stream("fable/run", http="GET /run", http_timeout_s=HTTP_STREAM_TIMEOUT_S)
-    async def run(task: str = DEFAULT_TASK):
-        """Drive the loop and stream each phase out as it happens.
-
-        Over the fabric this is a multi-reply queryable; over HTTP the gateway
-        turns each yielded event into an SSE frame. A run takes minutes, so
-        streaming is not a flourish — a single blocking response would spend most
-        of its life looking indistinguishable from a hang.
-        """
-        async for event in run_loop(app, task):
-            yield event
-
-    return app
-
-
-async def gather_evidence(app: Istos, scenario: dict, task: str) -> dict:
+async def gather_evidence(scenario: dict, task: str) -> dict:
     """Step 2 — every lens at once, each on its own queue.
 
     `asyncio.gather` is what makes the batch a batch. The method asks for
@@ -103,15 +114,15 @@ async def gather_evidence(app: Istos, scenario: dict, task: str) -> dict:
 
     async def one(lens: str) -> dict:
         queue = queues.evidence_queue(lens)
-        job_id = await app.enqueue(queue, {"lens": lens, **payload})
-        return await queues.wait_for(app, queue, job_id)
+        job_id = await istos.enqueue(queue, {"lens": lens, **payload})
+        return await queues.wait_for(istos, queue, job_id)
 
     lenses = ("spec", "code", "runtime")
     results = await asyncio.gather(*(one(lens) for lens in lenses))
     return dict(zip(lenses, results))
 
 
-async def look_up_apis(app: Istos, scenario: dict, intent: dict) -> dict:
+async def look_up_apis(scenario: dict, intent: dict) -> dict:
     """The method's second round of lookups — one round, then one follow-up.
 
     The first round could not have done this: you cannot know which APIs a fix
@@ -137,8 +148,8 @@ async def look_up_apis(app: Istos, scenario: dict, intent: dict) -> dict:
         return {"docs": "(no APIs named)", "entries": [], "surprises": []}
 
     queue = queues.evidence_queue("api")
-    job_id = await app.enqueue(queue, {"lens": "api", "names": named["names"]})
-    found = await queues.wait_for(app, queue, job_id)
+    job_id = await istos.enqueue(queue, {"lens": "api", "names": named["names"]})
+    found = await queues.wait_for(istos, queue, job_id)
     return {
         "docs": found["citations"][0],
         "entries": found["entries"],
@@ -146,7 +157,7 @@ async def look_up_apis(app: Istos, scenario: dict, intent: dict) -> dict:
     }
 
 
-async def run_loop(app: Istos, task: str):
+async def run_loop(task: str):
     """The loop, as a stream of progress events.
 
     Yields dicts; renders nothing. Every phase reports what it found the moment
@@ -179,7 +190,7 @@ async def run_loop(app: Istos, task: str):
     yield {"phase": "done", **done}
 
     try:
-        evidence = await gather_evidence(app, scenario, task)
+        evidence = await gather_evidence(scenario, task)
     except queues.JobFailed as exc:
         yield {
             "phase": "error",
@@ -212,10 +223,10 @@ async def run_loop(app: Istos, task: str):
     )
     yield {"phase": "intent", "intent_line": method.intent_line(intent), **intent}
 
-    apis = await look_up_apis(app, scenario, intent)
+    apis = await look_up_apis(scenario, intent)
     yield {"phase": "apis", "entries": apis["entries"], "surprises": apis["surprises"]}
 
-    job_id = await app.enqueue(
+    job_id = await istos.enqueue(
         queues.ACT,
         {
             "task_id": str(uuid.uuid4()),
@@ -228,14 +239,14 @@ async def run_loop(app: Istos, task: str):
     )
 
     try:
-        outcome = await queues.wait_for(app, queues.ACT, job_id)
+        outcome = await queues.wait_for(istos, queues.ACT, job_id)
     except queues.JobFailed:
         # The hand-back. Three cycles failed, so the queue stopped trying — the
         # method's bound, honoured by nothing having to choose to honour it. The
         # dead-letter record already holds what was tried and the last word on why.
         yield {
             "phase": "dead_lettered",
-            "dead_letters": await app.dead_letters(queues.ACT),
+            "dead_letters": await istos.dead_letters(queues.ACT),
         }
         return
 
@@ -244,7 +255,7 @@ async def run_loop(app: Istos, task: str):
     yield {"phase": outcome["outcome"], **outcome}
 
 
-# --- the terminal front-end ---------------------------------------------------
+# --- rendering, for this node's terminal -------------------------------------
 
 HEADINGS = {
     "classify": "── classifying ──",
@@ -257,7 +268,6 @@ _MARKS = {"found": "✓", "not_found": "✗ misremembered", "skipped": "– skip
 
 
 def render(event: dict) -> None:
-    """Print one progress event. Returns nothing; the exit code comes from main."""
     phase = event["phase"]
     if phase in HEADINGS:
         print(f"\n{HEADINGS[phase]}", flush=True)
@@ -298,7 +308,7 @@ def render(event: dict) -> None:
     elif phase in ("stopped", "error"):
         print(f"\n{event['why']}", flush=True)
         if event.get("hint"):
-            print(event["hint"], file=sys.stderr, flush=True)
+            print(event["hint"], flush=True)
 
     elif phase == "dead_lettered":
         _render_dead_lettered(event)
@@ -322,6 +332,15 @@ def _render_dead_lettered(event: dict) -> None:
         "The scenario is untouched and the next run starts clean.",
         flush=True,
     )
+
+
+def _render_finding(event: dict) -> None:
+    print("\n" + "=" * 72, flush=True)
+    print("NO CHANGE MADE — the code was right and the request was not.", flush=True)
+    print("=" * 72, flush=True)
+    print(f"\n{event['finding']}\n", flush=True)
+    print(event["intent_line"], flush=True)
+    print(f"\n{event['recommendation']}", flush=True)
 
 
 def _render_verified(event: dict) -> None:
@@ -348,58 +367,5 @@ def _render_verified(event: dict) -> None:
     )
 
 
-def _render_finding(event: dict) -> None:
-    print("\n" + "=" * 72, flush=True)
-    print("NO CHANGE MADE — the code was right and the request was not.", flush=True)
-    print("=" * 72, flush=True)
-    print(f"\n{event['finding']}\n", flush=True)
-    print(event["intent_line"], flush=True)
-    print(f"\n{event['recommendation']}", flush=True)
-
-
-# Nonzero only where a human has to do something. Refusing to edit correct code
-# is a result, not a failure, so `handed_back` exits 0.
-FAILED_PHASES = {"error", "dead_lettered"}
-
-
-async def cli(task: str) -> int:
-    app = build_app()
-    async with app.serving():
-        # The other nodes claim from queues this process owns, so give their
-        # sessions a moment to find it before the first job goes out.
-        await asyncio.sleep(1.0)
-
-        exit_code = 0
-        async for event in run_loop(app, task):
-            render(event)
-            if event["phase"] in FAILED_PHASES:
-                exit_code = 1
-        return exit_code
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Fable workflow orchestrator")
-    parser.add_argument("--task", default=DEFAULT_TASK, help="The ask to run the loop on.")
-    parser.add_argument(
-        "--serve",
-        nargs="?",
-        type=int,
-        const=8080,
-        default=None,
-        metavar="PORT",
-        help="Stay up and serve GET /run (SSE) on PORT instead of running once.",
-    )
-    args = parser.parse_args()
-
-    asyncio.run(llm.preflight())
-
-    if args.serve is None:
-        sys.exit(asyncio.run(cli(args.task)))
-
-    app = build_app(http_port=args.serve)
-    print(f"orchestrator up — curl -N http://127.0.0.1:{args.serve}/run", flush=True)
-    app.run()
-
-
 if __name__ == "__main__":
-    main()
+    istos.run()

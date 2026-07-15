@@ -1,5 +1,7 @@
 """fable-judge as a node of its own.
 
+    python judge.py
+
 The judge's stance is that a report is a set of claims, not evidence. That stance
 is hard to hold when the thing reporting and the thing judging are the same model
 in the same context — it has already decided the work is good, and it grades its
@@ -32,15 +34,26 @@ genuinely needs reading: does the change betray the spec, and does the diff go
 beyond the ask.
 """
 
-import asyncio
 import difflib
+from contextlib import asynccontextmanager
 
 import llm
 import method
+import queues
 import sandbox
 from istos import Istos
 
-QUEUE = "jobs/fable/judge"
+istos = Istos(service_name="fable-judge")
+
+
+@asynccontextmanager
+async def on_start(app):
+    await llm.preflight()
+    print("judge node up", flush=True)
+    yield
+
+
+istos.lifespan = on_start
 
 
 def unified_diff(original: str, patched: str) -> str:
@@ -54,8 +67,11 @@ def unified_diff(original: str, patched: str) -> str:
     return "".join(lines) or "(no change)"
 
 
-async def judge_claim(job) -> dict:
+@istos.worker(queues.JUDGE)
+async def judge(job):
     """Re-run the work, then rule on it."""
+    print("  [judge] re-running the claim…", flush=True)
+
     rerun = await sandbox.run_report(job["patched_source"], job["fixtures"])
     actual = str(rerun["stdout"])
     claimed = str(job["claimed_output"])
@@ -126,28 +142,11 @@ async def judge_claim(job) -> dict:
     ruling["observed_output"] = actual
     ruling["criterion_met"] = criterion_met
     ruling["diff"] = diff
+
+    marks = ", ".join(f["kind"] for f in ruling["frauds"]) or "none"
+    print(f"  [judge] {ruling['verdict']} (frauds: {marks})", flush=True)
     return ruling
 
 
-def build_app() -> Istos:
-    app = Istos(service_name="fable-judge")
-
-    @app.worker(QUEUE)
-    async def judge(job):
-        print("  [judge] re-running the claim…", flush=True)
-        ruling = await judge_claim(job)
-        marks = ", ".join(f["kind"] for f in ruling["frauds"]) or "none"
-        print(f"  [judge] {ruling['verdict']} (frauds: {marks})", flush=True)
-        return ruling
-
-    return app
-
-
-def main() -> None:
-    asyncio.run(llm.preflight())
-    print("judge node up", flush=True)
-    build_app().run()
-
-
 if __name__ == "__main__":
-    main()
+    istos.run()
