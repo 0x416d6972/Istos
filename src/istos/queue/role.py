@@ -237,6 +237,7 @@ class QueueRole:
             "job_id": rec.id,
             "attempt": rec.attempts,
             "max_attempts": rec.max_attempts,
+            "last_error": rec.last_error,   # why the previous attempt nacked, if any
             "data": base64.b64encode(rec.data).decode("ascii"),
             "wf": rec.wf,
         })

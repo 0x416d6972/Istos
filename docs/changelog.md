@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `JobContext` — a worker that names a `ctx` parameter is handed the delivery's `job_id`, `queue`, `attempt`, `max_attempts` and `last_error` (the previous attempt's failure), plus `is_retry` / `is_last_attempt`. Opt-in and additive: a worker without `ctx` is unchanged. Resolves alongside `Depends(...)`, which still wins on the same name.
+
+### Changed
+- The queue owner's claim reply now carries `last_error`, so a redelivered job can tell its worker why the last attempt failed.
+
 ## [0.1.0] - 2026-07
 
 ### Added

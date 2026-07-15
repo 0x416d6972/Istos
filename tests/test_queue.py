@@ -7,7 +7,7 @@ import asyncio
 
 import pytest
 
-from istos import Istos, JobState
+from istos import Depends, Istos, JobContext, JobState
 from istos.consistency.storage import InMemoryStoragePlugin
 from istos.queue import QueueRole, QueueStore
 
@@ -468,3 +468,94 @@ async def test_ha_owner_failover():
         await _wait(lambda: len(processed) >= 2, timeout=5.0)
 
     assert sorted(p["n"] for p in processed) == [1, 2]
+
+
+# ---------------------------------------------------------------------------
+# JobContext — delivery metadata injected into a worker that asks for it
+# ---------------------------------------------------------------------------
+def test_job_context_attempt_predicates():
+    first = JobContext(job_id="j", queue="q", attempt=1, max_attempts=3)
+    assert not first.is_retry and not first.is_last_attempt
+
+    retry = JobContext(job_id="j", queue="q", attempt=2, max_attempts=3, last_error="boom")
+    assert retry.is_retry and not retry.is_last_attempt
+    assert retry.last_error == "boom"
+
+    final = JobContext(job_id="j", queue="q", attempt=3, max_attempts=3)
+    assert final.is_retry and final.is_last_attempt
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_worker_without_ctx_param_is_untouched():
+    """The context is opt-in: a worker that never names ctx keeps its old shape."""
+    app = _app()
+    app.queue("jobs/noctx", lease_s=5)
+    seen = []
+
+    @app.worker("jobs/noctx", poll_interval_s=0.1)
+    async def handle(job):
+        seen.append(job)
+
+    async with app.serving():
+        await asyncio.sleep(0.6)
+        await app.enqueue("jobs/noctx", {"n": 1})
+        await _wait(lambda: seen)
+
+    assert seen == [{"n": 1}]
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_worker_ctx_carries_attempt_and_last_error():
+    """A redelivered job tells the worker which attempt it is, and why the last failed."""
+    app = _app()
+    app.queue("jobs/ctx", lease_s=2, max_attempts=3, sweep_interval_s=0.5, retry_backoff_s=0.0)
+    seen = []
+
+    @app.worker("jobs/ctx", poll_interval_s=0.1)
+    async def handle(job, ctx):
+        seen.append(ctx)
+        if ctx.attempt < 3:
+            raise ValueError(f"boom {ctx.attempt}")
+        return {"ok": True}
+
+    async with app.serving():
+        await asyncio.sleep(0.6)
+        await app.enqueue("jobs/ctx", {"n": 1})
+        await _wait(lambda: len(seen) >= 3, timeout=15.0)
+
+    assert [c.attempt for c in seen[:3]] == [1, 2, 3]
+    assert [c.max_attempts for c in seen[:3]] == [3, 3, 3]
+    assert seen[0].queue == "jobs/ctx" and seen[0].job_id
+
+    # First delivery has nothing behind it; each retry carries the last failure.
+    assert seen[0].last_error is None
+    assert seen[1].last_error and "boom 1" in seen[1].last_error
+    assert seen[2].last_error and "boom 2" in seen[2].last_error
+
+    assert [c.is_retry for c in seen[:3]] == [False, True, True]
+    assert [c.is_last_attempt for c in seen[:3]] == [False, False, True]
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_worker_ctx_alongside_depends():
+    """ctx and Depends(...) resolve together, not either/or."""
+    app = _app()
+    app.queue("jobs/ctxdep", lease_s=5)
+    seen = []
+
+    async def get_setting():
+        return "configured"
+
+    @app.worker("jobs/ctxdep", poll_interval_s=0.1)
+    async def handle(job, ctx, setting=Depends(get_setting)):
+        seen.append((job, ctx.attempt, setting))
+
+    async with app.serving():
+        await asyncio.sleep(0.6)
+        await app.enqueue("jobs/ctxdep", {"n": 7})
+        await _wait(lambda: seen)
+
+    assert seen == [({"n": 7}, 1, "configured")]

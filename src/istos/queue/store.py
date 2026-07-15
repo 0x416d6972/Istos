@@ -79,6 +79,39 @@ class JobRecord:
         )
 
 
+@dataclass(frozen=True)
+class JobContext:
+    """What the queue knows about *this* delivery of a job.
+
+    A worker that names a ``ctx`` parameter is handed one, the same way a handler
+    that names ``db`` is handed the app's storage::
+
+        @app.worker("jobs/email")
+        async def send(job, ctx: JobContext):
+            if ctx.is_last_attempt:
+                log.warning("final try for %s: %s", ctx.job_id, ctx.last_error)
+
+    The job body stays exactly what was enqueued — delivery metadata lives here
+    rather than being mixed into the caller's data.
+    """
+
+    job_id: str
+    queue: str
+    attempt: int                      # 1 on first delivery, 2 on first redelivery
+    max_attempts: int
+    last_error: Optional[str] = None  # why the previous attempt nacked, if it did
+
+    @property
+    def is_retry(self) -> bool:
+        """True when a previous attempt at this job failed."""
+        return self.attempt > 1
+
+    @property
+    def is_last_attempt(self) -> bool:
+        """True when raising will dead-letter the job instead of redelivering it."""
+        return self.attempt >= self.max_attempts
+
+
 class QueueStore:
     """Authoritative job state for one queue, held in the owner's memory and
     (optionally) written through to a ``StoragePlugin`` so it survives a restart.

@@ -24,7 +24,7 @@ from .communication.persist import ObjectStore, InMemoryObjectStore, S3ObjectSto
 from .primitives.channel import ChannelSession, ChannelClosed
 from .primitives.channel_fabric import ChannelClient
 from .primitives.session_store import SessionStore
-from .queue import QueueStore, QueueRole, JobState, JobRecord
+from .queue import QueueStore, QueueRole, JobState, JobRecord, JobContext
 from .http.mcp import MCPServer
 from .di import Depends, DependencyCycleError, current_principal, current_request, current_token
 from .logging import configure_logging, get_logger
@@ -63,6 +63,7 @@ __all__ = [
     "QueueRole",
     "JobState",
     "JobRecord",
+    "JobContext",
     "MCPServer",
     "Depends",
     "DependencyCycleError",

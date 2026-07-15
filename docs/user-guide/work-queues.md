@@ -121,6 +121,54 @@ tried, and the last error string. Re-enqueueing is a plain `enqueue` — the que
 has no magic "requeue the dead" button on purpose; moving a poison job back onto
 the queue is a decision you should make deliberately.
 
+## Knowing which attempt you are on
+
+By default a worker sees the job body and nothing else, which is usually right: the
+job says what to do, and the queue's business is its own. But a retry is not the
+same event as a first delivery, and sometimes the work needs to know. Name a `ctx`
+parameter and the queue hands you the delivery's context, the same way naming `db`
+hands a handler the app's storage:
+
+```python
+from istos import JobContext
+
+@app.worker("jobs/email")
+async def send(job, ctx: JobContext):
+    if ctx.is_last_attempt:
+        log.warning("final try for %s; it failed last time with: %s",
+                    ctx.job_id, ctx.last_error)
+    await smtp.send(job["to"], job["body"])
+```
+
+`ctx` carries `job_id`, `queue`, `attempt` (1 on the first delivery), `max_attempts`
+and `last_error` — the error string from the attempt before, or `None` on the first
+one. Two predicates cover what you normally want to ask: `is_retry` (something
+already failed at this) and `is_last_attempt` (raising now dead-letters it rather
+than trying again).
+
+That last one is the useful one. It is the difference between a job that vanishes
+into the dead-letter list and one that files a ticket on its way out:
+
+```python
+@app.worker("jobs/charge")
+async def charge(job, ctx: JobContext):
+    try:
+        await payments.charge(job["order_id"], job["amount"])
+    except PaymentError:
+        if ctx.is_last_attempt:
+            await alert_ops(job["order_id"], ctx.last_error)
+        raise
+```
+
+`last_error` is what makes a retry smarter than a repeat: the job comes back with
+the reason it bounced, so attempt 2 can do something different instead of the same
+thing again. It travels with the job, so it works across competing consumers — a
+redelivery that lands on a different process still knows what happened.
+
+The parameter is opt-in and additive. A worker that never mentions `ctx` behaves
+exactly as before, and a `ctx` that is a `Depends(...)` still resolves as your
+dependency — the resolver checks for one first.
+
 ## Competing consumers: scaling out
 
 Two ways to add throughput, and you can combine them:

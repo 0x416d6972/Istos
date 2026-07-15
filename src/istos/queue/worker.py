@@ -12,9 +12,23 @@ from istos.di.depends import (
     positional_param_names,
 )
 from istos.messages.serialization import Serialize
-from istos.queue.store import _decode_wf, _encode_wf
+from istos.queue.store import JobContext, _decode_wf, _encode_wf
 
 _logger = get_logger("queue")
+
+
+def _wants_ctx(func: Callable) -> bool:
+    """True if the worker asks for the delivery context by naming a ``ctx`` param.
+
+    Keyed on the name, like a handler's ``db``. A ``Depends(...)`` on the same
+    name still wins — the dependency resolver checks for one first — so this
+    cannot hijack a parameter that already means something else.
+    """
+    try:
+        params = inspect.signature(func).parameters
+    except (TypeError, ValueError):  # pragma: no cover - builtins, C callables
+        return False
+    return "ctx" in params
 
 
 class worker_wrapper:
@@ -42,6 +56,7 @@ class worker_wrapper:
         self._token = token
         self._has_depends = has_dependencies(func)
         self._skip_names = tuple(positional_param_names(func)[:1])  # the job param
+        self._wants_ctx = _wants_ctx(func)
         self._overrides = dependency_overrides or {}
         self._app: Any = None
         self._tasks: List[asyncio.Task] = []
@@ -83,15 +98,16 @@ class worker_wrapper:
                 pass
         self._tasks.clear()
 
-    async def _run_body(self, job: Any) -> Any:
+    async def _run_body(self, job: Any, ctx: Optional[JobContext] = None) -> Any:
+        extra = {"ctx": ctx} if self._wants_ctx else {}
         if self._has_depends:
             return await invoke_with_dependencies(
-                self.func, args=(job,), skip_names=self._skip_names,
+                self.func, args=(job,), context=extra, skip_names=self._skip_names,
                 overrides=self._overrides,
             )
         if inspect.iscoroutinefunction(self.func):
-            return await self.func(job)
-        return await asyncio.to_thread(self.func, job)
+            return await self.func(job, **extra)
+        return await asyncio.to_thread(lambda: self.func(job, **extra))
 
     async def _idle(self) -> None:
         """Wait for a nudge, or fall through after poll_interval to re-check for
@@ -123,9 +139,16 @@ class worker_wrapper:
             job_id = reply["job_id"]
             attempt = reply.get("attempt", 1)
             wf = reply.get("wf")
+            ctx = JobContext(
+                job_id=job_id,
+                queue=self.prefix,
+                attempt=attempt,
+                max_attempts=reply.get("max_attempts", 0),
+                last_error=reply.get("last_error"),
+            )
             try:
                 job = self.serializer.deserialize(base64.b64decode(reply["data"]))
-                result = await self._run_body(job)
+                result = await self._run_body(job, ctx)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
