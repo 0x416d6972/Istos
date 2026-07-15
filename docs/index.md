@@ -11,7 +11,7 @@
 
     ![Python](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12%20|%203.13%20|%203.14-blue)
     ![License](https://img.shields.io/badge/license-Apache--2.0-green)
-    ![Status](https://img.shields.io/badge/status-0.1.0%20Beta-orange)
+    ![Status](https://img.shields.io/badge/status-0.1.1%20Beta-orange)
 
 ```bash
 uv pip install istos

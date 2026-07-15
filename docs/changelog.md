@@ -5,13 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.1] - 2026-07-15
 
 ### Added
 - `JobContext` — a worker that names a `ctx` parameter is handed the delivery's `job_id`, `queue`, `attempt`, `max_attempts` and `last_error` (the previous attempt's failure), plus `is_retry` / `is_last_attempt`. Opt-in and additive: a worker without `ctx` is unchanged. Resolves alongside `Depends(...)`, which still wins on the same name.
+- `examples/fable-workflow` — the Fable Method as four cooperating nodes over work queues, driven by a local LLM.
 
 ### Changed
-- The queue owner's claim reply now carries `last_error`, so a redelivered job can tell its worker why the last attempt failed.
+- The queue owner's claim reply now carries `last_error`, so a redelivered job can tell its worker why the last attempt failed. Backward compatible in both directions: an older worker ignores the field, and a newer worker against an older owner sees `last_error=None`.
 
 ## [0.1.0] - 2026-07
 

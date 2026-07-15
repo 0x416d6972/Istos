@@ -509,6 +509,16 @@ istos docs              # Serve documentation locally
 istos version           # Print installed version
 ```
 
+## Examples
+
+Complete systems in [`examples/`](examples/), not snippets:
+
+- [**fable-workflow**](examples/fable-workflow/) — the
+  [Fable Method](https://github.com/Sahir619/fable-method) run as four cooperating
+  nodes against a local LLM. Evidence gathered in parallel, an adversarial judge in
+  its own process, and `max_attempts=3` doing the work of "stop after three failed
+  cycles" — the agent loop's rules as structure rather than as a prompt.
+
 ## Contributing
 
 Contributions and pull requests are welcome! Ensure tests pass and type hints are satisfied.
