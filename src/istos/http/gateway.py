@@ -19,17 +19,24 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union
 from urllib.parse import quote, unquote
 
-# Istos error ``code`` (from ErrorResponse) → HTTP status. Mirrors the status
-# codes the IstosError subclasses carry (which are not on the wire payload).
-CODE_TO_STATUS: Dict[str, int] = {
-    "unauthorized": 401,
-    "forbidden": 403,
-    "not_found": 404,
-    "validation_error": 400,
-    "bad_request": 400,
-    "rate_limit_exceeded": 429,
-}
-DEFAULT_ERROR_STATUS = 500
+from istos.errors import CODE_TO_STATUS, DEFAULT_ERROR_STATUS, is_error_payload
+
+__all__ = [
+    "CODE_TO_STATUS",
+    "DEFAULT_ERROR_STATUS",
+    "HttpRoute",
+    "build_selector",
+    "decode_params",
+    "encode_params",
+    "extract_bearer",
+    "is_error_payload",
+    "parse_http_spec",
+    "sse_event",
+    "status_for_reply",
+]
+
+# CODE_TO_STATUS / DEFAULT_ERROR_STATUS live in istos.errors and are re-exported
+# here for callers that import them from this module.
 
 
 @dataclass
@@ -146,13 +153,6 @@ def build_selector(key_expr: str, params: Dict[str, Any]) -> str:
         return key_expr
     query = ";".join(f"{quote(str(k))}={quote(str(v))}" for k, v in encoded.items())
     return f"{key_expr}?{query}"
-
-
-def is_error_payload(parsed: Any) -> bool:
-    """Whether a decoded reply is an Istos ``ErrorResponse`` wire payload."""
-    return isinstance(parsed, dict) and all(
-        field in parsed for field in ("error", "code", "message")
-    )
 
 
 def status_for_reply(parsed: Any) -> int:

@@ -39,7 +39,8 @@ more. Reserved built-in endpoints live under `.istos/`:
 | `.istos/health` | liveness (returns `{"status":"alive",...}`) |
 | `.istos/ready` | readiness |
 | `.istos/metrics` | metrics snapshot |
-| `.istos/capabilities` | machine-readable capability manifest (discovery) |
+| `.istos/capabilities/<service>` | machine-readable capability manifest (discovery) |
+| `.istos/capabilities` | the same manifest on a key shared by every node; answers for one of them |
 | `.istos/docs` | AsyncAPI document (when `serve_docs` is enabled) |
 
 ## 2. Serialization
@@ -207,7 +208,16 @@ would return:
 | `internal_error` (or other) | handler error | 500 |
 
 A reply is an error envelope iff it is a JSON object containing `error`, `code`,
-and `message`. Anything else is a normal result.
+and `message`. Anything else is a normal result. All three fields are required —
+a payload carrying only some of them is a normal result, and a client written to
+this contract will hand it to the caller as data.
+
+A client reading a single reply is expected to raise on the envelope rather than
+return it, since it otherwise answers field lookups like any other object and an
+outage becomes an empty answer. (The Python client does this in `query_once`,
+`@query`, `stream_query` and `open_channel`; `istos.is_error_payload` is the
+check.) A **multi-reply** result is different: one responder failing is not the
+call failing, so each reply is judged on its own.
 
 ## 7. Serving an Istos-compatible endpoint from another language
 
@@ -224,8 +234,9 @@ no gateway and no broker.
 
 ## 8. Capability discovery
 
-Every node answers `.istos/capabilities` with a machine-readable manifest of what
-it can do — for agents that discover tools at runtime rather than hard-coding them:
+Every node answers `.istos/capabilities/<service_name>` with a machine-readable
+manifest of what it can do, for agents that discover tools at runtime rather than
+hard-coding them:
 
 ```json
 {
@@ -242,10 +253,27 @@ it can do — for agents that discover tools at runtime rather than hard-coding 
 
 `kind` is `handle` / `stream` / `channel` / `publish` / `subscribe`;
 `params_schema` / `return_schema` are JSON Schema. Channel entries may include
-`websocket` when `ws=` is set. Fan out with a wildcard selector
-(`**/.istos/capabilities` or query each node) to build a fleet-wide tool catalog,
-then invoke tools using the RPC/stream/channel conventions. The endpoint inherits
-the app-wide authorizer; disable it with `Istos(enable_discovery=False)`.
+`websocket` when `ws=` is set. The endpoint inherits the app-wide authorizer;
+disable it with `Istos(enable_discovery=False)`.
+
+Query `.istos/capabilities/*` for a fleet-wide tool catalog, then invoke the tools
+using the RPC/stream/channel conventions. Two rules a client must follow:
+
+* **Ask on the per-service key.** Every node also answers the bare
+  `.istos/capabilities`, which is the same key everywhere. Queryables are declared
+  complete for their key expression, so a query on the shared key is routed to one
+  node and the rest never see it — including through a wildcard, since the key is
+  identical on every node. Only the per-service keys are distinct enough to fan
+  out. The bare key remains for older clients and describes whichever node
+  answered.
+* **Turn reply consolidation off** (`ConsolidationMode::None`) on the wildcard.
+  Zenoh's default consolidation drops replies that arrive on different keys, so a
+  catalog built with it is quietly incomplete.
+
+A service name is free text and a key chunk is not: replace anything outside
+`[A-Za-z0-9_.-]` with `-`. Services sharing a name share a key, and one of them
+answers; replicas of one service are expected to share it. The manifest repeats
+its `service` field, so a client does not have to parse keys.
 
 ## 9. Not on the fabric?
 

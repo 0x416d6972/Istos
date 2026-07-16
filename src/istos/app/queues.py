@@ -12,7 +12,8 @@ from istos.queue import QueueRole, QueueStore, worker_wrapper, _encode_wf
 from istos.queue.cron import CronSchedule
 from istos.errors import (
     IstosError,
-    UnauthorizedError,
+    error_from_payload,
+    is_error_payload,
 )
 from istos.security.authz import Authorizer, combine_authorizers
 from istos.context import RequestEnvelope, peek_request_context
@@ -152,8 +153,6 @@ class _QueueMixin(IstosBase):
         reply = await self._queue_get(selector, payload=payload, token=token, timeout_s=timeout_s)
         if reply is None:
             raise IstosError(f"No queue owner answered for {prefix!r}.", code="not_found", status=504)
-        if "error" in reply:
-            raise UnauthorizedError(reply["error"])
         return str(reply["job_id"])
 
     async def _queue_chord_report(
@@ -358,7 +357,13 @@ class _QueueMixin(IstosBase):
             return None
 
         raw = await asyncio.to_thread(_do)
-        return None if raw is None else json.loads(raw)
+        if raw is None:
+            return None
+        reply: dict = json.loads(raw)
+        # Every queue call comes through here, so the envelope is checked once.
+        if is_error_payload(reply):
+            raise error_from_payload(reply)
+        return reply
 
     async def _queue_claim(self, prefix: str, *, token: Any = None) -> Optional[dict]:
         return await self._queue_get(f"{prefix}/claim", token=token)

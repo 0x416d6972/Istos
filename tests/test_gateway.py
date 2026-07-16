@@ -142,6 +142,15 @@ def test_handle_without_http_registers_no_route(istos: Istos):
 # ---------------------------------------------------------------------------
 # 5. Integration: full HTTP surface over a running app
 # ---------------------------------------------------------------------------
+def _free_port() -> int:
+    """A hardcoded port collides with whatever else is running on the machine."""
+    import socket
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return int(s.getsockname()[1])
+
+
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_http_surface_end_to_end():
@@ -154,7 +163,8 @@ async def test_http_surface_end_to_end():
     def authorize(ctx: AuthContext) -> Principal | None:
         return Principal(id="svc-1") if ctx.token == "good-token" else None
 
-    app = Istos(http_port=8091, authorizer=authorize,
+    port = _free_port()
+    app = Istos(http_port=port, authorizer=authorize,
                 enable_health=False, enable_metrics=False)
 
     @app.handle("robot/move", http=True, authorizer=None)
@@ -164,7 +174,7 @@ async def test_http_surface_end_to_end():
     task = asyncio.create_task(app.run_async())
     try:
         await asyncio.sleep(1.5)  # let the session + HTTP server come up
-        base = "http://localhost:8091"
+        base = f"http://localhost:{port}"
         async with aiohttp.ClientSession() as http:
             # Probes
             async with http.get(f"{base}/livez") as r:

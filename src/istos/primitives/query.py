@@ -3,6 +3,7 @@ import inspect
 import zenoh
 from typing import Any, Callable, List, Optional, Union
 
+from istos.errors import error_from_payload, is_error_payload
 from istos.messages.serialization import Serialize
 from istos.retry import RetryPolicy, execute_with_retry
 from istos.context import RequestEnvelope, peek_request_context
@@ -51,6 +52,7 @@ class query_wrapper:
         retry: Optional[Union[int, RetryPolicy]] = None,
         attachment: Optional[bytes] = None,
         dependency_overrides: Optional[dict] = None,
+        consolidate_replies: bool = True,
     ):
         self.func = func
         self.prefix = prefix
@@ -58,6 +60,7 @@ class query_wrapper:
         self._get_session = get_session
         self.timeout_s = timeout_s
         self._attachment = attachment
+        self._consolidate_replies = consolidate_replies
         self.calls = 0
 
         if retry is None:
@@ -104,6 +107,11 @@ class query_wrapper:
             decoded = [r.decode() for r in results]
             data = decoded[0] if len(decoded) == 1 else decoded
 
+            # Single replies only: one of several responders failing is not the
+            # call failing, so a list is passed through as-is.
+            if is_error_payload(data):
+                raise error_from_payload(data)
+
             # args may already hold `self` from bound_query_wrapper.
             if self._has_depends:
                 return await invoke_with_dependencies(
@@ -134,6 +142,10 @@ class query_wrapper:
         """Synchronous Zenoh get — runs inside asyncio.to_thread."""
         results: List[QueryResult] = []
         get_kwargs: dict = {"timeout": self.timeout_s}
+        if not self._consolidate_replies:
+            # Zenoh's default consolidation drops replies a fan-out query wants:
+            # it keeps one even when the responders answered on different keys.
+            get_kwargs["consolidation"] = zenoh.ConsolidationMode.NONE
         attachment = self._outbound_attachment()
         if attachment is not None:
             get_kwargs["attachment"] = attachment

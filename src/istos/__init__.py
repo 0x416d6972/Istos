@@ -9,6 +9,9 @@ from .errors import (
     ForbiddenError,
     RateLimitError,
     ErrorResponse,
+    error_from_payload,
+    is_error_payload,
+    is_retryable,
     exception_handler,
 )
 from .security.authz import (
@@ -42,6 +45,9 @@ __all__ = [
     "ForbiddenError",
     "RateLimitError",
     "ErrorResponse",
+    "error_from_payload",
+    "is_error_payload",
+    "is_retryable",
     "exception_handler",
     "Authorizer",
     "AuthContext",

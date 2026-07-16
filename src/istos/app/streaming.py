@@ -13,10 +13,12 @@ from istos.primitives.clients import stream_client_wrapper, channel_client_wrapp
 from istos.primitives.session_store import SessionStore
 from istos.errors import (
     IstosError,
+    error_from_payload,
+    is_error_payload,
 )
 from istos.security.authz import Authorizer, combine_authorizers
 from istos.context import RequestEnvelope, peek_request_context
-from istos.http.gateway import parse_http_spec, build_selector, is_error_payload
+from istos.http.gateway import parse_http_spec, build_selector
 
 from istos.app._base import IstosBase
 
@@ -192,10 +194,7 @@ class _StreamingMixin(IstosBase):
                     raise item
                 data = serializer.deserialize(item)
                 if is_error_payload(data):
-                    raise IstosError(
-                        data.get("message", "stream error"),
-                        code=data.get("code", "stream_error"),
-                    )
+                    raise error_from_payload(data, default_code="stream_error")
                 yield data
         finally:
             # Consumer stopped early (break / exception) — cancel the underlying
@@ -276,10 +275,7 @@ class _StreamingMixin(IstosBase):
         resp = serializer.deserialize(payload)
         if is_error_payload(resp):
             await client.close()
-            raise IstosError(
-                resp.get("message", "channel open denied"),
-                code=resp.get("code", "unauthorized"),
-            )
+            raise error_from_payload(resp, default_code="unauthorized")
         client._declare_liveliness()
         return client
 

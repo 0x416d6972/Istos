@@ -210,6 +210,63 @@ await app.query_once("admin/reset", token="s3cret")          # authorized call
 
 ---
 
+## When the handler fails
+
+A handler that raises does not send you an exception — there is a network in
+between. It replies with an `ErrorResponse` **payload**, which on the wire is an
+ordinary dict:
+
+```json
+{"error": "not_found", "code": "not_found", "message": "no such client",
+ "correlation_id": "…"}
+```
+
+`query_once` and `@query` notice that envelope and raise it back at you, so the
+failure cannot be mistaken for an answer:
+
+```python
+from istos import NotFoundError
+
+try:
+    client = await app.query_once("clients/get", id="acme")
+except NotFoundError:
+    return None
+```
+
+The `code` round-trips back to the class the responder raised — `NotFoundError`,
+`UnauthorizedError`, `ForbiddenError`, `RateLimitError` — and anything else
+arrives as `IstosError` keeping its `code`. The `correlation_id` comes with it, so
+your traceback can be matched to the responder's log line.
+
+!!! warning "Why this matters more than it looks"
+
+    Before 0.1.3 the envelope was returned as data, and the resulting bug is very
+    hard to see:
+
+    ```python
+    reply = await app.query_once("clients/list")
+    clients = (reply or {}).get("clients") or []   # [] for an error envelope
+    ```
+
+    An error envelope answers `.get()` like any other dict, so an outage becomes
+    an empty list — indistinguishable from "there are none". A UI showing an
+    empty table is ambiguous; an agent *saying* "there are no clients registered"
+    while the database refuses connections is a confident lie.
+
+If you decode a reply yourself, `is_error_payload(reply)` and
+`error_from_payload(reply)` are exported from `istos`.
+
+**A multi-reply query is not covered by this.** Several responders on one key
+decode to a list, and one of them failing is not the call failing — the list keeps
+whatever each one said, error envelopes included. Check them yourself:
+
+```python
+replies = await app.query_once("*/health")   # many responders
+alive = [r for r in replies if not is_error_payload(r)]
+```
+
+---
+
 ## Retry — two independent layers
 
 The same `RetryPolicy` (N attempts, exponential backoff `delay * factor ** attempt`)
@@ -220,6 +277,11 @@ is used on both ends, but it wraps **different things**:
 | **Wraps** | your handler's *execution* | the *network get + decode + post-process* |
 | **Fires when** | your logic raises (transient DB error, a downstream call fails) | the call over the network raises (decode error, callback error) |
 | **Runs on** | the server (callee) | the client (caller) |
+
+Neither retries an error that cannot change: a `not_found` or `unauthorized` fails
+immediately rather than spending the backoff budget to be told the same thing
+again. A `rate_limit_exceeded` *does* retry — waiting is the remedy — as do 5xx
+and transport faults. `istos.is_retryable(exc)` is the rule if you need it.
 
 They compose: a client can re-query after a failure while the server independently
 retries its own logic. And with `durability="exactly_once"`, a client re-query with
@@ -234,13 +296,30 @@ result — so client retry + exactly-once server does not double-execute side ef
   `timeout_s` and receives an empty list `[]`. Return a value (even `{"ok": True}`)
   if the client needs a reply.
 - **A timeout is not an exception.** Zero replies decode to `[]`, so `@query`'s
-  `retry` does **not** re-fire on "no handler answered" — it only retries on a raised
-  error. Check for an empty result yourself if a missing handler must be treated as a
-  failure.
+  `retry` does **not** re-fire on "no handler answered". Check for an empty result
+  yourself if a missing handler must be treated as a failure. (A handler that
+  answered *and failed* does raise, and `retry` re-fires only if the error could
+  plausibly go away — see below.)
+- **An error is recognised by its shape**, not by the transport: a reply is an error
+  iff it is a dict carrying `error`, `code` and `message`. A handler that
+  legitimately returns all three will be misread as a failure and raise. Rename a
+  field if you hit this.
 - **Serializers must match on both ends.** A JSON handler and a MsgPack query will
   fail to decode. Set the same `serializer=` on the pair.
-- **Multiple handlers on one key produce a list.** If you expect a single answer,
-  make the key unique or handle the list.
+- **Two nodes on the *same* key do not fan out — one of them answers, and which
+  one is not yours to choose.** `@handle` declares its queryable `complete=True`
+  (this node can answer the whole key by itself), so Zenoh asks exactly one, and
+  the default reply consolidation would collapse same-key replies anyway. This is
+  the right behavior for a key with one owner, and a trap if you expected every
+  node to reply: the others are not slow, they are never asked. Do not run the
+  same key on several nodes as a fan-out mechanism.
+- **Fan-out is a wildcard over *distinct* keys, with consolidation off.**
+  `a/health` and `b/health` are different queryables, so
+  `app.query_once("*/health", consolidate_replies=False)` reaches both and returns
+  a list. The flag matters: Zenoh consolidates replies by default and will drop
+  some of them even though they answered on different keys, so a sweep without it
+  can quietly return a subset. Each reply in the list may be an error envelope
+  (see above).
 
 ---
 

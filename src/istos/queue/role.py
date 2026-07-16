@@ -12,7 +12,7 @@ import zenoh
 
 from istos.logging import get_logger
 from istos.security.authz import AuthContext, Authorizer, check_authorized
-from istos.errors import UnauthorizedError
+from istos.errors import ErrorResponse, UnauthorizedError
 from istos.http.gateway import decode_params
 from istos.queue.store import QueueStore
 
@@ -206,7 +206,9 @@ class QueueRole:
             )
             return True
         except UnauthorizedError as e:
-            _reply(query, {"error": e.message, "code": "unauthorized"})
+            _reply(query, ErrorResponse(
+                error=e.code, code=e.code, message=e.message,
+            ).to_dict())
             return False
 
     async def _on_enqueue(self, query: "zenoh.Query") -> None:

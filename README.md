@@ -446,6 +446,10 @@ Callers attach their token via `attachment=`:
 await istos.query_once("fleet/shutdown", attachment="alice-key")
 ```
 
+A caller the authorizer turns away gets an `UnauthorizedError` raised, not a
+reply — the same for anything else the handler raises. See
+[When the handler fails](docs/user-guide/rpc.md#when-the-handler-fails).
+
 > **Built-in endpoints** (`.istos/health`, `.istos/ready`, `.istos/metrics`) and
 > `serve_docs()` inherit the app-wide authorizer. If you leave the app
 > unauthenticated, Istos warns that these endpoints — including the AsyncAPI
@@ -490,7 +494,7 @@ pytest tests/                         # includes network integration tests
 - **Logging** — text or JSON under `istos.`*. We don't reconfigure your root logger unless you ask (`configure_logging=True` / `configure_logging()`).
 - **Health** — `.istos/health` / `.istos/ready` (and `/livez` / `/readyz` with `http_port`)
 - **Metrics** — `.istos/metrics` (and `/metrics`)
-- **Capabilities** — `.istos/capabilities` lists handlers/streams with schemas
+- **Capabilities** — `.istos/capabilities/<service>` lists handlers/streams with schemas; `app.discover_capabilities()` for the fleet
 - **HTTP / SSE** — `http_port` + `http=` on handle/stream
 - **Tracing** — optional OTel (`istos[otel]`)
 - **Middleware** — correlation IDs, logging, your own

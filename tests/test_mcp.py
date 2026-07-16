@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from istos import Istos, MCPServer
+from istos import Istos, MCPServer, NotFoundError
 
 
 def _app() -> Istos:
@@ -14,6 +14,13 @@ def _app() -> Istos:
     async def add(a: int, b: int) -> int:
         """Add two integers."""
         return a + b
+
+    @app.handle("math/div")
+    async def div(a: int, b: int) -> float:
+        """Divide two integers."""
+        if b == 0:
+            raise NotFoundError("no such quotient")
+        return a / b
 
     @app.handle(".istos/internal")
     async def internal() -> dict:
@@ -71,6 +78,23 @@ async def test_tools_call_routes_to_handler():
         result = resp["result"]
         assert result["isError"] is False
         assert result["content"][0]["text"] == "5"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_a_handler_that_raises_is_reported_as_an_mcp_error():
+    """A refusal arrives flagged and keeps its code, so a client can act on it."""
+    app = _app()
+    srv = MCPServer(app)
+    async with app.serving():
+        await asyncio.sleep(0.4)
+        resp = await srv.handle({
+            "jsonrpc": "2.0", "id": 5, "method": "tools/call",
+            "params": {"name": "math-div", "arguments": {"a": 1, "b": 0}},
+        })
+        result = resp["result"]
+        assert result["isError"] is True
+        assert result["content"][0]["text"] == "not_found: no such quotient"
 
 
 @pytest.mark.integration

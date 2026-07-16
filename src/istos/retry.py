@@ -2,6 +2,7 @@ import asyncio
 from typing import Any, Callable, Optional
 from dataclasses import dataclass
 
+from istos.errors import is_retryable
 from istos.logging import get_logger
 
 _logger = get_logger("retry")
@@ -34,6 +35,9 @@ async def execute_with_retry(
     Executes a callable with retry logic and exponential backoff.
     If all retries are exhausted and on_failure is set, it is called
     with the last exception. Otherwise the exception is re-raised.
+
+    Errors that asking again cannot fix (``not_found``, ``unauthorized``; see
+    :func:`istos.errors.is_retryable`) fail on the first attempt.
     """
     last_exception: Optional[Exception] = None
 
@@ -46,6 +50,8 @@ async def execute_with_retry(
             return result
         except Exception as e:
             last_exception = e
+            if not is_retryable(e):
+                break
             if attempt < policy.max_retries:
                 wait = policy.delay * (policy.backoff_factor ** attempt)
                 _logger.warning(

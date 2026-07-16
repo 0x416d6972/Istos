@@ -22,8 +22,8 @@ from typing import Any, Dict, Iterable, Optional, Tuple, cast
 import zenoh
 
 from istos.primitives.channel import ChannelClosed, ChannelSession, _CLOSE
-from istos.errors import UnauthorizedError
-from istos.http.gateway import decode_params, is_error_payload
+from istos.errors import UnauthorizedError, is_error_payload
+from istos.http.gateway import decode_params
 from istos.logging import get_logger
 from istos.messages.serialization import Serialize
 

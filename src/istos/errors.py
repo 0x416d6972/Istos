@@ -24,7 +24,12 @@ class IstosSecurityError(Exception):
 
 
 class IstosError(Exception):
-    """Base exception for Istos application errors."""
+    """Base exception for Istos application errors.
+
+    ``correlation_id`` is set when the error came off a responder's reply (see
+    :func:`error_from_payload`) and matches the log line on the node that failed.
+    It is ``None`` for an error raised locally.
+    """
 
     def __init__(
         self,
@@ -33,12 +38,14 @@ class IstosError(Exception):
         code: str = "internal_error",
         status: int = 500,
         details: Optional[Any] = None,
+        correlation_id: Optional[str] = None,
     ):
         super().__init__(message)
         self.message = message
         self.code = code
         self.status = status
         self.details = details
+        self.correlation_id = correlation_id
 
 
 class NotFoundError(IstosError):
@@ -63,6 +70,44 @@ class RateLimitError(IstosError):
         super().__init__(message, code="rate_limit_exceeded", status=429, **kwargs)
 
 
+# Wire ``code`` → the class carrying it. Codes absent here rebuild as a plain
+# IstosError keeping their code.
+_CODE_TO_ERROR: Dict[str, Type[IstosError]] = {
+    "not_found": NotFoundError,
+    "unauthorized": UnauthorizedError,
+    "forbidden": ForbiddenError,
+    "rate_limit_exceeded": RateLimitError,
+}
+
+# Wire ``code`` → status, for rebuilding an error off a reply: the subclasses
+# carry a status but the wire does not, and codes without a subclass
+# (validation_error) still need one. The HTTP gateway maps from here too.
+CODE_TO_STATUS: Dict[str, int] = {
+    "unauthorized": 401,
+    "forbidden": 403,
+    "not_found": 404,
+    "validation_error": 400,
+    "bad_request": 400,
+    "rate_limit_exceeded": 429,
+}
+DEFAULT_ERROR_STATUS = 500
+
+
+def is_retryable(exc: BaseException) -> bool:
+    """Whether retrying ``exc`` could plausibly succeed.
+
+    A 4xx-class error is the caller's own fault and comes back the same however
+    often it is asked, so retrying only spends the backoff budget. A 429 is the
+    exception: waiting is the remedy. Everything else, transport faults included,
+    is retryable.
+    """
+    if isinstance(exc, IstosError):
+        if exc.status == 429:
+            return True
+        return not (400 <= exc.status < 500)
+    return True
+
+
 @dataclass
 class ErrorResponse:
     """Standard wire-format error payload for all Istos endpoints."""
@@ -84,6 +129,52 @@ class ErrorResponse:
         if self.details is not None:
             payload["details"] = self.details
         return payload
+
+
+def is_error_payload(parsed: Any) -> bool:
+    """Whether a decoded reply is an :class:`ErrorResponse` wire payload.
+
+    A handler that raises replies with an envelope rather than sending an
+    exception, and the envelope answers ``.get()`` like any other dict, so an
+    unchecked caller reads a failure as data.
+
+    ``query_once``, ``@query``, ``stream_query`` and ``open_channel`` check this
+    themselves. Use it directly for replies you decode yourself, and for
+    multi-reply results, which are passed through unchecked. Pair it with
+    :func:`error_from_payload` to raise.
+
+    All three of ``error``, ``code`` and ``message`` must be present, since a
+    handler is free to return a field named ``error``.
+    """
+    return isinstance(parsed, dict) and all(
+        field in parsed for field in ("error", "code", "message")
+    )
+
+
+def error_from_payload(
+    parsed: Dict[str, Any], *, default_code: str = "internal_error"
+) -> IstosError:
+    """Rebuild an exception from an error payload, to re-raise on the caller's side.
+
+    The code selects the class the responder raised, so ``except NotFoundError``
+    works across a hop.
+    """
+    code = parsed.get("code", default_code)
+    message = parsed.get("message", "the responder failed")
+    details = parsed.get("details")
+    correlation_id = parsed.get("correlation_id")
+
+    cls = _CODE_TO_ERROR.get(code)
+    if cls is not None:
+        return cls(message, details=details, correlation_id=correlation_id)
+    return IstosError(
+        message,
+        code=code,
+        # Recovered from the code, not defaulted: the status decides retryability.
+        status=CODE_TO_STATUS.get(code, DEFAULT_ERROR_STATUS),
+        details=details,
+        correlation_id=correlation_id,
+    )
 
 
 ExceptionHandler = Callable[[Exception], ErrorResponse]

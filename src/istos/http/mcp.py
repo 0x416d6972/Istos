@@ -11,6 +11,7 @@ import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from istos.discovery.asyncapi import get_function_schemas
+from istos.errors import IstosError, is_error_payload
 
 MCP_PROTOCOL_VERSION = "2025-06-18"
 
@@ -91,9 +92,21 @@ class MCPServer:
     async def _call(self, prefix: str, arguments: dict, token: Optional[str]) -> dict:
         try:
             reply = await self._app.query_once(prefix, token=token, **arguments)
+        except IstosError as e:
+            # Keep the code: an MCP client can act on "not_found", not on prose.
+            return {
+                "content": [{"type": "text", "text": f"{e.code}: {e.message}"}],
+                "isError": True,
+            }
         except Exception as e:
             return {"content": [{"type": "text", "text": str(e)}], "isError": True}
         data = reply[0] if isinstance(reply, list) and len(reply) == 1 else reply
-        is_error = isinstance(data, dict) and "error" in data and "code" in data
+        # query_once raises on a single error reply but passes lists through, so
+        # an envelope can still arrive here.
+        if isinstance(data, list) and any(is_error_payload(item) for item in data):
+            return {
+                "content": [{"type": "text", "text": json.dumps(data)}],
+                "isError": True,
+            }
         text = data if isinstance(data, str) else json.dumps(data)
-        return {"content": [{"type": "text", "text": text}], "isError": is_error}
+        return {"content": [{"type": "text", "text": text}], "isError": False}

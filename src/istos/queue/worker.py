@@ -128,7 +128,12 @@ class worker_wrapper:
                 reply = await self._app._queue_claim(self.prefix, token=self._token)
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception as exc:
+                # Without this a rejected token looks the same as an idle queue.
+                _logger.warning(
+                    "Worker for %s could not claim: %s", self.prefix, exc,
+                    extra={"prefix": self.prefix},
+                )
                 await asyncio.sleep(self.poll_interval_s)
                 continue
 
