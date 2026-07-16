@@ -101,6 +101,7 @@ threaded through a constructor:
 | `FABLE_LLM_MODEL` | model id (default `qwen/qwen3.5-9b`) |
 | `FABLE_LLM_TIMEOUT_S` | per-call timeout (default 300) |
 | `FABLE_HTTP_PORT` | orchestrator's HTTP port (default 8080) |
+| `FABLE_CHAT_PORT` | chat node's HTTP port (default 8081) |
 | `FABLE_LIE` | `1` makes the executor fake it — see below |
 
 Each node checks the model is actually reachable in its `lifespan`, so a missing
@@ -253,6 +254,72 @@ HANDED BACK — 3 fix-verify cycles failed, so the job dead-lettered.
 
 Nobody decided to stop. The queue ran out of attempts.
 
+## Talk to the model directly
+
+The workflow uses your model as machinery: every call answers into a schema and
+nobody watches it think. `chat.py` is the other door — one prompt in, tokens out
+as they land.
+
+```bash
+python chat.py
+
+curl -N --get http://127.0.0.1:8081/chat --data-urlencode "prompt=who are you?"
+```
+
+```
+data: I
+data:  am
+data:  a
+data:  helpful
+data:  assistant
+…
+event: end
+```
+
+Add `think=1` to watch it reason instead of hiding it — Qwen3.5 is a hybrid, and
+with thinking on LM Studio routes the answer through the reasoning channel, so
+you get the working rather than the conclusion:
+
+```bash
+curl -N --get http://127.0.0.1:8081/chat \
+     --data-urlencode "prompt=Is 17 prime?" --data-urlencode "think=1"
+```
+
+That endpoint is stateless — it never remembers the last thing you asked. For an
+actual conversation, `@channel` keeps the session open and the history with it:
+
+```python
+@istos.channel("fable/chat/session", ws="/ws")
+async def session(s: ChannelSession):
+    history = [{"role": "system", "content": SYSTEM}]
+    async for message in s:
+        history.append({"role": "user", "content": message["text"]})
+        reply = ""
+        async for token in llm.stream_tokens(history):
+            reply += token
+            await s.send({"token": token})
+        history.append({"role": "assistant", "content": reply})
+        await s.send({"done": True})
+```
+
+```
+>>> My name is Amir.
+<<< Nice to meet you, Amir. How can I help you today?
+
+>>> What is my name?
+<<< Your name is Amir.
+```
+
+The handler is still running between your turns, which is what makes the second
+question answerable. Close the socket and the history goes with it; persistence
+is `durable=True` plus a [`SessionStore`](../../docs/user-guide/channels.md).
+
+Pick by direction, not transport: **`@stream` for server→client output**
+(SSE, curl-friendly, stateless), **`@channel` for full duplex** (WebSocket, holds
+the conversation). The chat node shares nothing with the workflow but the LM
+Studio client — its own process, its own port, its own keys. Run it alongside the
+others or entirely on its own.
+
 ## The fixture
 
 `scenario/` is a small report with a real bug, in the spirit of the upstream
@@ -320,6 +387,7 @@ memory, so its dead-letter list dies with it; give the app a
 | `evidence.py` | the four lenses: spec, code, runtime, api |
 | `executor.py` | proposes an edit, applies it, runs it; `FABLE_LIE=1` to fake it |
 | `judge.py` | re-runs from source and rules; a separate process on purpose |
+| `chat.py` | your model live — `@stream` for curl, `@channel` for a conversation |
 | `method.py` | the method's steps as prompts and schemas |
 | `queues.py` | the queue topology, and why the bound lives there |
 | `sandbox.py` | runs the report; applies exact-string edits or refuses |

@@ -7,7 +7,7 @@ POST. aiohttp is already an Istos dependency, so the example needs nothing that
 
 import json
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 import aiohttp
 
@@ -108,6 +108,63 @@ async def ask(
         return json.loads(text)
     except json.JSONDecodeError as exc:
         raise LLMError(f"Expected JSON for {schema_name}, got: {text[:400]}") from exc
+
+
+async def stream_tokens(
+    messages: List[Dict[str, str]],
+    *,
+    think: bool = False,
+    max_tokens: int = 1024,
+    temperature: float = 0.7,
+) -> AsyncIterator[str]:
+    """Yield tokens as the model produces them.
+
+    `ask` waits for the whole answer because every caller in the method wants a
+    finished object to validate. Chat is the opposite: the point is watching it
+    arrive.
+
+    LM Studio streams the OpenAI shape — `data: {...}` frames ending in
+    `data: [DONE]`. The thinking split from `_extract` applies here too: with
+    thinking on the tokens come through `delta.reasoning_content` and
+    `delta.content` stays empty, so take whichever is populated.
+    """
+    body: Dict[str, Any] = {
+        "model": MODEL,
+        "messages": messages,
+        "stream": True,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    if not think:
+        body["reasoning_effort"] = "none"
+
+    timeout = aiohttp.ClientTimeout(total=TIMEOUT_S)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(f"{BASE_URL}/chat/completions", json=body) as resp:
+                if resp.status != 200:
+                    detail = await resp.text()
+                    raise LLMError(f"LM Studio returned {resp.status}: {detail[:400]}")
+
+                async for raw in resp.content:
+                    line = raw.decode("utf-8", errors="replace").strip()
+                    if not line.startswith("data:"):
+                        continue
+                    payload = line[5:].strip()
+                    if payload == "[DONE]":
+                        return
+                    try:
+                        delta = json.loads(payload)["choices"][0].get("delta", {})
+                    except (json.JSONDecodeError, KeyError, IndexError):
+                        continue  # keepalives and partial frames are not fatal
+                    text = delta.get("content") or delta.get("reasoning_content") or ""
+                    if text:
+                        yield text
+    except aiohttp.ClientError as exc:
+        raise LLMError(
+            f"Could not reach LM Studio at {BASE_URL}. Is the server running "
+            f"with {MODEL} loaded? ({exc})"
+        ) from exc
 
 
 async def models() -> List[str]:
