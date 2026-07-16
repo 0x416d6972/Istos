@@ -33,8 +33,8 @@ envelope.
 !!! warning "Handle-only"
     MCP lists and calls `@handle` only. `@stream` and `@channel` are not
     exposed as tools — use SSE / WebSocket / `stream_query` / `open_channel`
-    for those. Capability discovery (`.istos/capabilities`) is broader than
-    MCP; don't assume the two catalogs match.
+    for those. Capability discovery (`.istos/capabilities/<service>`) is broader
+    than MCP; don't assume the two catalogs match.
 
 ## HTTP behavior
 

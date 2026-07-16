@@ -21,12 +21,58 @@ In-process:
 print(app.export_capabilities())
 ```
 
-Over the fabric:
+Over the fabric, one service at a time:
 
 ```python
-caps = await app.query_once(".istos/capabilities")
-# or: session.get("**/.istos/capabilities")
+manifest = await app.query_once(".istos/capabilities/clients")
 ```
+
+Or the whole fleet:
+
+```python
+fleet = await app.discover_capabilities()
+# {"clients": {...}, "cdc": {...}}
+for service, manifest in fleet.items():
+    for tool in manifest["capabilities"]:
+        print(service, tool["prefix"], tool.get("params_schema"))
+```
+
+That is the tool catalogue an agent needs: teach the fleet a new key and the
+agent can find it with nothing but a schema.
+
+## Two keys, and why
+
+| Key | Answers |
+|---|---|
+| `.istos/capabilities/<service>` | that service |
+| `.istos/capabilities` | **one** node, whichever Zenoh picked |
+
+The bare key is the same on every node, and `@handle` declares its queryable
+`complete=True`, meaning one responder can answer the whole key. Zenoh takes that
+at its word and asks exactly one node; the others are never reached. A wildcard
+does not help, because the key is byte-identical everywhere and still resolves to
+that one key expression. It is kept for callers written against it, and it is fine
+for a single node — but it cannot describe a fleet.
+
+Per-service keys are distinct, which is the only thing Zenoh fans out over: the
+same reason `*/health` reaches both `a/health` and `b/health`.
+
+!!! note "Name your services"
+
+    The key is the service name, so two services sharing one name share a key and
+    only one of them answers. `Istos(service_name="clients")`, not the default.
+    Replicas of a single service are *meant* to share a key: the manifest
+    describes the service, not the process.
+
+!!! warning "Fan-out needs `consolidate_replies=False`"
+
+    Zenoh consolidates replies by default and drops some even when they arrive on
+    different keys. `discover_capabilities()` handles this, but a hand-rolled
+    wildcard needs it too:
+
+    ```python
+    await app.query_once(".istos/capabilities/*", consolidate_replies=False)
+    ```
 
 ## Shape
 

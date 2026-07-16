@@ -352,6 +352,7 @@ class _MessagingMixin(IstosBase):
         timeout_s: float = 5.0,
         serializer: Optional[Serialize] = None,
         token: Optional[Union[bytes, str]] = None,
+        consolidate_replies: bool = True,
         **kwargs: Any
     ) -> Any:
         """
@@ -364,6 +365,12 @@ class _MessagingMixin(IstosBase):
         protected by a TokenAuthorizer:
 
             await istos.query_once("admin/op", token="secret")
+
+        Set ``consolidate_replies=False`` when fanning out over a wildcard and you
+        want every responder. Zenoh consolidates replies by default and will drop
+        some of them even though they answered on different keys:
+
+            await istos.query_once("*/health", consolidate_replies=False)
         """
         if self._session_manager.session is None:
             raise RuntimeError(
@@ -378,6 +385,7 @@ class _MessagingMixin(IstosBase):
             get_session=lambda: self._session_manager.session,
             timeout_s=timeout_s,
             attachment=token,
+            consolidate_replies=consolidate_replies,
         )
         return await wrapper(**kwargs)
 

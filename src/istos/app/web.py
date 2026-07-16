@@ -9,6 +9,7 @@ from typing import Any, Callable, List, Optional
 
 from istos.primitives.channel import ChannelSession, channel_wrapper
 from istos.discovery.asyncapi import AsyncApiGenerator, get_asyncapi_ui_html
+from istos.discovery.capabilities import CAPABILITIES_WILDCARD, capabilities_key
 from istos.errors import (
     IstosError,
     IstosSecurityWarning,
@@ -416,6 +417,7 @@ class _WebMixin(IstosBase):
                 exposed.append(".istos/metrics")
             if self._enable_discovery:
                 exposed.append(".istos/capabilities")
+                exposed.append(capabilities_key(self._service_name))
             warnings.warn(
                 f"Built-in endpoints {exposed} are reachable by any peer with no "
                 "authorization. Set Istos(authorizer=...) to protect them.",
@@ -432,16 +434,50 @@ class _WebMixin(IstosBase):
                 return self._metrics.export_prometheus()
 
         if self._enable_discovery:
+            # Served on two keys. The bare one is single-owner routing: every node
+            # declares it complete=True, so Zenoh asks exactly one and the rest
+            # are never reached. The per-service key gives each node a key of its
+            # own, which is what makes `.istos/capabilities/*` reach all of them.
             @self.handle(".istos/capabilities")
             def _capabilities() -> dict:
                 return self.export_capabilities()
 
+            @self.handle(capabilities_key(self._service_name))
+            def _capabilities_for_service() -> dict:
+                return self.export_capabilities()
+
+    async def discover_capabilities(self, timeout_s: float = 3.0) -> dict:
+        """Every service's manifest, keyed by service name.
+
+        Asks ``.istos/capabilities/*``, which reaches one node per service name.
+        Use this rather than ``.istos/capabilities``: that key is the same on
+        every node, so it answers for exactly one of them.
+
+            tools = await app.discover_capabilities()
+            for service, manifest in tools.items():
+                ...
+        """
+        replies = await self.query_once(
+            CAPABILITIES_WILDCARD, timeout_s=timeout_s, consolidate_replies=False,
+        )
+        if replies is None:
+            return {}
+        if not isinstance(replies, list):
+            replies = [replies]
+        found: dict = {}
+        for manifest in replies:
+            if isinstance(manifest, dict) and "capabilities" in manifest:
+                found[manifest.get("service", "istos")] = manifest
+        return found
+
     def export_capabilities(self) -> dict:
         """What this node exposes — handlers/streams with schemas when available.
 
-        Served at ``.istos/capabilities``. Query ``**/.istos/capabilities`` (or
-        per node) to inventory the fabric. Each entry: ``prefix``, ``kind``,
-        optional ``description``, and ``params_schema`` / ``return_schema``.
+        Served at ``.istos/capabilities`` and ``.istos/capabilities/<service>``.
+        Use :meth:`discover_capabilities` (or query ``.istos/capabilities/*``) to
+        inventory the fabric; the bare key answers for one node only. Each entry:
+        ``prefix``, ``kind``, optional ``description``, and ``params_schema`` /
+        ``return_schema``.
         """
         from istos.discovery.asyncapi import get_function_schemas
 
