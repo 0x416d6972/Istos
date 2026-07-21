@@ -1,84 +1,170 @@
 @startuml Istos Architecture
 
+title Istos 0.2 — mixin-composed app over Eclipse Zenoh
+
 skinparam componentStyle uml2
 skinparam packageStyle rectangle
+skinparam shadowing false
+
+package "istos.app" {
+    class Istos {
+        composed entry point
+    }
+    abstract class IstosBase {
+        registries, storage, DI,
+        middleware, authorizer, health
+    }
+    class _MessagingMixin
+    class _StreamingMixin
+    class _QueueMixin
+    class _WebMixin
+    class _LifecycleMixin {
+        serving() / run() / run_async()
+        _startup / _shutdown binds
+    }
+
+    IstosBase <|-- _MessagingMixin
+    IstosBase <|-- _StreamingMixin
+    IstosBase <|-- _QueueMixin
+    IstosBase <|-- _WebMixin
+    IstosBase <|-- _LifecycleMixin
+    Istos --|> _MessagingMixin
+    Istos --|> _StreamingMixin
+    Istos --|> _QueueMixin
+    Istos --|> _WebMixin
+    Istos --|> _LifecycleMixin
+}
+
+package "istos.primitives" {
+    class handler_wrapper
+    class query_wrapper
+    class stream_wrapper
+    class channel_wrapper
+    class publish_wrapper
+    class subscribe_wrapper
+    class liveliness_wrapper
+    class FabricChannelServer
+    class SessionStore
+}
+
+package "istos.queue" {
+    class QueueRole {
+        owner: enqueue/claim/ack/nack
+        lease sweeper, HA election
+    }
+    class QueueStore {
+        READY / LEASED / DEAD / DONE
+    }
+    class worker_wrapper
+    class JobRecord
+    class JobContext
+
+    QueueRole o-- QueueStore
+    QueueRole ..> JobRecord
+    worker_wrapper ..> JobContext
+}
 
 package "istos.communication" {
-    interface SessionInterface {
-        +session: Optional[zenoh.Session]
-        +get_info(): dict
-    }
-    class ZenohSession {
-        +__enter__()
-        +__exit__()
-    }
-    class AsyncZenohSession {
-        +__aenter__()
-        +__aexit__()
-    }
-    SessionInterface <|-- ZenohSession
-    SessionInterface <|-- AsyncZenohSession
+    interface SessionManager <<Protocol>>
+    class ZenohSession
+    class AsyncZenohSession
+    class IstosZenohConfig
+    class PersistRole
+    abstract class ObjectStore
+    class InMemoryObjectStore
+    class S3ObjectStore
+
+    SessionManager <|.. ZenohSession
+    SessionManager <|.. AsyncZenohSession
+    ObjectStore <|-- InMemoryObjectStore
+    ObjectStore <|-- S3ObjectStore
+    PersistRole o-- ObjectStore
+    ZenohSession ..> IstosZenohConfig
+    AsyncZenohSession ..> IstosZenohConfig
 }
 
 package "istos.consistency" {
     interface StoragePlugin <<Protocol>> {
-        +put(key, value)
-        +get(key)
-        +delete(key)
+        put / get / delete
+        log / get_log
+        check_processed / mark_processed
+    }
+    class InMemoryStoragePlugin
+    class RedisStoragePlugin
+    class SqlAlchemyStoragePlugin
+    enum Durability {
+        AT_MOST_ONCE
+        AT_LEAST_ONCE
+        EXACTLY_ONCE
     }
 
-    interface StateFetcher <<Protocol>> {
-        +fetch_last_state(key_expr)
-        +fetch_historical_data(key_expr, start, end)
-    }
-
-    class ZenohStateFetcher {
-        -session: zenoh.Session
-    }
-
-    abstract class AbstractRegistery {
-        -prefix: str
-        -storage: StoragePlugin
-        +{abstract} register(session)
-        +{abstract} unregister()
-        +{abstract} on_query(query)
-    }
-
-    class PrefixRegistery {
-        -queryable: Optional[zenoh.Queryable]
-    }
-
-    StateFetcher <|.. ZenohStateFetcher
-    AbstractRegistery <|-- PrefixRegistery
-    AbstractRegistery o-- StoragePlugin
+    StoragePlugin <|.. InMemoryStoragePlugin
+    StoragePlugin <|.. RedisStoragePlugin
+    StoragePlugin <|.. SqlAlchemyStoragePlugin
 }
 
 package "istos.messages" {
-    interface Serialize <<Protocol>> {
-        +serialize(message): bytes
-        +deserialize(data): Any
-    }
-
+    interface Serialize <<Protocol>>
     class JsonSerializer
     class MsgPackSerializer
-    class ProtobufSerializer
     class PydanticSerializer
-    class YamlSerializer
-    class Base64Serializer {
-        -inner: Serialize
-    }
-
     Serialize <|.. JsonSerializer
     Serialize <|.. MsgPackSerializer
-    Serialize <|.. ProtobufSerializer
     Serialize <|.. PydanticSerializer
-    Serialize <|.. YamlSerializer
-    Serialize <|.. Base64Serializer
 }
 
-' Relationships
-PrefixRegistery ..> SessionInterface : uses
-ZenohStateFetcher ..> SessionInterface : uses
-Base64Serializer o-- Serialize : wraps
+package "istos.security" {
+    class Authorizer
+    class TokenAuthorizer
+    class JWTAuthorizer
+    class require_roles
+}
+
+package "istos.http" {
+    class Gateway
+    class MCPServer
+    class asgi_lifespan
+}
+
+' App wiring
+IstosBase o-- StoragePlugin
+IstosBase o-- SessionManager
+IstosBase o-- Authorizer
+_MessagingMixin ..> handler_wrapper
+_MessagingMixin ..> query_wrapper
+_MessagingMixin ..> publish_wrapper
+_MessagingMixin ..> subscribe_wrapper
+_MessagingMixin ..> liveliness_wrapper
+_StreamingMixin ..> stream_wrapper
+_StreamingMixin ..> channel_wrapper
+_StreamingMixin ..> FabricChannelServer
+_QueueMixin ..> QueueRole
+_QueueMixin ..> worker_wrapper
+_WebMixin ..> Gateway
+_WebMixin ..> MCPServer
+_WebMixin ..> asgi_lifespan
+_LifecycleMixin ..> PersistRole
+
+' Edge / transport
+Gateway ..> SessionManager : optional edge
+PersistRole ..> SessionManager
+QueueRole ..> SessionManager
+handler_wrapper ..> Serialize
+handler_wrapper ..> Durability
+
+cloud "Eclipse Zenoh" as Zenoh
+SessionManager ..> Zenoh : one session / process
+
+note right of _LifecycleMixin
+  Bind order:
+  handlers → streams → channels →
+  persist → queues → publishers →
+  subscribers → liveliness → HTTP
+end note
+
+note bottom of QueueRole
+  Workflows are queue chain / group / chord,
+  not a separate DAG engine.
+end note
 
 @enduml

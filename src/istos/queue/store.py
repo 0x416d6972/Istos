@@ -40,6 +40,8 @@ class JobRecord:
     result: Optional[str] = None      # base64 of the handler's return, when kept
     completed_at: float = 0.0
     wf: Optional[str] = None          # JSON workflow continuation (chain/chord), if any
+    correlation_id: Optional[str] = None  # from enqueue attachment, for tracing
+    traceparent: Optional[str] = None
 
     def to_dict(self) -> dict:
         return {
@@ -57,6 +59,8 @@ class JobRecord:
             "result": self.result,
             "completed_at": self.completed_at,
             "wf": self.wf,
+            "correlation_id": self.correlation_id,
+            "traceparent": self.traceparent,
         }
 
     @classmethod
@@ -76,6 +80,8 @@ class JobRecord:
             result=d.get("result"),
             completed_at=d.get("completed_at", 0.0),
             wf=d.get("wf"),
+            correlation_id=d.get("correlation_id"),
+            traceparent=d.get("traceparent"),
         )
 
 
@@ -100,6 +106,8 @@ class JobContext:
     attempt: int                      # 1 on first delivery, 2 on first redelivery
     max_attempts: int
     last_error: Optional[str] = None  # why the previous attempt nacked, if it did
+    correlation_id: Optional[str] = None
+    traceparent: Optional[str] = None
 
     @property
     def is_retry(self) -> bool:
@@ -239,6 +247,8 @@ class QueueStore:
     async def add(
         self, data: bytes, *, max_attempts: int, priority: int = 0, delay_s: float = 0.0,
         wf: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        traceparent: Optional[str] = None,
     ) -> str:
         async with self._lock:
             self._seq += 1
@@ -246,6 +256,8 @@ class QueueStore:
                 id=uuid.uuid4().hex, data=data, max_attempts=max_attempts,
                 priority=priority, seq=self._seq, wf=wf,
                 not_before=time.time() + delay_s if delay_s > 0 else 0.0,
+                correlation_id=correlation_id,
+                traceparent=traceparent,
             )
             self._jobs[rec.id] = rec
             self._ids.add(rec.id)

@@ -264,9 +264,14 @@ class _QueueMixin(IstosBase):
             app.schedule("jobs/report", {"kind": "daily"}, cron="0 0 * * *")
 
         For ``every_s`` the first run fires after ``initial_delay_s`` (defaults to
-        one interval); ``cron`` fires at each matching minute. Runs on this node
-        for as long as the app is serving — run a given schedule on one node to
-        avoid duplicate ticks.
+        one interval); ``cron`` fires at each matching minute.
+
+        The beat runs on this node for as long as the app is serving. When this
+        node also owns the target queue (a co-located :meth:`queue`), the beat is
+        gated on ownership: exactly the active owner fires it, so replicas of an
+        ``ha=True`` queue tick once between them and the beat follows the leader
+        on failover. With no local owner for ``prefix`` — a separate scheduler
+        node — every such node fires, so run one to avoid duplicate ticks.
         """
         if (every_s is None) == (cron is None):
             raise ValueError("schedule() needs exactly one of every_s= or cron=")
@@ -395,10 +400,25 @@ class _QueueMixin(IstosBase):
         for spec in self._schedules:
             self._schedule_tasks.append(asyncio.ensure_future(self._run_schedule(spec)))
 
+    def _local_queue_owner(self, prefix: str) -> Optional[QueueRole]:
+        """The queue owner role for ``prefix`` bound on this node, if any."""
+        target = prefix.rstrip("/")
+        for role in self._queue_roles:
+            if role.prefix == target:
+                return role
+        return None
+
     async def _run_schedule(self, spec: dict) -> None:
         import datetime as _datetime
 
+        owner = self._local_queue_owner(spec["prefix"])
+
         async def _fire() -> None:
+            # Co-located with the queue owner → only the active owner beats, so a
+            # fleet of replicas ticks once and the beat follows the HA leader. No
+            # local owner → fire (a standalone scheduler node, per the docstring).
+            if owner is not None and not owner.is_active:
+                return
             try:
                 await self.enqueue(
                     spec["prefix"], spec["data"],

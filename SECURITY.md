@@ -4,7 +4,8 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
+| 0.2.x   | :white_check_mark: |
+| 0.1.x   | :x:                |
 | < 0.1   | :x:                |
 
 ## Reporting a Vulnerability
@@ -21,17 +22,27 @@ If you discover a security vulnerability in Istos, please report it responsibly:
 
 ## Security Features
 
-Istos supports transport-level security via Zenoh:
+Istos is **unauthenticated by default**. Secure both layers before production:
+
+**Transport (Zenoh):**
 
 - TLS and mTLS certificate configuration
 - Username/password authentication
 - Raw PEM injection for secret managers (Vault, AWS Secrets Manager)
+- `IstosSecurityWarning` when a session opens without TLS / auth
+
+**Application (handlers / queues):**
+
+- `require_auth=True` — refuse to start without an authorizer
+- `TokenAuthorizer` / `JWTAuthorizer` / `require_roles` / `Public`
+- Per-handler and app-wide authorizers
 
 See the [Security Guide](docs/user-guide/security.md) for configuration details.
 
 ## Best Practices
 
 - Always use TLS in production deployments
+- Set `require_auth=True` (or attach an authorizer) before exposing a shared fabric
 - Never commit certificates or credentials to version control
 - Use environment variables or secret managers for sensitive configuration
 - Run Zenoh routers with authentication enabled in multi-tenant environments

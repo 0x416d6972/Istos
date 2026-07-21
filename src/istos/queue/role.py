@@ -10,6 +10,7 @@ from typing import Any, Callable, List, Optional
 
 import zenoh
 
+from istos.context import RequestEnvelope
 from istos.logging import get_logger
 from istos.security.authz import AuthContext, Authorizer, check_authorized
 from istos.errors import ErrorResponse, UnauthorizedError
@@ -90,6 +91,13 @@ class QueueRole:
         self._live_token: Optional[Any] = None
         self._liveliness_sub: Optional[Any] = None
         self._election_lock = asyncio.Lock()
+
+    @property
+    def is_active(self) -> bool:
+        """Whether this node is the queue's live owner right now — always, without
+        ``ha``; only the elected leader with it. Used to run a co-located
+        :meth:`schedule` beat on exactly one node."""
+        return self._active
 
     def _backoff(self, attempts: int) -> float:
         """Exponential backoff with jitter for the retry after ``attempts`` tries."""
@@ -216,12 +224,16 @@ class QueueRole:
         if not await self._authorize(query, params):
             return
         wf = params.get("wf")  # base64 JSON continuation, opaque to the owner
+        raw = getattr(query, "attachment", None)
+        env = RequestEnvelope.from_attachment(bytes(raw) if raw is not None else None)
         job_id = await self.store.add(
             _query_payload(query),
             max_attempts=self.max_attempts,
             priority=_as_int(params, "priority", 0),
             delay_s=_as_float(params, "delay", 0.0),
             wf=wf,
+            correlation_id=env.correlation_id,
+            traceparent=env.traceparent,
         )
         if _as_float(params, "delay", 0.0) <= 0:
             self._notify()
@@ -242,6 +254,8 @@ class QueueRole:
             "last_error": rec.last_error,   # why the previous attempt nacked, if any
             "data": base64.b64encode(rec.data).decode("ascii"),
             "wf": rec.wf,
+            "correlation_id": rec.correlation_id,
+            "traceparent": rec.traceparent,
         })
 
     async def _on_ack(self, query: "zenoh.Query") -> None:

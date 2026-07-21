@@ -108,6 +108,9 @@ def is_retryable(exc: BaseException) -> bool:
     return True
 
 
+ERROR_MARKER = "__istos_error"
+
+
 @dataclass
 class ErrorResponse:
     """Standard wire-format error payload for all Istos endpoints."""
@@ -120,6 +123,7 @@ class ErrorResponse:
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
+            ERROR_MARKER: True,
             "error": self.error,
             "code": self.code,
             "message": self.message,
@@ -143,12 +147,19 @@ def is_error_payload(parsed: Any) -> bool:
     multi-reply results, which are passed through unchecked. Pair it with
     :func:`error_from_payload` to raise.
 
-    All three of ``error``, ``code`` and ``message`` must be present, since a
-    handler is free to return a field named ``error``.
+    Detection prefers the :data:`ERROR_MARKER` discriminator: present and truthy
+    is an error, present and falsy is a normal result — the escape hatch for a
+    handler whose success value legitimately carries ``error``/``code``/
+    ``message``. When the marker is absent (an old responder, or a client in
+    another language), fall back to the legacy rule: all three of ``error``,
+    ``code`` and ``message`` present.
     """
-    return isinstance(parsed, dict) and all(
-        field in parsed for field in ("error", "code", "message")
-    )
+    if not isinstance(parsed, dict):
+        return False
+    marker = parsed.get(ERROR_MARKER)
+    if marker is not None:
+        return bool(marker)
+    return all(field in parsed for field in ("error", "code", "message"))
 
 
 def error_from_payload(
@@ -175,6 +186,26 @@ def error_from_payload(
         details=details,
         correlation_id=correlation_id,
     )
+
+
+def reply_err(
+    message: str,
+    *,
+    code: str = "internal_error",
+    correlation_id: Optional[str] = None,
+    details: Optional[Any] = None,
+) -> dict[str, Any]:
+    """Build an error-envelope dict a handler can ``return`` instead of raising.
+
+    Raising is still the usual path — the framework turns any :class:`IstosError`
+    into this same envelope. ``reply_err`` is for the handler that wants to reply
+    an error inline without an exception; it stamps :data:`ERROR_MARKER`, so the
+    result cannot be missing a field the caller's check depends on.
+    """
+    return ErrorResponse(
+        error=code, code=code, message=message,
+        correlation_id=correlation_id, details=details,
+    ).to_dict()
 
 
 ExceptionHandler = Callable[[Exception], ErrorResponse]

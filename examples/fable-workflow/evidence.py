@@ -34,6 +34,13 @@ from istos import Istos
 
 istos = Istos(service_name="fable-evidence")
 
+# A distillation should be short, but "short" at a 9B is not 1500 tokens: the code
+# lens in particular fills `finding`, `citations` and `surprises` and was running
+# past the default budget, so LM Studio returned finish_reason=length and the job
+# dead-lettered. temperature=0 makes that deterministic — every retry hit the same
+# wall — so the budget is the thing to move, not the retry count.
+EVIDENCE_TOKENS = 3000
+
 
 @asynccontextmanager
 async def on_start(app):
@@ -59,6 +66,7 @@ async def spec_lens(job):
         f"What do the rules require of the daily buckets? Quote the exact rule.",
         schema=method.EVIDENCE_SCHEMA,
         schema_name="evidence",
+        max_tokens=EVIDENCE_TOKENS,
     )
     return _done("spec", found)
 
@@ -79,6 +87,7 @@ async def code_lens(job):
         f"with a +09:00 offset.",
         schema=method.EVIDENCE_SCHEMA,
         schema_name="evidence",
+        max_tokens=EVIDENCE_TOKENS,
     )
     return _done("code", found)
 
@@ -101,6 +110,7 @@ async def runtime_lens(job):
         f"task says the reference shows.",
         schema=method.EVIDENCE_SCHEMA,
         schema_name="evidence",
+        max_tokens=EVIDENCE_TOKENS,
     )
     # The raw run travels with the distillation. Downstream compares against the
     # numbers, not the model's paraphrase of them.

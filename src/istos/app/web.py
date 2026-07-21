@@ -14,6 +14,7 @@ from istos.errors import (
     IstosError,
     IstosSecurityWarning,
     UnauthorizedError,
+    reply_err,
 )
 from istos.security.authz import Authorizer
 from istos.context import RequestContext, RequestEnvelope, set_request_context
@@ -166,14 +167,12 @@ class _WebMixin(IstosBase):
                         data = _json.loads(text)
                     except _json.JSONDecodeError:
                         return web.json_response(
-                            {"error": "bad_request", "code": "bad_request",
-                             "message": "Request body must be valid JSON."},
+                            reply_err("Request body must be valid JSON.", code="bad_request"),
                             status=400,
                         )
                     if not isinstance(data, dict):
                         return web.json_response(
-                            {"error": "bad_request", "code": "bad_request",
-                             "message": "JSON body must be an object of params."},
+                            reply_err("JSON body must be an object of params.", code="bad_request"),
                             status=400,
                         )
                     params.update(data)
@@ -211,15 +210,13 @@ class _WebMixin(IstosBase):
                     exc_info=True, extra={"prefix": route.key_expr},
                 )
                 return web.json_response(
-                    {"error": "gateway_error", "code": "gateway_error",
-                     "message": "Upstream query failed."},
+                    reply_err("Upstream query failed.", code="gateway_error"),
                     status=502,
                 )
 
             if payload is None:
                 return web.json_response(
-                    {"error": "not_found", "code": "not_found",
-                     "message": f"No handler replied for {route.key_expr!r}."},
+                    reply_err(f"No handler replied for {route.key_expr!r}.", code="not_found"),
                     status=504,
                 )
 
@@ -247,8 +244,7 @@ class _WebMixin(IstosBase):
                         data = _json.loads(text)
                     except _json.JSONDecodeError:
                         return web.json_response(
-                            {"error": "bad_request", "code": "bad_request",
-                             "message": "Request body must be valid JSON."},
+                            reply_err("Request body must be valid JSON.", code="bad_request"),
                             status=400,
                         )
                     if isinstance(data, dict):
@@ -357,8 +353,7 @@ class _WebMixin(IstosBase):
             except UnauthorizedError:
                 with contextlib.suppress(Exception):
                     await ws.send_str(_json.dumps(
-                        {"error": "unauthorized", "code": "unauthorized",
-                         "message": "Not authorized for this channel."}))
+                        reply_err("Not authorized for this channel.", code="unauthorized")))
             except Exception as e:
                 self._logger.error(
                     "Channel error on %s: %s", wrapper.prefix, e,

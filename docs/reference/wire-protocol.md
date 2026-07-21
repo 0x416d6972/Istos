@@ -187,6 +187,7 @@ non-JSON codec, errors are JSON):
 
 ```json
 {
+  "__istos_error": true,         // discriminator — see below
   "error": "unauthorized",
   "code": "unauthorized",
   "message": "Not authorized for 'robot/move'",
@@ -207,10 +208,17 @@ would return:
 | `rate_limit_exceeded` | throttled | 429 |
 | `internal_error` (or other) | handler error | 500 |
 
-A reply is an error envelope iff it is a JSON object containing `error`, `code`,
-and `message`. Anything else is a normal result. All three fields are required —
-a payload carrying only some of them is a normal result, and a client written to
-this contract will hand it to the caller as data.
+A reply is an error envelope iff it carries the `__istos_error` discriminator set
+to `true`. The discriminator is authoritative in both directions: `false` marks a
+normal result even when it happens to carry `error`/`code`/`message` keys — the
+escape hatch for a handler whose success value is error-shaped.
+
+When `__istos_error` is **absent** — an older responder, or a client in another
+language that predates this field — fall back to the legacy rule: the reply is an
+error iff it is a JSON object containing all three of `error`, `code`, and
+`message`. A payload carrying only some of them is a normal result. New endpoints
+should stamp the discriminator (Istos does so automatically); the legacy shape
+check is retained only so the wire stays backward-compatible.
 
 A client reading a single reply is expected to raise on the envelope rather than
 return it, since it otherwise answers field lookups like any other object and an

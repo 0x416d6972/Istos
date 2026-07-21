@@ -300,10 +300,13 @@ result — so client retry + exactly-once server does not double-execute side ef
   yourself if a missing handler must be treated as a failure. (A handler that
   answered *and failed* does raise, and `retry` re-fires only if the error could
   plausibly go away — see below.)
-- **An error is recognised by its shape**, not by the transport: a reply is an error
-  iff it is a dict carrying `error`, `code` and `message`. A handler that
-  legitimately returns all three will be misread as a failure and raise. Rename a
-  field if you hit this.
+- **An error is recognised by a discriminator**, not by the transport: a reply is
+  an error iff it carries `__istos_error: true`. Istos stamps it on every envelope.
+  If a handler's *success* value legitimately carries `error`/`code`/`message`,
+  stamp `__istos_error: false` (or return `reply_err(...)` for the failure path)
+  and it will be read as data. When the field is absent — an older responder — the
+  legacy rule applies: a dict carrying all three of `error`, `code` and `message`
+  is treated as an error.
 - **Serializers must match on both ends.** A JSON handler and a MsgPack query will
   fail to decode. Set the same `serializer=` on the pair.
 - **Two nodes on the *same* key do not fan out — one of them answers, and which

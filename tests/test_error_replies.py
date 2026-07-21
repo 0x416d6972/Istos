@@ -13,6 +13,8 @@ import asyncio
 import pytest
 
 from istos import (
+    ERROR_MARKER,
+    ErrorResponse,
     ForbiddenError,
     Istos,
     IstosError,
@@ -22,6 +24,7 @@ from istos import (
     error_from_payload,
     is_error_payload,
     is_retryable,
+    reply_err,
 )
 
 
@@ -63,6 +66,29 @@ def test_a_reply_that_merely_has_an_error_key_is_not_an_envelope():
     """A handler may return a field named `error`; only all three fields together
     mean the responder failed."""
     assert not is_error_payload({"error": None, "rows": 3})
+
+
+def test_the_error_response_stamps_the_discriminator():
+    assert ErrorResponse(error="x", code="x", message="m").to_dict()[ERROR_MARKER] is True
+
+
+def test_reply_err_builds_a_detectable_envelope():
+    payload = reply_err("boom", code="internal_error")
+    assert is_error_payload(payload)
+    assert error_from_payload(payload).message == "boom"
+
+
+def test_the_discriminator_is_authoritative_over_shape():
+    """A success value that legitimately carries error/code/message reads as data
+    once it stamps the discriminator false — the false-positive escape hatch."""
+    success = {ERROR_MARKER: False, "error": "none", "code": "OK", "message": "all good"}
+    assert not is_error_payload(success)
+
+
+def test_the_legacy_shape_still_works_without_the_marker():
+    """An older responder or another-language client sends no discriminator; the
+    three-key rule still recognises its error."""
+    assert is_error_payload({"error": "x", "code": "y", "message": "z"})
 
 
 # ---------------------------------------------------------------------------

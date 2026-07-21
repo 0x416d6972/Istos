@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.2.1] - 2026-07-21
+
+### Added
+
+- Error replies now carry an explicit `__istos_error` discriminator, so a failure is recognised by one field rather than guessed from body shape. It is authoritative in both directions: `true` is an error, `false` marks a normal result even when the success value legitimately carries `error`/`code`/`message` keys — closing the false-positive where such a success was misread as a failure. The change is backward-additive: when the field is absent (an older responder, or a client in another language), detection falls back to the legacy rule of a dict carrying all three of `error`, `code` and `message`, so nothing on the wire breaks. New helper `istos.reply_err(...)` builds a stamped envelope a handler can `return` instead of raising.
+
 ## [0.2.0] - 2026-07-17
 
 ### Changed
@@ -59,7 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known limits
 
-- An error is recognised by shape, not by the transport: a reply is an error if it is a dict carrying `error`, `code` and `message`. A handler that legitimately returns all three is read as a failure. The structural fix is out-of-band signalling, either Zenoh's `Query.reply_err()` or a flag in the request envelope Istos already attaches, and both change the wire protocol.
+- An error is recognised by shape, not by the transport: a reply is an error if it is a dict carrying `error`, `code` and `message`. A handler that legitimately returns all three is read as a failure. The structural fix is out-of-band signalling, either Zenoh's `Query.reply_err()` or a flag in the request envelope Istos already attaches, and both change the wire protocol. **Addressed in [Unreleased]** — an in-band `__istos_error` discriminator (backward-additive, no wire break) rather than out-of-band signalling.
 
 ## [0.1.2] - 2026-07-15
 

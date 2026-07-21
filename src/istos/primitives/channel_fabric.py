@@ -22,7 +22,7 @@ from typing import Any, Dict, Iterable, Optional, Tuple, cast
 import zenoh
 
 from istos.primitives.channel import ChannelClosed, ChannelSession, _CLOSE
-from istos.errors import UnauthorizedError, is_error_payload
+from istos.errors import UnauthorizedError, is_error_payload, reply_err
 from istos.http.gateway import decode_params
 from istos.logging import get_logger
 from istos.messages.serialization import Serialize
@@ -167,7 +167,7 @@ class FabricChannelServer:
         try:
             reply = fut.result(timeout=10)
         except Exception as e:  # pragma: no cover - defensive
-            reply = {"error": "internal_error", "code": "internal_error", "message": str(e)}
+            reply = reply_err(str(e))
         with contextlib.suppress(Exception):
             query.reply(key, self._serializer.serialize(reply))
 
@@ -176,7 +176,7 @@ class FabricChannelServer:
         try:
             principal = await self._wrapper.authorize(attachment, params)
         except UnauthorizedError as e:
-            return {"error": "unauthorized", "code": "unauthorized", "message": str(e)}
+            return reply_err(str(e), code="unauthorized")
 
         down_key = f"{self._prefix}/{sid}/down"
 

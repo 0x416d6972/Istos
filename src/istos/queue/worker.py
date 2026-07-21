@@ -150,6 +150,8 @@ class worker_wrapper:
                 attempt=attempt,
                 max_attempts=reply.get("max_attempts", 0),
                 last_error=reply.get("last_error"),
+                correlation_id=reply.get("correlation_id"),
+                traceparent=reply.get("traceparent"),
             )
             try:
                 job = self.serializer.deserialize(base64.b64decode(reply["data"]))

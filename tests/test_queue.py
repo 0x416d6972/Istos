@@ -351,6 +351,44 @@ async def test_schedule_enqueues_periodically():
     assert all(t == {"beat": True} for t in ticks)
 
 
+def test_local_queue_owner_lookup():
+    """The beat finds its co-located owner by prefix, and reports None when the
+    schedule targets a queue this node does not own."""
+    app = _app()
+    role = app.queue("jobs/tick", lease_s=5)
+    assert app._local_queue_owner("jobs/tick") is role
+    assert app._local_queue_owner("jobs/tick/") is role   # trailing slash normalised
+    assert app._local_queue_owner("jobs/other") is None
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_an_inactive_owner_does_not_beat():
+    """A co-located owner that is not the active leader (a standby) must suppress
+    its schedule, so a fleet ticks once rather than once per replica."""
+    app = _app()
+    role = app.queue("jobs/tick", lease_s=5)
+    ticks = []
+
+    @app.worker("jobs/tick", poll_interval_s=0.1)
+    async def on_tick(job):
+        ticks.append(job)
+
+    app.schedule("jobs/tick", {"beat": True}, every_s=0.2, initial_delay_s=0.1)
+
+    async with app.serving():
+        # Simulate this replica losing (or never winning) the election.
+        role._active = False
+        await asyncio.sleep(0.7)
+        assert ticks == [], "an inactive owner must not fire the beat"
+
+        # It wins the election → the beat resumes.
+        role._active = True
+        await _wait(lambda: len(ticks) >= 1, timeout=5.0)
+
+    assert len(ticks) >= 1
+
+
 # ---------------------------------------------------------------------------
 # Workflows: chain / group / chord
 # ---------------------------------------------------------------------------
