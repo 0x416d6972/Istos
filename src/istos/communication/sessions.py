@@ -2,7 +2,7 @@ import zenoh
 import asyncio
 import time
 import warnings
-from typing import Optional, Any, Protocol, cast, runtime_checkable
+from typing import Optional, Any, Protocol, runtime_checkable
 
 from istos.logging import get_logger
 
