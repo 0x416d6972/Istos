@@ -13,3 +13,6 @@ wheels/
 
 # MkDocs build output — regenerated and deployed to gh-pages by CI
 site/
+
+# Personal learning notes, not part of the package
+learning/
