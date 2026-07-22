@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import inspect
 import json
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence, Union
+from typing import Any, Awaitable, Callable, List, Optional, Sequence, Union
 
 from istos.discovery.asyncapi import get_function_schemas
 from istos.errors import IstosError

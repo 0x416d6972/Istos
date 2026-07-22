@@ -230,7 +230,8 @@ def _active_from_history(
             continue
         data = turn.get("data")
         if isinstance(data, dict) and data.get("kind") == "handoff":
-            target = registry.get(data.get("name"))
+            name = data.get("name")
+            target = registry.get(name) if isinstance(name, str) else None
             if target is not None:
                 active = target
     return active
@@ -266,7 +267,7 @@ async def drive_agents(
             max_steps=max_steps, max_messages=max_messages,
             token=token, timeout_s=timeout_s,
         ):
-            if event.kind == "handoff":
+            if event.kind == "handoff" and event.name is not None:
                 target = registry.get(event.name)
                 if target is not None:
                     active = target

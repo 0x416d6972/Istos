@@ -117,17 +117,22 @@ def history_to_messages(
         if direction == "in":
             messages.append({"role": "user", "content": user_text(data)})
         elif direction == "out":
-            kind = data.get("kind") if isinstance(data, dict) else None
+            if not isinstance(data, dict):
+                if user_text(data):
+                    messages.append({"role": "assistant", "content": user_text(data)})
+                continue
+            kind = data.get("kind")
             if kind == "tool_call":
                 if not include_tools:
                     continue
-                result = results_by_id.get(data.get("tool_call_id"))
+                tid = data.get("tool_call_id")
+                result = results_by_id.get(tid) if isinstance(tid, str) else None
                 if result is None:
                     continue
                 messages.append(_tool_call_message(data))
                 messages.append({
                     "role": "tool",
-                    "tool_call_id": data.get("tool_call_id"),
+                    "tool_call_id": tid,
                     "content": str(result.get("content") or ""),
                 })
                 continue
