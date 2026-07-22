@@ -31,6 +31,22 @@ from .primitives.channel_fabric import ChannelClient
 from .primitives.session_store import SessionStore
 from .queue import QueueStore, QueueRole, JobState, JobRecord, JobContext
 from .http.mcp import MCPServer
+from .agent import (
+    Agent,
+    AgentEvent,
+    MeshTool,
+    Model,
+    ModelError,
+    ModelReply,
+    OpenAIChatModel,
+    ToolCall,
+    build_registry,
+    drive_agents,
+    drive_channel,
+    run_agent,
+    run_multi_agent,
+    tools_from_handlers,
+)
 from .di import Depends, DependencyCycleError, current_principal, current_request, current_token
 from .logging import configure_logging, get_logger
 from .testing import IstosTestClient
@@ -75,6 +91,20 @@ __all__ = [
     "JobRecord",
     "JobContext",
     "MCPServer",
+    "Agent",
+    "AgentEvent",
+    "MeshTool",
+    "Model",
+    "ModelError",
+    "ModelReply",
+    "OpenAIChatModel",
+    "ToolCall",
+    "build_registry",
+    "drive_agents",
+    "drive_channel",
+    "run_agent",
+    "run_multi_agent",
+    "tools_from_handlers",
     "Depends",
     "DependencyCycleError",
     "current_principal",

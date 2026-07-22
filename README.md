@@ -23,6 +23,7 @@ That is the agility story: **maintainability** from clear, bounded endpoints; **
 ## Key Features
 
 - **Decorators first**: `@handle`, `@stream`, `@channel`, `@publish`, `@subscribe`.
+- **Agent loop**: `run_agent` / `drive_channel` — model plans, tools are `@handle` endpoints on the mesh (`query_once`), not an in-process graph.
 - **Streaming RPC**: `@stream` yields chunks; `stream_query` / `@stream_client` consume them.
 - **Duplex channels**: `@channel` + `open_channel` / `@channel_client` for multi-turn agents (WebSocket or fabric).
 - **Work queues**: `@worker` / `@queue` / `enqueue` — one worker per job, leases with redelivery, retries, a dead-letter list, and workflow chains/chords. Brokerless, on the same fabric.

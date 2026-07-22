@@ -121,6 +121,9 @@ async def chat(s: ChannelSession):
         await s.send(reply)
 ```
 
+For the stock plan → mesh-tool → observe loop, use `drive_channel` from
+[Agent loop](agent-loop.md) instead of hand-rolling `agent.step`.
+
 ```python
 chan = await app.open_channel("agent/chat")     # conversation_id generated…
 save(chan.conversation_id)                       # …persist it client-side
@@ -182,10 +185,12 @@ wire up on `include_router`.
 
 ## Next steps
 
+- [Agent loop](agent-loop.md) — `run_agent` / `drive_channel` / mesh tools
 - [Handlers & Queries (RPC)](rpc.md) — `@handle` / `@stream`
 - [HTTP Gateway](http-gateway.md) — FastAPI co-host, SSE, MCP
 - [MCP tools](mcp.md)
 - [Wire protocol — channels](../reference/wire-protocol.md#10-bidirectional-channels)
 - [Recipe: Agent channel](../recipes/agent-channel.md)
+- [Recipe: Agent with mesh tools](../recipes/agent-tools.md)
 - [Authorization](authorization.md) — `token=` on `open_channel`
 - [Storage](storage.md) — Redis/SQL ledger behind `SessionStore`

@@ -8,6 +8,7 @@ Bridge a browser (or any WebSocket client) through FastAPI into a remote
 ```python
 # agent.py
 from istos import Istos, ChannelSession
+from istos.agent import OpenAIChatModel, drive_channel, tools_from_handlers
 from istos.communication.config import IstosZenohConfig
 
 mesh = Istos(
@@ -18,16 +19,20 @@ mesh = Istos(
     # storage=RedisStoragePlugin(...)  # for durable=True across pods
 )
 
+# Same process: tools_from_handlers(mesh, prefixes=[...]).
+# Remote tools: MeshTool(prefix, app=mesh, ...) — see recipes/agent-tools.md.
+tools = tools_from_handlers(mesh)  # or [] and answer without tools
+model = OpenAIChatModel(
+    base_url="http://127.0.0.1:1234/v1",
+    model="qwen/qwen3.5-9b",
+)
+
 @mesh.channel("agent/chat", durable=True)
 async def chat(s: ChannelSession):
-    context = [t["data"] for t in await s.history()]
-    await s.send({"role": "system", "text": "ready", "conversation_id": s.conversation_id})
-    async for msg in s:
-        # replace with your SLM / tool loop
-        reply = {"role": "assistant", "text": f"echo: {msg}", "context_len": len(context)}
-        context.append(msg)
-        context.append(reply)
-        await s.send(reply)
+    await drive_channel(
+        s, model, tools,
+        system="You help the user. Use tools when they help.",
+    )
 
 if __name__ == "__main__":
     mesh.run()

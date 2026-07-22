@@ -5,7 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] - 2026-07-23
+
+### Added
+
+- Agent loop over mesh tools (`istos.agent`): `MeshTool` / `tools_from_handlers`
+  build a catalogue from `@handle` (same name/doc/schema path MCP uses);
+  `run_agent` runs plan → `query_once` → observe until the model returns text or
+  `max_steps`; `drive_channel` wires that into a `@channel` with durable history
+  reload. `OpenAIChatModel` talks to OpenAI-compatible `/v1/chat/completions`
+  (LM Studio, vLLM, …) with tool calls. Tools are key expressions on the fabric,
+  so an agent is a service that calls other services — not an in-process graph.
+- Multi-agent handoff (`Agent`, `run_multi_agent`, `drive_agents`): a Swarm-style
+  transfer where the model hands the conversation to another agent by calling a
+  synthetic `transfer_to_<name>` tool. The loop swaps the active
+  `(model, tools, system)` but keeps the shared message history, so context
+  carries across. Handoff graphs may cycle, so a specialist can hand back to the
+  router (triage → specialist → triage). The active agent persists across turns
+  and is restored on reconnect from persisted `handoff` frames. The caller's
+  `token` forwards to whichever agent's tools run, so authorizers see the
+  original principal regardless of how many handoffs occurred. Remote specialists
+  on other nodes stay reachable as mesh tools.
+
+- Agent OpenTelemetry spans: the loop now opens an `istos.agent.completion` span
+  per model turn and an `istos.agent.tool` span per tool call, nested under the
+  handler's request span so they join the end-to-end trace over Zenoh. Completion
+  spans carry GenAI attributes (`gen_ai.response.model`, `gen_ai.usage.*` token
+  counts, finish reason) and, for multi-agent, the active `istos.agent.name`; tool
+  spans carry the tool name/prefix and flag errors. Token telemetry rides on
+  `ModelReply` (`model` / `finish_reason` / `usage`), which `OpenAIChatModel`
+  fills from the response — a custom model may leave it unset. All spans are
+  no-ops unless `Istos(enable_tracing=True)`; OpenTelemetry stays optional.
+
+### Changed
+
+- Durable agents now recover their full tool transcript on reconnect.
+  `history_to_messages` reconstructs the persisted channel log into chat
+  messages: each `tool_call` frame becomes an assistant `tool_calls` message
+  followed by the `tool` message carrying its result, so a resumed session sees
+  the same context it had live rather than plain text with the tool steps erased.
+  A `tool_call` with no recorded result (a crash mid-tool) is dropped to keep the
+  sequence valid. Pass `include_tools=False` to rebuild plain text only.
+- `drive_channel` now bounds its reused message log with `max_messages` (default
+  40, `None` to disable) so a long-lived durable session no longer grows the
+  model context without limit. `run_agent` takes the same option (opt-in,
+  defaulting off) and trims before each completion; the window keeps leading
+  `system` messages and never begins on an orphaned tool frame. The bound counts
+  messages, not tokens.
+- `run_agent` no longer ends a turn silently. When a reply carries neither text
+  nor a usable tool call — for example when every tool call was malformed and
+  dropped by the model adapter — it emits a `message` event flagged `error=True`
+  instead of only `done`, so a channel turn always sends output back.
 
 ## [0.2.1] - 2026-07-21
 

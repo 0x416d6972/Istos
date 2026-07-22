@@ -2,11 +2,42 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+import contextlib
+from typing import Any, Dict, Iterator, Optional
 
 from istos.middleware.base import HandlerCallable, RequestScope
 
 _tracer: Any = None
+
+
+def _clean(attributes: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """OTel attributes reject ``None``; drop those keys."""
+    if not attributes:
+        return {}
+    return {k: v for k, v in attributes.items() if v is not None}
+
+
+@contextlib.contextmanager
+def span(name: str, attributes: Optional[Dict[str, Any]] = None) -> Iterator[Any]:
+    """Start a child span when tracing is configured; a no-op otherwise.
+
+    Nests under the active request span (the handler's :class:`TracingMiddleware`
+    span), so agent model/tool work shows up inside the hop that drove it.
+    """
+    if _tracer is None:
+        yield None
+        return
+    with _tracer.start_as_current_span(name, attributes=_clean(attributes)) as sp:
+        yield sp
+
+
+def set_span_attributes(sp: Any, attributes: Dict[str, Any]) -> None:
+    """Set attributes on ``sp``, skipping ``None`` values. Safe when ``sp`` is
+    ``None`` (tracing off)."""
+    if sp is None:
+        return
+    for key, value in _clean(attributes).items():
+        sp.set_attribute(key, value)
 
 
 def configure_tracing(

@@ -11,7 +11,7 @@
 
     ![Python](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12%20|%203.13%20|%203.14-blue)
     ![License](https://img.shields.io/badge/license-Apache--2.0-green)
-    ![Status](https://img.shields.io/badge/status-0.2.1%20Beta-orange)
+    ![Status](https://img.shields.io/badge/status-0.3.0%20Beta-orange)
 
 ```bash
 uv pip install istos
@@ -49,6 +49,7 @@ graph LR
 | RPC | `@handle`, `@query` | one request, one reply |
 | Streaming RPC | `@stream`, `stream_query` | one request, many chunks (optional SSE) |
 | Duplex | `@channel`, `open_channel` | interactive agent sessions (optional WebSocket) |
+| Agent loop | `run_agent` / `drive_channel` | model plans; tools are `@handle` keys on the mesh |
 | Events | `@publish`, `@subscribe` | fire-and-forget |
 | Work queues | `@worker`, `@queue`, `enqueue` | one worker per job, leases, retries, dead-letter |
 | Scheduling | `schedule(..., every_s=/cron=)` | periodic jobs on an interval or cron |
@@ -100,12 +101,13 @@ if __name__ == "__main__":
 1. [Installation](installation.md)
 2. [Getting Started](user-guide/getting-started.md)
 3. [RPC](user-guide/rpc.md) (`@handle` / `@query` / `@stream`)
-4. [Pub/Sub](user-guide/pubsub.md)
-5. [Work queues](user-guide/work-queues.md) (`@worker` / `@queue` / `enqueue`)
-6. [Durable messaging](user-guide/durable-messaging.md)
-7. [HTTP gateway](user-guide/http-gateway.md)
-8. [Security](user-guide/security.md) · [Authorization](user-guide/authorization.md)
-9. [Deployment](user-guide/deployment.md)
+4. [Channels](user-guide/channels.md) · [Agent loop](user-guide/agent-loop.md)
+5. [Pub/Sub](user-guide/pubsub.md)
+6. [Work queues](user-guide/work-queues.md) (`@worker` / `@queue` / `enqueue`)
+7. [Durable messaging](user-guide/durable-messaging.md)
+8. [HTTP gateway](user-guide/http-gateway.md)
+9. [Security](user-guide/security.md) · [Authorization](user-guide/authorization.md)
+10. [Deployment](user-guide/deployment.md)
 
 Other guides: [capabilities](user-guide/capabilities.md), [liveliness](user-guide/liveliness.md),
 [retry](user-guide/retry.md), [validation](user-guide/validation.md),
@@ -123,6 +125,7 @@ Other guides: [capabilities](user-guide/capabilities.md), [liveliness](user-guid
 | `@handle` / `@query` | [RPC](user-guide/rpc.md) | [Handler](api/primitives/handler.md), [Query](api/primitives/query.md) |
 | `@stream` | [RPC](user-guide/rpc.md), [HTTP](user-guide/http-gateway.md) | [Stream](api/primitives/stream.md) |
 | `@channel` / `open_channel` | [Channels](user-guide/channels.md) | [Channel](api/primitives/channel.md) |
+| Agent loop (`run_agent` / mesh tools) | [Agent loop](user-guide/agent-loop.md) | [Agent](api/agent.md) |
 | `@publish` / `@subscribe` | [Pub/Sub](user-guide/pubsub.md) | [Publish](api/primitives/publish.md), [Subscribe](api/primitives/subscribe.md) |
 | `@worker` / `@queue` / `enqueue` (leases, DLQ, chords) | [Work Queues](user-guide/work-queues.md) | [Work Queue](api/queue/index.md) |
 | `schedule(every_s=/cron=)` | [Work Queues](user-guide/work-queues.md) | [Work Queue](api/queue/index.md) |

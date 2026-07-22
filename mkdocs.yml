@@ -71,6 +71,7 @@ nav:
     - Getting Started: user-guide/getting-started.md
     - Handlers & Queries (RPC): user-guide/rpc.md
     - Channels & Agent Sessions: user-guide/channels.md
+    - Agent Loop: user-guide/agent-loop.md
     - Publish & Subscribe: user-guide/pubsub.md
     - Brokerless Durable Messaging: user-guide/durable-messaging.md
     - Work Queues: user-guide/work-queues.md
@@ -97,6 +98,7 @@ nav:
     - Pub/Sub telemetry: recipes/pubsub-telemetry.md
     - Durable orders: recipes/durable-orders.md
     - Agent channel: recipes/agent-channel.md
+    - Agent with mesh tools: recipes/agent-tools.md
     - Secure RPC: recipes/secure-rpc.md
     - Redis storage: recipes/redis-storage.md
     - Health checks: recipes/health-checks.md
@@ -108,6 +110,7 @@ nav:
   - API Reference:
     - Istos: api/istos.md
     - IstosRouter: api/router.md
+    - Agent: api/agent.md
     - TestClient: api/testing/testclient.md
     - CLI: api/cli.md
     - Fitness Functions: api/fitness.md
