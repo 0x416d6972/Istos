@@ -60,6 +60,7 @@ all = [
 ]
 dev = [
     "mypy>=1.19.1",
+    "ruff>=0.16.0",
     "pylint>=4.0.5",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
@@ -90,6 +91,7 @@ module-root = "src"
 [dependency-groups]
 dev = [
     "mypy>=1.19.1",
+    "ruff>=0.16.0",
     "pylint>=4.0.5",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
@@ -127,8 +129,16 @@ ignore_missing_imports = true
 target-version = "py310"
 src = ["src", "tests"]
 
-# Default rules only (pyflakes F + a subset of pycodestyle E). Line length (E501)
-# stays off by default — the codebase favors readable long lines.
+[tool.ruff.lint]
+# Pyflakes (real bugs) plus the pycodestyle subset that catches syntax-adjacent
+# mistakes. This used to ride on ruff's defaults, but those widen between
+# releases — 0.16 added isort/bugbear/pyupgrade and turned an unpinned
+# `ruff check` into 1000+ findings on unchanged code — so the intent is written
+# down here instead. Line length (E501) stays off: the codebase favors readable
+# long lines. Style rules (I, UP, B) are deliberately not enabled; B008 in
+# particular would flag `Depends(...)` defaults, which are the intended idiom.
+select = ["E4", "E7", "E9", "F"]
+
 [tool.ruff.lint.per-file-ignores]
 # Guarded `import` used only to test dependency availability (HAS_PYDANTIC pattern).
 "src/istos/discovery/asyncapi.py" = ["F401"]

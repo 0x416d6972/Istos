@@ -30,9 +30,6 @@ jobs:
         run: uv run pytest tests/ -m "not integration" --cov=istos --cov-report=term-missing -q
 
       - name: Run integration tests
-        # Every @pytest.mark.integration test — real loopback Zenoh sessions
-        # (RPC, pub/sub, streams, channels, persistence). Tests that need an
-        # external service (Redis, S3/MinIO) skip themselves when it is absent.
         run: uv run pytest tests/ -m integration -q
 
   lint:
@@ -45,7 +42,7 @@ jobs:
       - run: uv python install 3.12
       - run: uv sync --group dev
       - name: Ruff lint
-        run: uvx ruff check src/ tests/
+        run: uv run ruff check src/ tests/
       - name: Type check
         run: uv run mypy src/istos
 
