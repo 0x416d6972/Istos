@@ -16,9 +16,11 @@ services on the same mesh (or local callables for tests).
 | Piece | Role |
 |-------|------|
 | `MeshTool` / `tools_from_handlers` | Catalogue of callable mesh endpoints |
+| `tools_from_discovery` | The same catalogue, read off the fabric's manifests |
 | `Model` / `OpenAIChatModel` | One completion turn (OpenAI-compatible `/v1/chat/completions`) |
 | `run_agent` | plan → tool → observe until text or `max_steps` |
 | `drive_channel` | Reload durable history, then run the loop per inbound turn |
+| `app.approvals()` | Human approval before an irreversible tool runs |
 
 ```python
 from istos import Istos, ChannelSession
@@ -60,6 +62,8 @@ under `.istos/` is skipped.
 | `kind` | Meaning |
 |--------|---------|
 | `tool_call` | Model asked to run a tool (`name`, `arguments`, `tool_call_id`) |
+| `approval_request` | Waiting on a human before a gated tool runs (`approval_id`) |
+| `approval_decision` | The human answered; `error=True` when refused |
 | `tool_result` | Tool returned (`content`); `error=True` when it raised |
 | `message` | Final assistant text for this turn (`content`) |
 | `done` | Turn finished (not sent on the channel) |
@@ -101,6 +105,88 @@ tools = [
     ),
 ]
 ```
+
+Writing another service's schema by hand goes stale. That schema is already
+published — [capability discovery](capabilities.md) serves it — so read it
+instead:
+
+```python
+from istos import tools_from_discovery
+
+# Every remote @handle, with the owner's schema and docstring. Needs an open
+# session, so call it from a lifespan or a handler.
+tools = await tools_from_discovery(app, services=["billing", "search"])
+```
+
+Only `handle` entries become tools — a mesh tool is a `query_once`, so streams
+and channels are skipped. `prefixes=` whitelists exact keys. The result is a
+snapshot: call it again to pick up nodes that joined later.
+
+## Human approval for irreversible tools
+
+A tool that moves money or deletes data should not fire because a model felt like
+it. The endpoint's **owner** declares the requirement, so every agent that
+discovers the tool inherits it:
+
+```python
+@app.handle("billing/refund", approval="moves real money")
+async def refund(order_id: str) -> dict:
+    """Refund an order."""
+    ...
+```
+
+The agent node passes a gate to the loop:
+
+```python
+gate = app.approvals(timeout_s=600, authorizer=require_roles("ops"))
+
+@app.channel("agent/chat", ws="/chat", durable=True)
+async def chat(s: ChannelSession):
+    await drive_channel(s, model, tools, approvals=gate)
+```
+
+Now a call to `billing/refund` suspends the turn: an `approval_request` event
+goes out (with `approval_id`), and the tool runs only after a yes. Nothing polls
+— the waiting agent holds an `asyncio.Event` that the decision wakes.
+
+The decision arrives **over the fabric**, from any node:
+
+```python
+from istos import decide_approval, list_approvals
+
+for req in await list_approvals(app):
+    print(req["id"], req["tool"], req["arguments"], req["reason"])
+
+await decide_approval(app, req["id"], approved=True, by="amir")
+# or correct it instead of refusing outright:
+await gate.approve(req["id"], by="amir", arguments={"order_id": "o-42"})
+```
+
+`list_approvals` asks `.istos/approvals/*` and `decide_approval` asks
+`.istos/approvals/*/decide`; each waiting node has keys of its own, so the
+wildcard reaches all of them and only the node holding the request acts. Put the
+[HTTP gateway](http-gateway.md) in front for a browser UI.
+
+Fail-closed, deliberately:
+
+- A denial or a timeout never runs the tool. Both come back to the model as a
+  failed `tool_result` carrying the reason, so it can tell the user rather than
+  retry blindly.
+- An undecided request expires after `timeout_s` (`None` waits forever).
+- Passing a gated tool with **no** gate raises `ValueError` at the start of the
+  run — a missing gate can never read as a pass.
+- `approval=` is *advisory*: it tells agents to stop, it does not stop a peer
+  that queries the key directly. Keep the handler's `authorizer` as the real
+  gate. Deciding is privileged too, so give `app.approvals()` an authorizer —
+  Istos warns with `IstosSecurityWarning` when the decide key is left open.
+
+A caller can also gate a prefix its owner did not declare:
+`tools_from_discovery(app, approval=["search/purge"])`.
+
+Requests are written through to the app's storage, so with Redis or SQLAlchemy an
+operator can still list what was outstanding after a restart. The waiter itself
+is in-memory by nature: an agent that crashed is no longer waiting, so its
+recovered request is stale and expires.
 
 ## Own model
 
@@ -173,6 +259,10 @@ until tracing is configured, so OpenTelemetry stays an optional dependency.
 - MCP and `tools_from_handlers` share the catalogue idea; MCP still lists
   **this** node's `@handle` only. An agent can call remote prefixes that MCP
   on this node does not advertise.
+- An approval waits in the process that filed it. Run several replicas of one
+  agent service and each holds its own pending set — which the fan-out decide
+  handles (every replica is asked, the holder answers), but a replica that dies
+  takes its waiter with it.
 
 See also: [Channels](channels.md), [MCP](mcp.md),
 [agent channel recipe](../recipes/agent-channel.md),

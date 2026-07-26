@@ -214,6 +214,7 @@ class IstosBase:
         self._schedule_tasks: List[asyncio.Task] = []
         self._enable_mcp = enable_mcp
         self._mcp_path = mcp_path
+        self._approval_gate: Optional[Any] = None
 
     def _get_or_init_shm(self) -> Any:
         if self._shm_provider is None:

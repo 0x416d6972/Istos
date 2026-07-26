@@ -31,6 +31,7 @@ class _MessagingMixin(IstosBase):
         durability: Union[str, "Durability"] = Durability.AT_MOST_ONCE,
         authorizer: Optional[Authorizer] = None,
         http: Optional[Union[bool, str]] = None,
+        approval: Union[bool, str] = False,
     ) -> Callable:
         """
         Decorator that registers a function or method as an Istos handler.
@@ -67,6 +68,14 @@ class _MessagingMixin(IstosBase):
         ``Authorization`` header is forwarded as the Zenoh attachment, so the
         authorizer gate still runs. Lets non-Zenoh callers (FastAPI, browsers)
         invoke the handler.
+
+        ``approval=True`` (or ``approval="moves real money"``, a reason an
+        approver will read) marks the endpoint as one an **agent** must have a
+        human clear before calling. It travels in the capability manifest, so
+        every agent that discovers this tool inherits the gate instead of each
+        one being configured separately. It is advisory — a peer that ignores it
+        still reaches the handler, so keep the ``authorizer`` as the real gate.
+        See :meth:`approvals` and ``istos.agent.approval``.
         """
         if http is not None:
             self._http_routes.append(parse_http_spec(http, prefix))
@@ -82,6 +91,7 @@ class _MessagingMixin(IstosBase):
                 exception_registry=self._exception_registry,
                 authorizer=combine_authorizers(self._authorizer, authorizer),
                 dependency_overrides=self.dependency_overrides,
+                approval=approval,
             )
             self._handlers.append(wrapper)
             

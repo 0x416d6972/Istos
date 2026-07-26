@@ -93,6 +93,38 @@ When the tool handlers are on the **same** process, use
 `tools_from_handlers(app, prefixes=["math/add", "math/mul"])` instead of
 hand-built `MeshTool` entries.
 
+## Or let the fabric hand you the catalogue
+
+The schemas above are already published by the math node — capability discovery
+serves them on `.istos/capabilities/<service>`. `tools_from_discovery` reads them
+and builds the same `MeshTool` list, so the agent node stops duplicating another
+service's signatures:
+
+```python
+from contextlib import asynccontextmanager
+from istos import tools_from_discovery
+
+tools: list = []
+
+@asynccontextmanager
+async def on_start(app):
+    # Needs an open session, so build the catalogue in the lifespan.
+    tools[:] = await tools_from_discovery(app, services=["math"])
+    yield
+
+app.lifespan = on_start
+
+@app.channel("agent/chat", ws="/chat", durable=True)
+async def chat(s: ChannelSession):
+    await drive_channel(s, model, tools, system="…")
+```
+
+Only `handle` entries become tools (a mesh tool is a `query_once`; streams and
+channels are not callable that way). Drop `services=` for the whole fabric, or
+pass `prefixes=` to whitelist exact keys. It is a snapshot — call it again to
+pick up nodes that joined later, and note that a node started with
+`Istos(enable_discovery=False)` does not answer.
+
 ## Try it
 
 ```bash

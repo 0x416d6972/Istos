@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-07-26
+
+### Added
+
+- Human-in-the-loop approval for irreversible tools (`istos.agent.approval`,
+  `app.approvals()`). A tool's **owner** declares the requirement —
+  `@handle("billing/refund", approval="moves real money")` — and it travels in the
+  capability manifest, so every agent that discovers the tool inherits the gate
+  instead of each one being configured separately. `run_agent` /
+  `run_multi_agent` / `drive_channel` / `drive_agents` take `approvals=gate` and
+  suspend the turn on a gated call: an `approval_request` event goes out (carrying
+  `approval_id`) and the tool runs only after a human decides. Nothing polls — the
+  waiting agent holds an `asyncio.Event` woken by a query on its own
+  `.istos/approvals/<service>-<node>/decide` key; `list_approvals(app)` and
+  `decide_approval(app, id, approved=…)` fan out over those keys from any node, so
+  the operator need not know which one is waiting. An approver may correct the
+  arguments instead of refusing. Fail-closed throughout: a denial or a timeout
+  never runs the tool (both come back to the model as a failed `tool_result` with
+  the reason), and a gated tool with no gate raises at the start of the run rather
+  than passing silently. Pending requests are written through to the app's
+  storage, so an operator can still see what was outstanding after a restart.
+  `approval=` is advisory for agents — the handler's `authorizer` remains the
+  enforcement gate, and Istos warns with `IstosSecurityWarning` when the decide
+  key is left open.
+- `tools_from_discovery(app, services=[…])` builds mesh tools from capability
+  manifests instead of hand-written schemas: an agent node reads another service's
+  parameters and docstrings off `.istos/capabilities/*` rather than duplicating
+  them. `tools_from_manifest` does the same for a manifest already in hand. Only
+  `handle` entries become tools — a mesh tool is a `query_once` — and the result
+  is a snapshot, so call it again to pick up nodes that joined later.
+- Agent eval and replay harness (`istos.testing`, `istos eval`). `record_agent`
+  captures a run — every completion the model returned and every tool result that
+  came back — into a `Trajectory` that saves as JSON; `replay` re-runs it with the
+  model and the mesh pinned to the recording, so a difference means *your* code
+  changed, and `result.diff` names it (a tool no longer called, arguments moved, a
+  tool gone from the catalogue, a different final answer, an approval that no
+  longer happens). `istos eval trajectories/` does that in CI with no model and no
+  network; `--app main:istos` additionally checks each recorded tool still exists
+  and still accepts the recorded arguments. `EvalCase` / `run_eval` grade a whole
+  trajectory against a live model (`expect_tools` in order, `forbid_tools`,
+  `expect_text`, `max_tool_calls`, or your own `check=`) and record each case for
+  later replay.
+
+### Changed
+
+- `OpenAIChatModel` now shares one `aiohttp` connection pool across `complete()`
+  calls instead of opening a session per call, so a multi-step or multi-agent loop
+  reuses connections. It closes with `aclose()` or by using the model as an async
+  context manager; a long-lived model can leave it to the loop.
+- The prefix → tool-name rule now lives in one place (`istos.discovery.naming`)
+  for both the MCP adapter and mesh tools, so the two catalogues cannot drift.
+  It also scrubs every character a tool name disallows rather than only `/`.
+
+### Security
+
+- `SECURITY.md` now lists 0.3.x as the supported line (0.2.x is no longer
+  supported).
+
 ## [0.3.0] - 2026-07-23
 
 ### Added

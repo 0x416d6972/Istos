@@ -50,6 +50,27 @@ istos analyze --no-cycles --max-distance 0.4   # gate CI on architecture drift
 
 See [Architecture Health](architecture-health.md) for how to read the metrics.
 
+## `istos eval`
+
+Replay recorded agent trajectories against the current code — no model, no mesh,
+no network:
+
+```bash
+istos eval trajectories/                      # a directory of recordings
+istos eval trajectories/refund-flow.json      # or just one
+istos eval trajectories/ --app main:istos     # also check the tools still match
+istos eval trajectories/ --ignore-text        # compare tool calls only
+```
+
+Each recording is replayed with its model turns pinned, so a difference means
+*your* code changed: a tool no longer called, arguments that moved, a tool missing
+from the catalogue, a different final answer. `--app` additionally imports the app
+(`module:attr`, or a module exposing `istos` / `app`) and checks every recorded
+tool still exists and still accepts the arguments that were recorded.
+
+Exit code is non-zero if any trajectory fails to reproduce. See
+[Testing](testing.md#testing-agents-record-then-replay) for how to record one.
+
 ## `istos docs`
 
 Serve the MkDocs documentation site locally (requires `mkdocs` from the `dev` extra):

@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from istos import Istos
+from istos import Istos, tools_from_discovery
 from istos.communication.config import IstosZenohConfig
 from istos.discovery.capabilities import capabilities_key
 
@@ -174,6 +174,47 @@ async def test_discover_capabilities_reaches_every_service():
         bare = await a.query_once(".istos/capabilities", timeout_s=3)
         assert not isinstance(bare, list)
         assert bare["service"] in ("clients", "cdc")
+    finally:
+        for t in (ta, tb):
+            t.cancel()
+            try:
+                await t
+            except asyncio.CancelledError:
+                pass
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_tools_from_discovery_calls_a_remote_handler():
+    """The whole path: b's manifest crosses the fabric, becomes a MeshTool on a,
+    and calling it reaches b's handler."""
+    ep = f"tcp/127.0.0.1:{_free_port()}"
+    a = Istos(
+        service_name="agent", enable_health=False, enable_metrics=False,
+        config=IstosZenohConfig(multicast_scouting=False, listen_endpoints=[ep]),
+    )
+    b = Istos(
+        service_name="billing", enable_health=False, enable_metrics=False,
+        config=IstosZenohConfig(multicast_scouting=False, connect_endpoints=[ep]),
+    )
+
+    @b.handle("billing/refund")
+    async def refund(order_id: str) -> dict:
+        """Refund an order."""
+        return {"refunded": order_id}
+
+    ta = asyncio.create_task(a.run_async())
+    await asyncio.sleep(1.5)
+    tb = asyncio.create_task(b.run_async())
+    await asyncio.sleep(2.5)
+    try:
+        tools = await tools_from_discovery(a, services=["billing"])
+        assert [t.name for t in tools] == ["billing-refund"]
+        tool = tools[0]
+        # Schema and docstring came from b, not from hand-written JSON.
+        assert tool.description == "Refund an order."
+        assert tool.parameters["properties"]["order_id"]["type"] == "string"
+        assert await tool.call({"order_id": "o-42"}) == {"refunded": "o-42"}
     finally:
         for t in (ta, tb):
             t.cancel()

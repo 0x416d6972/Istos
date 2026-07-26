@@ -82,6 +82,71 @@ def _cmd_analyze(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def _load_app(spec: str) -> object:
+    """Import ``module:attr`` (or ``module`` with an ``istos``/``app`` attribute)."""
+    import importlib
+
+    module_name, _, attr = spec.partition(":")
+    module = importlib.import_module(module_name)
+    if attr:
+        return getattr(module, attr)
+    for candidate in ("istos", "app"):
+        found = getattr(module, candidate, None)
+        if found is not None:
+            return found
+    raise ValueError(
+        f"{module_name} has no 'istos' or 'app' attribute — pass {module_name}:name"
+    )
+
+
+def _cmd_eval(args: argparse.Namespace) -> None:
+    import asyncio
+
+    from istos.testing.trajectory import Trajectory, check_against_app, replay
+
+    root = Path(args.path)
+    if root.is_dir():
+        files = sorted(root.glob("*.json"))
+    elif root.exists():
+        files = [root]
+    else:
+        print(f"Error: {root} does not exist", file=sys.stderr)
+        sys.exit(1)
+    if not files:
+        print(f"Error: no recorded trajectories (*.json) in {root}", file=sys.stderr)
+        sys.exit(1)
+
+    app = _load_app(args.app) if args.app else None
+
+    async def _run() -> int:
+        failed = 0
+        for path in files:
+            try:
+                traj = Trajectory.load(path)
+            except (ValueError, OSError) as exc:
+                print(f"[FAIL] {path.name}\n       ! {exc}")
+                failed += 1
+                continue
+
+            problems = check_against_app(traj, app) if app is not None else []
+            result = await replay(traj, compare_text=not args.ignore_text)
+            problems.extend(result.diff)
+
+            if problems:
+                failed += 1
+                print(f"[FAIL] {traj.name}")
+                for problem in problems:
+                    print(f"       - {problem}")
+            else:
+                print(f"[PASS] {traj.name}  ({len(traj.tool_names)} tool call(s))")
+        print()
+        print(f"{len(files) - failed}/{len(files)} trajectories reproduced")
+        return failed
+
+    if asyncio.run(_run()):
+        sys.exit(1)
+
+
 def _cmd_docs(args: argparse.Namespace) -> None:
     import subprocess
     cmd = ["mkdocs", "serve", "-a", f"127.0.0.1:{args.port}"]
@@ -117,6 +182,24 @@ def main(argv: list[str] | None = None) -> None:
         help="Exit non-zero if any dependency cycle exists (CI gate)",
     )
     an_p.set_defaults(func=_cmd_analyze)
+
+    ev_p = sub.add_parser(
+        "eval", help="Replay recorded agent trajectories against the current code"
+    )
+    ev_p.add_argument(
+        "path", nargs="?", default="trajectories",
+        help="A recorded trajectory (.json) or a directory of them",
+    )
+    ev_p.add_argument(
+        "--app", default=None,
+        help="module:attr of the Istos app, to also check tools still exist and "
+             "accept the recorded arguments",
+    )
+    ev_p.add_argument(
+        "--ignore-text", action="store_true",
+        help="Do not compare the final assistant message (tool calls only)",
+    )
+    ev_p.set_defaults(func=_cmd_eval)
 
     docs_p = sub.add_parser("docs", help="Serve documentation locally")
     docs_p.add_argument("--port", type=int, default=8000)

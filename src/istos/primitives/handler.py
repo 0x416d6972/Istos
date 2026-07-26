@@ -53,9 +53,15 @@ class handler_wrapper:
         exception_registry: Optional[ExceptionHandlerRegistry] = None,
         authorizer: Optional[Authorizer] = None,
         dependency_overrides: Optional[Mapping[Callable, Callable]] = None,
+        approval: Union[bool, str] = False,
     ):
         self.func = func
         self.prefix = prefix
+        # Advisory, for agents: "a human should clear this call before it runs".
+        # Carried in the capability manifest; enforcement is the caller's gate
+        # (see istos.agent.approval), not this wrapper — the authorizer is what
+        # stops a peer that ignores the flag.
+        self.approval = approval
         self.storage = storage
         self.serializer = serializer
         self.calls = 0

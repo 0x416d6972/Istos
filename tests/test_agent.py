@@ -16,7 +16,9 @@ from istos import (
     drive_channel,
     run_agent,
     run_multi_agent,
+    tools_from_discovery,
     tools_from_handlers,
+    tools_from_manifest,
 )
 from istos.agent.loop import _trim_messages, history_to_messages, user_text
 from istos.agent.multi import _active_from_history
@@ -73,6 +75,109 @@ def _session():
 # ---------------------------------------------------------------------------
 def test_tool_name_maps_slash():
     assert tool_name("math/add") == "math-add"
+
+
+def test_tool_name_scrubs_every_illegal_char():
+    # Tool names allow [A-Za-z0-9_-]; anything else in a prefix or agent name
+    # would be rejected by OpenAI and MCP alike.
+    assert tool_name("math/add.v2") == "math-add-v2"
+    assert tool_name("Refund Agent") == "Refund-Agent"
+    assert tool_name("keep_this-1") == "keep_this-1"
+
+
+def test_tools_from_manifest_handles_only():
+    app = _app()
+    manifest = {
+        "service": "billing",
+        "capabilities": [
+            {
+                "prefix": "billing/refund",
+                "kind": "handle",
+                "description": "Refund an order.",
+                "params_schema": {
+                    "type": "object",
+                    "properties": {"order_id": {"type": "string"}},
+                    "required": ["order_id"],
+                },
+            },
+            {"prefix": "billing/feed", "kind": "stream", "description": "Not callable."},
+            {"prefix": "billing/events", "kind": "publish"},
+            {"prefix": ".istos/health", "kind": "handle"},
+        ],
+    }
+    tools = tools_from_manifest(app, manifest)
+    assert [t.prefix for t in tools] == ["billing/refund"]
+    tool = tools[0]
+    assert tool.name == "billing-refund"
+    assert tool.description == "Refund an order."
+    assert tool.openai_schema()["function"]["parameters"]["required"] == ["order_id"]
+
+
+def test_tools_from_manifest_defaults_and_whitelist():
+    app = _app()
+    manifest = {"capabilities": [
+        {"prefix": "a/one", "kind": "handle"},
+        {"prefix": "a/two", "kind": "handle"},
+    ]}
+    tools = tools_from_manifest(app, manifest, prefixes=["a/two"])
+    assert [t.prefix for t in tools] == ["a/two"]
+    # No description and no schema in the manifest — fall back, don't crash.
+    assert tools[0].description == "a-two"
+    assert tools[0].parameters == {"type": "object", "properties": {}}
+
+
+class _FakeFleet:
+    """Stands in for an Istos node: canned manifests, recorded queries."""
+
+    def __init__(self, manifests: dict) -> None:
+        self._manifests = manifests
+        self.queried: list = []
+
+    async def discover_capabilities(self, timeout_s: float = 3.0) -> dict:
+        return self._manifests
+
+    async def query_once(self, prefix, *, token=None, timeout_s=5.0, **kwargs):
+        self.queried.append((prefix, kwargs))
+        return {"ok": prefix}
+
+
+@pytest.mark.asyncio
+async def test_tools_from_discovery_builds_remote_tools():
+    fleet = _FakeFleet({
+        "billing": {"service": "billing", "capabilities": [
+            {"prefix": "billing/refund", "kind": "handle", "description": "Refund."},
+        ]},
+        "search": {"service": "search", "capabilities": [
+            {"prefix": "search/query", "kind": "handle"},
+            {"prefix": "search/live", "kind": "stream"},
+        ]},
+    })
+    tools = await tools_from_discovery(fleet)
+    assert sorted(t.prefix for t in tools) == ["billing/refund", "search/query"]
+
+    # The tool calls the remote prefix through the local node, so authorizers run.
+    refund = next(t for t in tools if t.prefix == "billing/refund")
+    assert await refund.call({"order_id": "o1"}) == {"ok": "billing/refund"}
+    assert fleet.queried == [("billing/refund", {"order_id": "o1"})]
+
+
+@pytest.mark.asyncio
+async def test_tools_from_discovery_filters_and_dedupes():
+    fleet = _FakeFleet({
+        "billing": {"capabilities": [{"prefix": "billing/refund", "kind": "handle"}]},
+        "other": {"capabilities": [
+            {"prefix": "billing/refund", "kind": "handle"},  # same key, same endpoint
+            {"prefix": "other/thing", "kind": "handle"},
+        ]},
+    })
+    assert [t.prefix for t in await tools_from_discovery(fleet, services=["billing"])] == [
+        "billing/refund"
+    ]
+    all_tools = await tools_from_discovery(fleet)
+    assert [t.prefix for t in all_tools] == ["billing/refund", "other/thing"]
+    assert [t.prefix for t in await tools_from_discovery(fleet, prefixes=["other/thing"])] == [
+        "other/thing"
+    ]
 
 
 def test_tools_from_handlers_skips_plumbing_and_builds_schema():

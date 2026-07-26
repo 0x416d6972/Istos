@@ -1,9 +1,10 @@
 """The Istos application object, composed from domain mixins.
 
 The class is assembled here; its behaviour lives in the mixins (messaging,
-streaming, queues, web, lifecycle) over the shared IstosBase state."""
+streaming, queues, approvals, web, lifecycle) over the shared IstosBase state."""
 
 from istos.app._base import IstosBase
+from istos.app.approvals import _ApprovalMixin
 from istos.app.messaging import _MessagingMixin
 from istos.app.streaming import _StreamingMixin
 from istos.app.queues import _QueueMixin
@@ -15,6 +16,7 @@ class Istos(
     _MessagingMixin,
     _StreamingMixin,
     _QueueMixin,
+    _ApprovalMixin,
     _WebMixin,
     _LifecycleMixin,
 ):

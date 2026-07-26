@@ -1,3 +1,45 @@
+from istos.testing.evals import (
+    EvalCase,
+    EvalReport,
+    EvalResult,
+    format_eval_report,
+    run_case,
+    run_eval,
+)
 from istos.testing.testclient import IstosTestClient
+from istos.testing.trajectory import (
+    ModelTurn,
+    RecordingModel,
+    ReplayModel,
+    ReplayResult,
+    ToolOutcome,
+    Trajectory,
+    TrajectoryRecorder,
+    check_against_app,
+    record_agent,
+    replay,
+    replay_gate,
+    replay_tools,
+)
 
-__all__ = ["IstosTestClient"]
+__all__ = [
+    "EvalCase",
+    "EvalReport",
+    "EvalResult",
+    "IstosTestClient",
+    "ModelTurn",
+    "RecordingModel",
+    "ReplayModel",
+    "ReplayResult",
+    "ToolOutcome",
+    "Trajectory",
+    "TrajectoryRecorder",
+    "check_against_app",
+    "format_eval_report",
+    "record_agent",
+    "replay",
+    "replay_gate",
+    "replay_tools",
+    "run_case",
+    "run_eval",
+]

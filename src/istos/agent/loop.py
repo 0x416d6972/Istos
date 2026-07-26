@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, AsyncIterator, Dict, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List, Optional, Sequence, Union
 
 from istos.agent.model import Model, ModelReply, ToolCall
 from istos.agent.tools import (
@@ -23,9 +23,13 @@ from istos.agent.tools import (
     format_tool_error,
     format_tool_result,
 )
+from istos.errors import IstosError
 from istos.logging import get_logger
 from istos.observability.tracing import set_span_attributes, span
 from istos.primitives.channel import ChannelSession
+
+if TYPE_CHECKING:  # a gate is optional plumbing; don't import it to type a hint
+    from istos.agent.approval import ApprovalGate
 
 _logger = get_logger("agent.loop")
 
@@ -39,6 +43,9 @@ class AgentEvent:
     - ``message`` — final assistant text for this turn
     - ``tool_call`` — model asked to run a mesh tool (``name``, ``arguments``)
     - ``tool_result`` — tool returned (``content``); ``error`` when it raised
+    - ``approval_request`` — waiting on a human before a gated tool runs;
+      ``approval_id`` is what to decide, ``content`` the reason if any
+    - ``approval_decision`` — the human answered; ``error`` when refused
     - ``handoff`` — active agent transferred to ``name`` (multi-agent loop)
     - ``done`` — turn finished (no more steps)
     """
@@ -49,6 +56,7 @@ class AgentEvent:
     arguments: Optional[Dict[str, Any]] = None
     tool_call_id: Optional[str] = None
     error: bool = False
+    approval_id: Optional[str] = None
 
 
 def user_text(msg: Any) -> str:
@@ -216,15 +224,33 @@ async def run_agent(
     max_messages: Optional[int] = None,
     token: Optional[Union[bytes, str]] = None,
     timeout_s: float = 5.0,
+    approvals: Optional["ApprovalGate"] = None,
+    conversation_id: Optional[str] = None,
 ) -> AsyncIterator[AgentEvent]:
     """Run plan → tool → observe until the model returns text or ``max_steps``.
 
     Mutates ``messages`` in place so the caller can keep a multi-turn
     conversation. Each mesh tool call forwards ``token`` on ``query_once``. Pass
     ``max_messages`` to bound the log before each completion (system prompt kept).
+
+    ``approvals`` is an :class:`~istos.agent.approval.ApprovalGate` (usually
+    ``app.approvals()``). A tool marked ``approval=True`` suspends the loop there:
+    an ``approval_request`` event goes out, the gate waits for a human, and the
+    call runs only if they said yes. A refusal or a timeout becomes a failed
+    ``tool_result`` the model can respond to — the turn continues, the tool does
+    not run. Passing tools that need approval without a gate is an error, so a
+    missing gate can never read as a pass.
     """
     if max_steps < 1:
         raise ValueError("max_steps must be >= 1")
+
+    if approvals is None:
+        gated = [t.name for t in tools if t.requires_approval]
+        if gated:
+            raise ValueError(
+                f"Tools {gated} require human approval but no gate was passed. "
+                "Pass approvals=app.approvals(), or drop approval= from the tool."
+            )
 
     catalog = _by_name(tools)
     schemas = [t.openai_schema() for t in tools] or None
@@ -259,27 +285,12 @@ async def run_agent(
             return
 
         for tc in reply.tool_calls:
-            yield AgentEvent(
-                kind="tool_call",
-                name=tc.name,
-                arguments=tc.arguments,
-                tool_call_id=tc.id,
-            )
-            result_text, is_error = await _run_tool(
-                catalog, tc, token=token, timeout_s=timeout_s,
-            )
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tc.id,
-                "content": result_text,
-            })
-            yield AgentEvent(
-                kind="tool_result",
-                name=tc.name,
-                content=result_text,
-                tool_call_id=tc.id,
-                error=is_error,
-            )
+            async for event in _dispatch_tool(
+                catalog, tc, messages,
+                token=token, timeout_s=timeout_s,
+                approvals=approvals, conversation_id=conversation_id,
+            ):
+                yield event
 
         _logger.debug(
             "Agent step %s finished %s tool call(s)",
@@ -293,6 +304,102 @@ async def run_agent(
         content=f"Stopped after {max_steps} tool steps without a final answer.",
     )
     yield AgentEvent(kind="done")
+
+
+async def _dispatch_tool(
+    catalog: Dict[str, MeshTool],
+    tc: ToolCall,
+    messages: List[dict],
+    *,
+    token: Optional[Union[bytes, str]],
+    timeout_s: float,
+    approvals: Optional["ApprovalGate"] = None,
+    conversation_id: Optional[str] = None,
+) -> AsyncIterator[AgentEvent]:
+    """One tool call, start to finish: the human gate if the tool has one, then
+    the call, appending the ``tool`` message the API requires for every call.
+
+    Shared by the single- and multi-agent loops so a gated tool behaves the same
+    however it was reached.
+    """
+    yield AgentEvent(
+        kind="tool_call",
+        name=tc.name,
+        arguments=tc.arguments,
+        tool_call_id=tc.id,
+    )
+
+    tool = catalog.get(tc.name)
+    if tool is not None and tool.requires_approval and approvals is not None:
+        req = await approvals.request(
+            tc.name,
+            tc.arguments,
+            prefix=tool.prefix,
+            reason=tool.approval_reason,
+            conversation_id=conversation_id,
+        )
+        # Out before the wait, so whoever is watching can offer the choice.
+        yield AgentEvent(
+            kind="approval_request",
+            name=tc.name,
+            arguments=tc.arguments,
+            tool_call_id=tc.id,
+            approval_id=req.id,
+            content=tool.approval_reason,
+        )
+        try:
+            decided = await approvals.wait(req.id)
+        except IstosError as exc:
+            # Denied, expired, or nobody answered — the tool never runs, and the
+            # model is told why so it can reply to the user instead of retrying.
+            refusal = format_tool_error(exc)
+            yield AgentEvent(
+                kind="approval_decision",
+                name=tc.name,
+                tool_call_id=tc.id,
+                approval_id=req.id,
+                content=refusal,
+                error=True,
+            )
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tc.id,
+                "content": refusal,
+            })
+            yield AgentEvent(
+                kind="tool_result",
+                name=tc.name,
+                content=refusal,
+                tool_call_id=tc.id,
+                error=True,
+            )
+            return
+        yield AgentEvent(
+            kind="approval_decision",
+            name=tc.name,
+            arguments=decided.arguments,
+            tool_call_id=tc.id,
+            approval_id=req.id,
+            content=decided.note or f"approved by {decided.decided_by or 'a human'}",
+        )
+        # An approver may have corrected the arguments before saying yes.
+        tc = ToolCall(id=tc.id, name=tc.name, arguments=decided.arguments)
+
+    result_text, is_error = await _run_tool(
+        catalog, tc, token=token, timeout_s=timeout_s,
+    )
+    messages.append({
+        "role": "tool",
+        "tool_call_id": tc.id,
+        "content": result_text,
+    })
+    yield AgentEvent(
+        kind="tool_result",
+        name=tc.name,
+        content=result_text,
+        tool_call_id=tc.id,
+        error=is_error,
+    )
 
 
 async def _run_tool(
@@ -339,6 +446,7 @@ async def drive_channel(
     token: Optional[Union[bytes, str]] = None,
     timeout_s: float = 5.0,
     send_events: bool = True,
+    approvals: Optional["ApprovalGate"] = None,
 ) -> None:
     """Channel helper: reload history, then run :func:`run_agent` per inbound turn.
 
@@ -346,6 +454,12 @@ async def drive_channel(
     ``{"kind", "content", …}``. Set ``send_events=False`` to send only the final
     ``message`` content (plain string). ``max_messages`` bounds the reused log so
     a long-lived session does not grow unboundedly; pass ``None`` to disable.
+
+    With ``approvals`` set, a gated tool sends an ``approval_request`` frame
+    (carrying ``approval_id``) and the turn pauses. The decision comes back over
+    the fabric, not this socket — ``decide_approval(app, approval_id, …)``, or the
+    HTTP gateway in front of it — so an operator who is not this channel's peer
+    can answer, and a peer cannot approve merely by holding the socket.
     """
     history = await session.history()
     messages = history_to_messages(history, system=system)
@@ -358,17 +472,22 @@ async def drive_channel(
             model, tools, messages,
             max_steps=max_steps, max_messages=max_messages,
             token=token, timeout_s=timeout_s,
+            approvals=approvals,
+            conversation_id=session.conversation_id,
         ):
             if event.kind == "done":
                 continue
             if send_events:
-                await session.send({
+                frame = {
                     "kind": event.kind,
                     "content": event.content,
                     "name": event.name,
                     "arguments": event.arguments,
                     "tool_call_id": event.tool_call_id,
                     "error": event.error,
-                })
+                }
+                if event.approval_id is not None:
+                    frame["approval_id"] = event.approval_id
+                await session.send(frame)
             elif event.kind == "message" and event.content is not None:
                 await session.send(event.content)

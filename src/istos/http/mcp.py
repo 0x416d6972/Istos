@@ -11,14 +11,10 @@ import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from istos.discovery.asyncapi import get_function_schemas
+from istos.discovery.naming import tool_name
 from istos.errors import IstosError, is_error_payload
 
 MCP_PROTOCOL_VERSION = "2025-06-18"
-
-
-def _tool_name(prefix: str) -> str:
-    # MCP tool names allow [A-Za-z0-9_-]; key expressions use '/'.
-    return prefix.replace("/", "-")
 
 
 def _jsonrpc_result(mid: Any, result: dict) -> dict:
@@ -43,7 +39,7 @@ class MCPServer:
         for h in self._app._handlers:
             if h.prefix.startswith(".istos/"):
                 continue
-            name = _tool_name(h.prefix)
+            name = tool_name(h.prefix)
             by_name[name] = h.prefix
             try:
                 schemas = get_function_schemas(h.func)

@@ -21,14 +21,10 @@ does not have to parse keys.
 
 from __future__ import annotations
 
-import re
+from istos.discovery.naming import key_chunk
 
 CAPABILITIES_KEY = ".istos/capabilities"
 CAPABILITIES_WILDCARD = ".istos/capabilities/*"
-
-# `*`, `?`, `#`, `$` are selector syntax and `/` is the chunk separator, so a
-# service name (free text) cannot be dropped into a key as-is.
-_UNSAFE = re.compile(r"[^A-Za-z0-9_.-]")
 
 
 def capabilities_key(service_name: str) -> str:
@@ -38,5 +34,4 @@ def capabilities_key(service_name: str) -> str:
     them distinctly to be discoverable separately. Replicas of one service are
     meant to share it: the manifest describes the service, not the process.
     """
-    chunk = _UNSAFE.sub("-", service_name or "").strip("-")
-    return f"{CAPABILITIES_KEY}/{chunk or 'istos'}"
+    return f"{CAPABILITIES_KEY}/{key_chunk(service_name)}"

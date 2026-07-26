@@ -21,14 +21,14 @@ authorizers see the original principal regardless of how many handoffs occurred.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import AsyncIterator, Dict, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, AsyncIterator, Dict, List, Optional, Sequence, Union
 
 from istos.agent.loop import (
     AgentEvent,
     _assistant_message,
     _by_name,
     _completion_attrs,
-    _run_tool,
+    _dispatch_tool,
     _trim_messages,
     history_to_messages,
     user_text,
@@ -38,6 +38,9 @@ from istos.agent.tools import MeshTool, tool_name
 from istos.logging import get_logger
 from istos.observability.tracing import set_span_attributes, span
 from istos.primitives.channel import ChannelSession
+
+if TYPE_CHECKING:
+    from istos.agent.approval import ApprovalGate
 
 _logger = get_logger("agent.multi")
 
@@ -113,6 +116,8 @@ async def run_multi_agent(
     max_messages: Optional[int] = None,
     token: Optional[Union[bytes, str]] = None,
     timeout_s: float = 5.0,
+    approvals: Optional["ApprovalGate"] = None,
+    conversation_id: Optional[str] = None,
 ) -> AsyncIterator[AgentEvent]:
     """Run the loop starting at ``active``, switching agents on handoff.
 
@@ -120,9 +125,25 @@ async def run_multi_agent(
     :func:`~istos.agent.loop.run_agent` plus ``handoff`` when the active agent
     changes; the last ``handoff`` event names the agent that should drive the
     next turn. ``token`` is forwarded to every tool call, across handoffs.
+
+    ``approvals`` gates tools marked ``approval=True`` on a human, wherever in the
+    handoff graph they are reached — see :func:`~istos.agent.loop.run_agent`.
     """
     if max_steps < 1:
         raise ValueError("max_steps must be >= 1")
+
+    if approvals is None:
+        gated = [
+            t.name
+            for agent in build_registry(active).values()
+            for t in agent.tools
+            if t.requires_approval
+        ]
+        if gated:
+            raise ValueError(
+                f"Tools {gated} require human approval but no gate was passed. "
+                "Pass approvals=app.approvals(), or drop approval= from the tool."
+            )
 
     for step in range(max_steps):
         if max_messages is not None:
@@ -183,27 +204,12 @@ async def run_multi_agent(
                 next_active = target
                 continue
 
-            yield AgentEvent(
-                kind="tool_call",
-                name=tc.name,
-                arguments=tc.arguments,
-                tool_call_id=tc.id,
-            )
-            result_text, is_error = await _run_tool(
-                catalog, tc, token=token, timeout_s=timeout_s,
-            )
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tc.id,
-                "content": result_text,
-            })
-            yield AgentEvent(
-                kind="tool_result",
-                name=tc.name,
-                content=result_text,
-                tool_call_id=tc.id,
-                error=is_error,
-            )
+            async for event in _dispatch_tool(
+                catalog, tc, messages,
+                token=token, timeout_s=timeout_s,
+                approvals=approvals, conversation_id=conversation_id,
+            ):
+                yield event
 
         if next_active is not active:
             _logger.debug(
@@ -246,6 +252,7 @@ async def drive_agents(
     token: Optional[Union[bytes, str]] = None,
     timeout_s: float = 5.0,
     send_events: bool = True,
+    approvals: Optional["ApprovalGate"] = None,
 ) -> None:
     """Channel helper: reload history, then run :func:`run_multi_agent` per turn.
 
@@ -253,7 +260,7 @@ async def drive_agents(
     reconnect from persisted ``handoff`` frames (``send_events=True``); otherwise
     a resumed session restarts at ``entry``. ``token`` forwards to tool calls
     under whichever agent is active. See :func:`~istos.agent.loop.drive_channel`
-    for the ``send_events`` payload shapes.
+    for the ``send_events`` payload shapes and for how ``approvals`` behaves.
     """
     registry = build_registry(entry)
     history = await session.history()
@@ -266,6 +273,7 @@ async def drive_agents(
             active, messages,
             max_steps=max_steps, max_messages=max_messages,
             token=token, timeout_s=timeout_s,
+            approvals=approvals, conversation_id=session.conversation_id,
         ):
             if event.kind == "handoff" and event.name is not None:
                 target = registry.get(event.name)
@@ -274,13 +282,16 @@ async def drive_agents(
             if event.kind == "done":
                 continue
             if send_events:
-                await session.send({
+                frame = {
                     "kind": event.kind,
                     "content": event.content,
                     "name": event.name,
                     "arguments": event.arguments,
                     "tool_call_id": event.tool_call_id,
                     "error": event.error,
-                })
+                }
+                if event.approval_id is not None:
+                    frame["approval_id"] = event.approval_id
+                await session.send(frame)
             elif event.kind == "message" and event.content is not None:
                 await session.send(event.content)

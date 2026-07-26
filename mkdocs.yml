@@ -112,6 +112,7 @@ nav:
     - IstosRouter: api/router.md
     - Agent: api/agent.md
     - TestClient: api/testing/testclient.md
+    - Agent Evals: api/testing/evals.md
     - CLI: api/cli.md
     - Fitness Functions: api/fitness.md
     - Errors: api/errors.md

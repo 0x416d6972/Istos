@@ -471,8 +471,9 @@ class _WebMixin(IstosBase):
         Served at ``.istos/capabilities`` and ``.istos/capabilities/<service>``.
         Use :meth:`discover_capabilities` (or query ``.istos/capabilities/*``) to
         inventory the fabric; the bare key answers for one node only. Each entry:
-        ``prefix``, ``kind``, optional ``description``, and ``params_schema`` /
-        ``return_schema``.
+        ``prefix``, ``kind``, optional ``description``, ``params_schema`` /
+        ``return_schema``, and ``approval`` when the handler declared
+        ``@handle(approval=…)``.
         """
         from istos.discovery.asyncapi import get_function_schemas
 
@@ -496,7 +497,11 @@ class _WebMixin(IstosBase):
         # Skip .istos/* plumbing endpoints.
         for h in self._handlers:
             if not h.prefix.startswith(".istos/"):
-                capabilities.append(_describe(h.prefix, "handle", h.func))
+                entry = _describe(h.prefix, "handle", h.func)
+                # Only when set: absent means "no human needed", the common case.
+                if getattr(h, "approval", False):
+                    entry["approval"] = h.approval
+                capabilities.append(entry)
         for s in self._streams:
             capabilities.append(_describe(s.prefix, "stream", s.func))
         for c in self._channels:

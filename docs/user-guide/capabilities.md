@@ -78,6 +78,9 @@ same reason `*/health` reaches both `a/health` and `b/health`.
 
 Each entry has `prefix`, `kind`, optional `description` (docstring), and
 `params_schema` / `return_schema` when types exist (same schemas AsyncAPI uses).
+A `handle` entry also carries `approval` when it was registered with
+`@handle(approval=…)` — the owner telling agents a human must clear the call
+before it runs (see [Agent loop](agent-loop.md#human-approval-for-irreversible-tools)).
 
 | `kind` | Source |
 |--------|--------|
@@ -90,6 +93,11 @@ Each entry has `prefix`, `kind`, optional `description` (docstring), and
 `.istos/*` built-ins are hidden. Client-only decorators (`@query`,
 `@stream_client`, `@channel_client`), liveliness callbacks, and `persist()`
 roles are not listed.
+
+An agent can turn the whole inventory into its tool catalogue in one call —
+`tools_from_discovery(app, services=["billing"])` — instead of restating another
+service's schemas by hand. See
+[Agent loop](agent-loop.md#remote-tools).
 
 Non-Python peers can serve the same key — see
 [Wire Protocol](../reference/wire-protocol.md).
