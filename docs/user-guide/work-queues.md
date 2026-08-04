@@ -315,7 +315,12 @@ app.queue("jobs/email", ha=True)
 ```
 
 HA needs **shared** storage (Redis/SQLAlchemy) so the new leader can recover the
-in-flight jobs — with the in-memory default each replica is an island. Election is
+in-flight jobs — with the in-memory default each replica is an island, and Istos
+logs a warning at registration to say so. Take it seriously: the misconfiguration
+looks perfectly healthy right up until the failover it exists for, because
+election still succeeds and a leader still binds. The standby only reveals its
+empty store when it takes over, and every enqueued and in-flight job goes with the
+leader that died. Election is
 leaderless-recovery, not consensus: during the brief handover window two owners
 can momentarily overlap, which (like the rest of the queue) is at-least-once, not
 exactly-once. Producers and workers don't change — they reach whichever replica is

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-08-04
+
+### Added
+
+- `app.queue(..., ha=True)` warns at registration when the app's storage is
+  process-local. HA has always needed shared storage (Redis/SQLAlchemy) so the
+  standby can recover the queue, but the misconfiguration was invisible until the
+  failover it exists for: election succeeds, a leader binds, and the standby only
+  reveals its empty store when it takes over — losing every enqueued and in-flight
+  job at the moment HA was meant to save them. Only the known process-local
+  backends warn (`InMemoryStoragePlugin`, or no storage at all, via the new
+  `QueueStore.is_shared`); a custom plugin is taken at its word, since it may well
+  be shared. Advisory only: nothing is refused, and a single non-HA owner on
+  volatile storage is unchanged.
+
 ## [0.3.1] - 2026-07-26
 
 ### Added

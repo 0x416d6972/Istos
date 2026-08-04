@@ -64,7 +64,8 @@ class _QueueMixin(IstosBase):
         ``ha=True`` runs this owner as one of several replicas that elect a single
         leader over Zenoh liveliness; if the leader dies a standby takes over. HA
         needs a shared ``StoragePlugin`` (Redis/SQLAlchemy) so the new leader
-        recovers the jobs — with the in-memory default each replica is isolated.
+        recovers the jobs — with the in-memory default each replica is isolated,
+        and Istos logs a warning at registration saying so.
         """
         role = QueueRole(
             prefix,
@@ -81,6 +82,14 @@ class _QueueMixin(IstosBase):
             authorizer=combine_authorizers(self._authorizer, authorizer),
             logger=self._logger,
         )
+        if ha and not role.store.is_shared:
+            self._logger.warning(
+                "Queue %s: ha=True with process-local storage. Election will work, "
+                "but a standby that takes over starts from an empty queue and every "
+                "enqueued and in-flight job is lost. Give the app shared storage — "
+                "Istos(storage=RedisStoragePlugin(...)) or a SQLAlchemy backend.",
+                prefix, extra={"prefix": prefix},
+            )
         self._queue_roles.append(role)
         return role
 

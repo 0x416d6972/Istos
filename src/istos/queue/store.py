@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
+from istos.consistency.storage import InMemoryStoragePlugin
 from istos.logging import get_logger
 
 _logger = get_logger("queue")
@@ -150,6 +151,18 @@ class QueueStore:
         self._chords: Dict[str, dict] = {}                  # chord_id → barrier state
         self._seq = 0
         self._lock = asyncio.Lock()
+
+    @property
+    def is_shared(self) -> bool:
+        """Whether the write-through backend is reachable by another process.
+
+        ``False`` for the in-memory default and for no storage at all, where a
+        second owner replica would start empty. Only the known process-local
+        backends answer ``False``; a custom plugin is taken at its word.
+        """
+        if self._storage is None:
+            return False
+        return not isinstance(self._storage, InMemoryStoragePlugin)
 
     # --- heap bookkeeping (all O(log n); entries are validated lazily on pop) ---
 

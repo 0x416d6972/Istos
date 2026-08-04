@@ -4,6 +4,7 @@ The QueueStore tests are pure (no network); the @app.worker / enqueue tests run
 over real loopback Zenoh (owner queryables + worker claim loops)."""
 
 import asyncio
+import logging
 
 import pytest
 
@@ -506,6 +507,141 @@ async def test_ha_owner_failover():
         await _wait(lambda: len(processed) >= 2, timeout=5.0)
 
     assert sorted(p["n"] for p in processed) == [1, 2]
+
+
+# ---------------------------------------------------------------------------
+# HA: the shared-storage guardrail
+# ---------------------------------------------------------------------------
+def _ha_warnings(caplog) -> list:
+    return [r for r in caplog.records if r.levelno == logging.WARNING and "ha=True" in r.message]
+
+
+def test_ha_without_shared_storage_warns(caplog):
+    app = _app()
+    with caplog.at_level(logging.WARNING, logger="istos"):
+        app.queue("jobs/lonely", ha=True)
+
+    warnings = _ha_warnings(caplog)
+    assert len(warnings) == 1
+    assert warnings[0].prefix == "jobs/lonely"
+    assert "shared storage" in warnings[0].getMessage()
+
+
+def test_ha_with_explicit_in_memory_storage_warns(caplog):
+    app = Istos(enable_health=False, enable_metrics=False, enable_discovery=False,
+                storage=InMemoryStoragePlugin())
+    with caplog.at_level(logging.WARNING, logger="istos"):
+        app.queue("jobs/lonely", ha=True)
+
+    assert len(_ha_warnings(caplog)) == 1
+
+
+def test_queue_without_ha_does_not_warn(caplog):
+    app = _app()
+    with caplog.at_level(logging.WARNING, logger="istos"):
+        app.queue("jobs/solo")
+
+    assert _ha_warnings(caplog) == []
+
+
+def test_ha_with_custom_store_is_taken_at_its_word(caplog):
+    class MyDistributedPlugin:
+        pass
+
+    app = _app()
+    store = QueueStore("jobs/custom", MyDistributedPlugin())
+    with caplog.at_level(logging.WARNING, logger="istos"):
+        app.queue("jobs/custom", ha=True, store=store)
+
+    assert _ha_warnings(caplog) == []
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_ha_with_redis_storage_does_not_warn(caplog, redis_storage):
+    app = Istos(enable_health=False, enable_metrics=False, enable_discovery=False,
+                storage=redis_storage)
+    with caplog.at_level(logging.WARNING, logger="istos"):
+        app.queue("jobs/shared", ha=True)
+
+    assert _ha_warnings(caplog) == []
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_ha_failover_recovers_jobs_over_redis(redis_storage):
+    """A job enqueued before the leader died survives the standby taking over."""
+    o1 = Istos(enable_health=False, enable_metrics=False, enable_discovery=False,
+               storage=redis_storage)
+    o2 = Istos(enable_health=False, enable_metrics=False, enable_discovery=False,
+               storage=redis_storage)
+    role1 = o1.queue("jobs/redis-ha", ha=True, lease_s=5, sweep_interval_s=0.5)
+    role2 = o2.queue("jobs/redis-ha", ha=True, lease_s=5, sweep_interval_s=0.5)
+
+    producer = _app()
+    consumer = _app()
+    processed = []
+
+    async with o1.serving(), o2.serving(), producer.serving():
+        await _wait(lambda: role1._active or role2._active, timeout=5.0)
+        await asyncio.sleep(0.6)  # let the election settle
+        active = [r for r in (role1, role2) if r._active]
+        assert len(active) == 1
+        leader = active[0]
+        standby = role2 if leader is role1 else role1
+
+        # No worker yet, so the job can only reach one later via storage.
+        await producer.enqueue("jobs/redis-ha", {"n": 7})
+        await _wait(lambda: leader.store._ids, timeout=5.0)
+
+        await leader.aclose()
+        await _wait(lambda: standby._active, timeout=5.0)
+
+        @consumer.worker("jobs/redis-ha", poll_interval_s=0.1)
+        async def w(job):
+            processed.append(job)
+
+        async with consumer.serving():
+            await _wait(lambda: processed, timeout=8.0)
+
+    assert [p["n"] for p in processed] == [7]
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_ha_failover_loses_jobs_when_storage_is_not_shared():
+    """Same scenario as the Redis test, but with a plugin per replica: the job
+    is gone after failover."""
+    o1 = _app()
+    o2 = _app()
+    role1 = o1.queue("jobs/island", ha=True, lease_s=5, sweep_interval_s=0.5)
+    role2 = o2.queue("jobs/island", ha=True, lease_s=5, sweep_interval_s=0.5)
+
+    producer = _app()
+    consumer = _app()
+    processed = []
+
+    async with o1.serving(), o2.serving(), producer.serving():
+        await _wait(lambda: role1._active or role2._active, timeout=5.0)
+        await asyncio.sleep(0.6)
+        leader = [r for r in (role1, role2) if r._active][0]
+        standby = role2 if leader is role1 else role1
+
+        await producer.enqueue("jobs/island", {"n": 7})
+        await _wait(lambda: leader.store._ids, timeout=5.0)
+
+        await leader.aclose()
+        await _wait(lambda: standby._active, timeout=5.0)
+
+        @consumer.worker("jobs/island", poll_interval_s=0.1)
+        async def w(job):
+            processed.append(job)
+
+        async with consumer.serving():
+            await asyncio.sleep(2.0)
+
+    assert processed == []
+    assert not standby.store._ids
 
 
 # ---------------------------------------------------------------------------
