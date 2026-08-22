@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-08-22
+
+### Fixed
+
+- `durability="exactly_once"` now claims the idempotency key **before** running
+  the handler instead of checking a flag first and setting it after. The old
+  ordering left the entire handler body between the two round trips, so every
+  concurrent redelivery of one request passed the check and ran the side effects
+  — at-least-once with a result cache, not exactly-once. A duplicate that arrives
+  while the first call is still running now gets a retryable `ConflictError`
+  (`conflict`, 409) and executes nothing; once the first call lands, retries
+  return its cached result. Claims carry a lease (`@handle(idempotency_lease_s=)`,
+  default 300s) so a node that dies mid-handler does not strand the key, and a
+  handler that raises releases its claim so failed work stays retryable.
+
+  Two consequences of the old design go with it: a handler returning `None` no
+  longer re-runs on every redelivery (`check_processed` could not tell "never
+  ran" from "ran and returned `None`"), and `mark_processed` is no longer
+  best-effort — swallowing it is what left the key unmarked.
+
+  `StoragePlugin` gains `claim_processed()` / `release_claim()`, implemented
+  atomically per backend: Lua scripts on Redis, an insert-as-claim plus a
+  conditional lease-takeover `UPDATE` on SQLAlchemy. Existing SQLAlchemy ledgers
+  are migrated in place (`create_all` skips existing tables, so the two new
+  columns are added with `ALTER TABLE`), and idempotency records written by
+  earlier versions still read correctly on both backends. A custom plugin that
+  predates these methods keeps working but degrades to at-least-once with a
+  result cache, and warns once instead of passing silently.
+
+- `app.exception_handler(SomeSubclass)` now fires. `ExceptionHandlerRegistry`
+  resolved in insertion order with `isinstance`, and the built-in defaults
+  register a base `IstosError` handler first — so it matched first and silently
+  shadowed every subclass handler an application registered afterwards.
+  Resolution now walks the exception's MRO and picks the most specific match.
+  (Handlers registered against an ABC virtual subclass no longer match; MRO only.)
+
 ## [0.3.2] - 2026-08-04
 
 ### Added
