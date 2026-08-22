@@ -32,6 +32,7 @@ class _MessagingMixin(IstosBase):
         authorizer: Optional[Authorizer] = None,
         http: Optional[Union[bool, str]] = None,
         approval: Union[bool, str] = False,
+        idempotency_lease_s: Optional[float] = None,
     ) -> Callable:
         """
         Decorator that registers a function or method as an Istos handler.
@@ -51,6 +52,14 @@ class _MessagingMixin(IstosBase):
 
             @istos.handle("admin/op", authorizer=TokenAuthorizer("secret"))
             async def admin(x: int): ...
+
+        ``durability="exactly_once"`` claims the request's idempotency key in the
+        storage ledger *before* running the handler, so a concurrent duplicate
+        gets a :class:`~istos.errors.ConflictError` (retry it — once the first
+        call lands, later duplicates return its cached result) instead of
+        executing the side effects a second time. The claim carries a lease so a
+        node that dies mid-handler does not strand the key; raise
+        ``idempotency_lease_s`` above the handler's worst-case runtime.
 
         Durability writes go to the app-wide storage ledger configured on
         ``Istos(storage=...)`` / ``storage_config=`` / ``storage_database=``; a
@@ -92,6 +101,7 @@ class _MessagingMixin(IstosBase):
                 authorizer=combine_authorizers(self._authorizer, authorizer),
                 dependency_overrides=self.dependency_overrides,
                 approval=approval,
+                idempotency_lease_s=idempotency_lease_s,
             )
             self._handlers.append(wrapper)
             

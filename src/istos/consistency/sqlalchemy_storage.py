@@ -31,8 +31,15 @@ except ImportError:  # pragma: no cover - exercised only when the extra is absen
     AsyncEngine = Any  # type: ignore
     NoSuchModuleError = Exception  # type: ignore
 
+from istos.consistency.storage import DEFAULT_CLAIM_LEASE_S, Claim, ClaimState
+
 if TYPE_CHECKING:
     from istos.consistency.config import DatabaseConfig
+
+# ``status`` on an idempotency row. NULL is a row from an older Istos, which
+# only ever stored finished results, so NULL reads as done.
+_PENDING = "pending"
+_DONE = "done"
 
 
 def _driver_name(url: "Union[str, URL]") -> Optional[str]:
@@ -90,6 +97,10 @@ def _build_schema():
         Column("idempotency_key", String, primary_key=True),
         Column("result", LargeBinary),
         Column("created_at", Float, nullable=False),
+        # Nullable so they can be added to a table an older Istos created —
+        # ALTER TABLE ADD COLUMN without a default is portable everywhere.
+        Column("status", String, nullable=True),
+        Column("lease_expires_at", Float, nullable=True),
     )
     return metadata, kv, event_log, idempotency
 
@@ -151,7 +162,27 @@ class SqlAlchemyStoragePlugin:
                 return
             async with self._engine.begin() as conn:
                 await conn.run_sync(self._metadata.create_all)
+                await conn.run_sync(self._add_missing_columns)
             self._ready = True
+
+    def _add_missing_columns(self, sync_conn: Any) -> None:
+        """Bring an idempotency table created by an older Istos up to date.
+
+        ``create_all`` skips tables that already exist, so a ledger written
+        before claims would be missing ``status`` / ``lease_expires_at`` and
+        every claim would fail on an unknown column.
+        """
+        from sqlalchemy import inspect as sa_inspect
+
+        insp = sa_inspect(sync_conn)
+        present = {c["name"] for c in insp.get_columns(self._idempotency.name)}
+        for column in (self._idempotency.c.status, self._idempotency.c.lease_expires_at):
+            if column.name in present:
+                continue
+            col_type = column.type.compile(dialect=sync_conn.dialect)
+            sync_conn.exec_driver_sql(
+                f"ALTER TABLE {self._idempotency.name} ADD COLUMN {column.name} {col_type}"
+            )
 
     @staticmethod
     def _serialize(value: Any) -> bytes:
@@ -246,27 +277,111 @@ class SqlAlchemyStoragePlugin:
 
     # ---- Idempotency ----
 
+    async def claim_processed(
+        self, idempotency_key: str, *, lease_s: float = DEFAULT_CLAIM_LEASE_S
+    ) -> Claim:
+        await self._ensure_ready()
+        idemp = self._idempotency
+        # Two attempts: the row can be released between the failed insert and
+        # the lookup, and then the insert would have succeeded.
+        for _ in range(2):
+            now = time.time()
+            # The primary key makes the insert the claim: one concurrent caller
+            # lands it, the rest get IntegrityError.
+            try:
+                async with self._engine.begin() as conn:
+                    await conn.execute(
+                        insert(idemp).values(
+                            idempotency_key=idempotency_key,
+                            result=None,
+                            created_at=now,
+                            status=_PENDING,
+                            lease_expires_at=now + lease_s,
+                        )
+                    )
+                return Claim(ClaimState.CLAIMED)
+            except IntegrityError:
+                pass  # already owned — find out in what state
+
+            async with self._engine.connect() as conn:
+                row = (
+                    await conn.execute(
+                        select(idemp.c.status, idemp.c.result, idemp.c.lease_expires_at).where(
+                            idemp.c.idempotency_key == idempotency_key
+                        )
+                    )
+                ).first()
+            if row is None:
+                continue  # released in the meantime — try to claim it ourselves
+            status, result, lease_expires_at = row
+            if status != _PENDING:  # done, or NULL from an older Istos
+                return Claim(ClaimState.DONE, self._deserialize(result))
+            if lease_expires_at is not None and lease_expires_at > now:
+                return Claim(ClaimState.IN_FLIGHT)
+            # Lease lapsed. One UPDATE both tests and takes it, so of several
+            # nodes racing to take over exactly one gets a non-zero rowcount.
+            async with self._engine.begin() as conn:
+                taken = await conn.execute(
+                    update(idemp)
+                    .where(
+                        idemp.c.idempotency_key == idempotency_key,
+                        idemp.c.status == _PENDING,
+                        idemp.c.lease_expires_at <= now,
+                    )
+                    .values(lease_expires_at=now + lease_s, created_at=now)
+                )
+            return Claim(ClaimState.CLAIMED if taken.rowcount else ClaimState.IN_FLIGHT)
+        return Claim(ClaimState.IN_FLIGHT)
+
+    async def release_claim(self, idempotency_key: str) -> None:
+        await self._ensure_ready()
+        idemp = self._idempotency
+        async with self._engine.begin() as conn:
+            await conn.execute(
+                delete(idemp).where(
+                    idemp.c.idempotency_key == idempotency_key,
+                    idemp.c.status == _PENDING,
+                )
+            )
+
     async def check_processed(self, idempotency_key: str) -> Optional[Any]:
         await self._ensure_ready()
         async with self._engine.connect() as conn:
             row = (
                 await conn.execute(
-                    select(self._idempotency.c.result).where(
+                    select(self._idempotency.c.result, self._idempotency.c.status).where(
                         self._idempotency.c.idempotency_key == idempotency_key
                     )
                 )
             ).first()
-        return self._deserialize(row[0]) if row is not None else None
+        if row is None or row[1] == _PENDING:
+            return None
+        return self._deserialize(row[0])
 
     async def mark_processed(self, idempotency_key: str, result: Any) -> None:
         await self._ensure_ready()
+        idemp = self._idempotency
+        now = time.time()
+        payload = self._serialize(result)
+        # Filtering on _PENDING is what makes the first result win — once a row
+        # is done, no later writer moves it.
+        async with self._engine.begin() as conn:
+            completed = await conn.execute(
+                update(idemp)
+                .where(idemp.c.idempotency_key == idempotency_key, idemp.c.status == _PENDING)
+                .values(result=payload, status=_DONE, lease_expires_at=None, created_at=now)
+            )
+        if completed.rowcount:
+            return
+        # No pending row: already done, or marked without a claim.
         try:
             async with self._engine.begin() as conn:
                 await conn.execute(
-                    insert(self._idempotency).values(
+                    insert(idemp).values(
                         idempotency_key=idempotency_key,
-                        result=self._serialize(result),
-                        created_at=time.time(),
+                        result=payload,
+                        created_at=now,
+                        status=_DONE,
                     )
                 )
         except IntegrityError:

@@ -280,13 +280,16 @@ is used on both ends, but it wraps **different things**:
 
 Neither retries an error that cannot change: a `not_found` or `unauthorized` fails
 immediately rather than spending the backoff budget to be told the same thing
-again. A `rate_limit_exceeded` *does* retry — waiting is the remedy — as do 5xx
-and transport faults. `istos.is_retryable(exc)` is the rule if you need it.
+again. A `rate_limit_exceeded` and a `conflict` *do* retry — both say "this will
+succeed later" — as do 5xx and transport faults. `istos.is_retryable(exc)` is the rule if you need it.
 
 They compose: a client can re-query after a failure while the server independently
 retries its own logic. And with `durability="exactly_once"`, a client re-query with
-identical params hits `check_processed` on the server and returns the **cached**
-result — so client retry + exactly-once server does not double-execute side effects.
+identical params returns the first call's **cached** result instead of running the
+handler again — so client retry + exactly-once server does not double-execute side
+effects. A re-query that arrives while the first call is *still running* gets a
+`conflict` (409) rather than executing alongside it; `is_retryable` treats it as
+retryable, so the retry collects the cached result once the first call lands.
 
 ---
 

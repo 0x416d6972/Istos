@@ -74,7 +74,35 @@ async def charge(payment_id: str, amount: float):
 |------|----------|
 | `at_most_once` | Default — no idempotency ledger |
 | `at_least_once` | Events logged to storage |
-| `exactly_once` | Idempotency key + cached result |
+| `exactly_once` | Idempotency key claimed before execution + cached result |
+
+### How `exactly_once` holds
+
+The idempotency key is **claimed before the handler runs**, in one atomic
+operation against the ledger, and completed with the result afterwards. That
+ordering is the guarantee: checking a "already processed?" flag first and setting
+it after would leave the whole handler body between the two, so every concurrent
+redelivery would pass the check and run the side effects.
+
+There are three outcomes for a call:
+
+- **No claim yet** — this call owns the key and executes.
+- **Claim held by another call** — raises `ConflictError` (`conflict`, 409).
+  Nothing executes. It is retryable: once the first call finishes, the retry gets
+  its cached result.
+- **Already finished** — returns the cached result without running the handler.
+
+A claim carries a **lease** (default 300s, `@handle(idempotency_lease_s=...)`) so
+a node that dies mid-handler does not strand the key; after it lapses another
+delivery takes over. Raise it above your handler's worst-case runtime. A finished
+result is terminal — no lease expires it.
+
+If a handler raises, the claim is released and the work stays retryable. Only a
+*completed* call is deduplicated.
+
+Custom storage plugins need `claim_processed()` and `release_claim()` (see
+`StoragePlugin`). A plugin that predates them still works, but degrades to
+at-least-once with a result cache and warns on first use.
 
 All handlers share the app-wide durability ledger configured on the `Istos`
 instance (`storage=` / `storage_config=` / `storage_database=`); its lifecycle

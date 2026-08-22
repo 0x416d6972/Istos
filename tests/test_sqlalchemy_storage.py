@@ -1,5 +1,8 @@
 """Durability-protocol conformance tests for SqlAlchemyStoragePlugin (over SQLite)."""
 
+import asyncio
+import sqlite3
+
 import pytest
 
 pytest.importorskip("sqlalchemy")
@@ -95,3 +98,65 @@ async def test_conforms_to_storage_protocol(db_url):
     plugin = SqlAlchemyStoragePlugin(db_url)
     assert isinstance(plugin, StoragePlugin)   # runtime_checkable Protocol
     await plugin.close()
+
+
+@pytest.mark.asyncio
+async def test_claim_is_exclusive_and_leased(db_url):
+    from istos.consistency.storage import ClaimState
+
+    plugin = SqlAlchemyStoragePlugin(db_url)
+    try:
+        assert (await plugin.claim_processed("k", lease_s=0.1)).state is ClaimState.CLAIMED
+        assert (await plugin.claim_processed("k", lease_s=0.1)).state is ClaimState.IN_FLIGHT
+        assert await plugin.check_processed("k") is None   # claimed is not finished
+
+        await asyncio.sleep(0.15)                          # the owner died
+        assert (await plugin.claim_processed("k", lease_s=30)).state is ClaimState.CLAIMED
+
+        await plugin.mark_processed("k", {"v": 1})
+        done = await plugin.claim_processed("k", lease_s=0.0)
+        assert done.state is ClaimState.DONE and done.result == {"v": 1}
+
+        # DONE is terminal: neither a lapsed lease nor a release undoes it.
+        await plugin.release_claim("k")
+        await plugin.mark_processed("k", {"v": 2})         # first result wins
+        assert (await plugin.claim_processed("k")).result == {"v": 1}
+    finally:
+        await plugin.close()
+
+
+@pytest.mark.asyncio
+async def test_release_makes_the_key_claimable_again(db_url):
+    from istos.consistency.storage import ClaimState
+
+    plugin = SqlAlchemyStoragePlugin(db_url)
+    try:
+        assert (await plugin.claim_processed("k")).state is ClaimState.CLAIMED
+        await plugin.release_claim("k")
+        assert (await plugin.claim_processed("k")).state is ClaimState.CLAIMED
+    finally:
+        await plugin.close()
+
+
+@pytest.mark.asyncio
+async def test_ledger_written_before_claims_still_reads(tmp_path):
+    """create_all skips existing tables, so the new columns need adding."""
+    from istos.consistency.storage import ClaimState
+
+    path = tmp_path / "old.db"
+    con = sqlite3.connect(path)
+    con.execute(
+        "CREATE TABLE istos_idempotency (idempotency_key VARCHAR PRIMARY KEY, "
+        "result BLOB, created_at FLOAT NOT NULL)"
+    )
+    con.execute('INSERT INTO istos_idempotency VALUES ("legacy", \'{"old": true}\', 1.0)')
+    con.commit()
+    con.close()
+
+    plugin = SqlAlchemyStoragePlugin(f"sqlite+aiosqlite:///{path}")
+    try:
+        legacy = await plugin.claim_processed("legacy")
+        assert legacy.state is ClaimState.DONE and legacy.result == {"old": True}
+        assert (await plugin.claim_processed("fresh")).state is ClaimState.CLAIMED
+    finally:
+        await plugin.close()

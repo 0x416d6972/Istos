@@ -65,6 +65,19 @@ class ForbiddenError(IstosError):
         super().__init__(message, code="forbidden", status=403, **kwargs)
 
 
+class ConflictError(IstosError):
+    """The request collides with work already in flight — retry, do not duplicate.
+
+    Raised by an ``exactly_once`` handler when another delivery of this exact
+    request holds the idempotency claim. Retrying returns that call's cached
+    result once it lands; executing anyway would run the side effects twice.
+    """
+
+    def __init__(self, message: str = "Conflict", **kwargs: Any):
+        kwargs.setdefault("code", "conflict")
+        super().__init__(message, status=409, **kwargs)
+
+
 class RateLimitError(IstosError):
     def __init__(self, message: str = "Rate limit exceeded", **kwargs: Any):
         super().__init__(message, code="rate_limit_exceeded", status=429, **kwargs)
@@ -76,6 +89,7 @@ _CODE_TO_ERROR: Dict[str, Type[IstosError]] = {
     "not_found": NotFoundError,
     "unauthorized": UnauthorizedError,
     "forbidden": ForbiddenError,
+    "conflict": ConflictError,
     "rate_limit_exceeded": RateLimitError,
 }
 
@@ -88,6 +102,7 @@ CODE_TO_STATUS: Dict[str, int] = {
     "not_found": 404,
     "validation_error": 400,
     "bad_request": 400,
+    "conflict": 409,
     "rate_limit_exceeded": 429,
 }
 DEFAULT_ERROR_STATUS = 500
@@ -97,12 +112,13 @@ def is_retryable(exc: BaseException) -> bool:
     """Whether retrying ``exc`` could plausibly succeed.
 
     A 4xx-class error is the caller's own fault and comes back the same however
-    often it is asked, so retrying only spends the backoff budget. A 429 is the
-    exception: waiting is the remedy. Everything else, transport faults included,
-    is retryable.
+    often it is asked, so retrying only spends the backoff budget. 429 and 409
+    are the exceptions: both say "this will succeed later" — the rate window
+    reopens, the in-flight duplicate finishes and leaves its cached result.
+    Everything else, transport faults included, is retryable.
     """
     if isinstance(exc, IstosError):
-        if exc.status == 429:
+        if exc.status in (409, 429):
             return True
         return not (400 <= exc.status < 500)
     return True
@@ -247,10 +263,17 @@ class ExceptionHandlerRegistry:
         self._handlers[exc_type] = handler
 
     def resolve(self, exc: Exception) -> ErrorResponse:
-        for exc_type, handler in self._handlers.items():
-            if isinstance(exc, exc_type):
-                response = handler(exc)
-                return response
+        """The handler registered for the *most specific* matching type.
+
+        Resolution walks the exception's MRO, not the registration order: the
+        defaults register a base ``IstosError`` handler, so an insertion-ordered
+        ``isinstance`` scan would match it first and silently shadow every
+        subclass handler an application registers afterwards.
+        """
+        for klass in type(exc).__mro__:
+            handler = self._handlers.get(klass)
+            if handler is not None:
+                return handler(exc)
         return ErrorResponse(
             error="internal_error",
             code="internal_error",

@@ -1,7 +1,7 @@
 """Tests for production-readiness features."""
 
 import pytest
-from istos import Istos, IstosError, IstosTestClient
+from istos import Istos, IstosError, IstosTestClient, NotFoundError
 from istos.errors import ErrorResponse
 from istos.validation import SchemaValidationError
 from istos.http.health import HealthState
@@ -59,6 +59,26 @@ def test_exception_handler_validation_error():
     exc = SchemaValidationError([{"msg": "bad"}], message="invalid")
     response = istos._exception_registry.resolve(exc)
     assert response.code == "validation_error"
+
+
+def test_exception_handler_prefers_the_most_specific_type():
+    """A subclass handler must win over the default base-IstosError one.
+
+    Registration order would match IstosError first and silently shadow every
+    subclass handler an application registers.
+    """
+    istos = Istos(enable_health=False, enable_metrics=False)
+
+    @istos.exception_handler(NotFoundError)
+    def handle_missing(exc: NotFoundError) -> ErrorResponse:
+        return ErrorResponse(error="gone", code="gone", message="custom")
+
+    assert istos._exception_registry.resolve(NotFoundError("nope")).code == "gone"
+    # The base handler still covers everything else.
+    assert istos._exception_registry.resolve(
+        IstosError("boom", code="test_code")
+    ).code == "test_code"
+    assert istos._exception_registry.resolve(ValueError("x")).code == "internal_error"
 
 
 @pytest.mark.asyncio

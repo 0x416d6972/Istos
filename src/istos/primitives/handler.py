@@ -3,20 +3,36 @@ import hashlib
 import asyncio
 import json as _json
 import time
+import warnings
 import zenoh
 from contextlib import AsyncExitStack
 from typing import Any, Callable, Iterable, Mapping, Optional, Tuple, Union, cast, get_type_hints
-from istos.consistency.storage import StoragePlugin, Durability
+from istos.consistency.storage import (
+    DEFAULT_CLAIM_LEASE_S,
+    Claim,
+    ClaimState,
+    Durability,
+    StoragePlugin,
+)
 from istos.messages.serialization import Serialize
 from istos.validation import validate_params, SchemaValidationError
 from istos.retry import RetryPolicy, execute_with_retry
-from istos.errors import ExceptionHandlerRegistry, get_default_registry, UnauthorizedError
+from istos.errors import (
+    ConflictError,
+    ExceptionHandlerRegistry,
+    get_default_registry,
+    UnauthorizedError,
+)
 from istos.security.authz import Authorizer, AuthContext, check_authorized
 from istos.http.gateway import decode_params
 from istos.di.depends import resolve_dependencies, extract_depends
 from istos.context import RequestEnvelope, get_request_context
 from istos.middleware.base import MiddlewareStack, RequestScope
 from istos.logging import get_logger
+
+# One warning per storage class — a degraded backend would otherwise warn on
+# every request.
+_WARNED_NO_CLAIM: set[str] = set()
 
 try:
     from pydantic import BaseModel, TypeAdapter, ValidationError
@@ -54,6 +70,7 @@ class handler_wrapper:
         authorizer: Optional[Authorizer] = None,
         dependency_overrides: Optional[Mapping[Callable, Callable]] = None,
         approval: Union[bool, str] = False,
+        idempotency_lease_s: Optional[float] = None,
     ):
         self.func = func
         self.prefix = prefix
@@ -69,6 +86,9 @@ class handler_wrapper:
         self._authorizer = authorizer
         self._exception_registry = exception_registry or get_default_registry()
         self._logger = get_logger("handler")
+        self.idempotency_lease_s = (
+            DEFAULT_CLAIM_LEASE_S if idempotency_lease_s is None else idempotency_lease_s
+        )
 
         if retry is None:
             self.retry_policy = RetryPolicy(max_retries=0)
@@ -126,11 +146,84 @@ class handler_wrapper:
         idemp_params = {k: v for k, v in kwargs.items() if k not in self._injected_params}
         idemp_key = self._make_idempotency_key(self.prefix, idemp_params)
 
+        claimed = False
         if self.durability == Durability.EXACTLY_ONCE:
-            cached = await self.storage.check_processed(idemp_key)
-            if cached is not None:
-                return cached
+            # Claim before executing: a check first and a mark afterwards leaves
+            # the whole handler body between the two, so every concurrent
+            # redelivery passes the check and runs the side effects.
+            claim = await self._claim(idemp_key)
+            if claim.state is ClaimState.DONE:
+                return claim.result
+            if claim.state is ClaimState.IN_FLIGHT:
+                raise ConflictError(
+                    f"'{self.prefix}' is already executing this exact request; "
+                    "retry to collect its result",
+                    details={"idempotency_key": idemp_key},
+                )
+            claimed = True
 
+        try:
+            return await self._invoke(args, kwargs, idemp_params, idemp_key)
+        except BaseException:
+            # The work did not complete, so the key must not stay claimed or a
+            # failed call is never retryable. Cancellation counts: a cancelled
+            # handler has no result either.
+            if claimed:
+                await self._release(idemp_key)
+            raise
+
+    async def _claim(self, idemp_key: str) -> Claim:
+        """Claim the idempotency key, atomically where the backend can."""
+        claim_processed = getattr(self.storage, "claim_processed", None)
+        if claim_processed is not None:
+            return cast(Claim, await claim_processed(idemp_key, lease_s=self.idempotency_lease_s))
+        # A plugin written against the pre-claim protocol. Check-then-act is all
+        # that is left, and it does not hold under concurrency — say so rather
+        # than let it pass as exactly-once.
+        self._warn_no_claim_support()
+        cached = await self.storage.check_processed(idemp_key)
+        if cached is not None:
+            return Claim(ClaimState.DONE, cached)
+        return Claim(ClaimState.CLAIMED)
+
+    async def _release(self, idemp_key: str) -> None:
+        release_claim = getattr(self.storage, "release_claim", None)
+        if release_claim is None:
+            return
+        try:
+            await release_claim(idemp_key)
+        except Exception:
+            # The lease expires anyway, so this costs a delay, not correctness.
+            # Never mask the error that got us here.
+            self._logger.warning(
+                "failed to release idempotency claim; it expires in %ss",
+                self.idempotency_lease_s,
+                exc_info=True,
+            )
+
+    def _warn_no_claim_support(self) -> None:
+        backend = type(self.storage).__name__
+        if backend in _WARNED_NO_CLAIM:
+            return
+        _WARNED_NO_CLAIM.add(backend)
+        warnings.warn(
+            f"{backend} does not implement claim_processed(), so "
+            "durability='exactly_once' degrades to at-least-once with a result "
+            "cache: concurrent duplicates of one request can all execute. "
+            "Implement claim_processed()/release_claim() (see StoragePlugin) or "
+            "use a built-in storage backend.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
+    async def _invoke(
+        self,
+        args: Tuple[Any, ...],
+        kwargs: dict,
+        idemp_params: dict,
+        idemp_key: str,
+    ) -> Any:
+        """Resolve dependencies, run the handler, and record the outcome."""
         # Exit stack tears down yield-deps after the handler finishes.
         async with AsyncExitStack() as di_stack:
             call_kwargs = dict(kwargs)
@@ -187,13 +280,12 @@ class handler_wrapper:
             except Exception:
                 pass  # storage write must never crash the handler
 
-            # Mark processed last: log() skips keys already marked, so the
-            # event log must land before the idempotency key exists.
+            # Complete the claim last: log() skips keys already marked done, so
+            # the event log must land while the key is still only claimed. Not
+            # best-effort like the writes above — swallowing this leaves the key
+            # claimed until the lease lapses and the work runs twice.
             if self.durability == Durability.EXACTLY_ONCE:
-                try:
-                    await self.storage.mark_processed(idemp_key, result)
-                except Exception:
-                    pass
+                await self.storage.mark_processed(idemp_key, result)
 
             return result
 
