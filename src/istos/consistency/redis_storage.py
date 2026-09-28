@@ -49,8 +49,6 @@ end
 return 0
 """
 
-# Append a log line unless the idempotency key is already finished. One round
-# trip, so two concurrent handlers cannot both pass a read-then-write check.
 _LOG_LUA = """
 local cur = redis.call('GET', KEYS[1])
 if cur and string.sub(cur, 1, 1) ~= 'P' then
@@ -128,9 +126,6 @@ class RedisStoragePlugin:
             "idempotency_key": idempotency_key,
         })
         if idempotency_key:
-            # Pending ('P') and a missing row still log. Done ('D') and an
-            # untagged legacy result do not — decided in one script, not a
-            # read followed by a write.
             await self._scripts["log"](
                 keys=[self._idemp_key(idempotency_key), self._log_key(key)],
                 args=[entry],
@@ -140,7 +135,6 @@ class RedisStoragePlugin:
 
     async def get_log(self, key: str, limit: int = 100) -> List[Any]:
         if limit <= 0:
-            # LRANGE 0 -1 is the whole list; Redis treats a negative stop that way.
             return []
         client = await self._get_client()
         entries = await client.lrange(self._log_key(key), 0, limit - 1)

@@ -65,8 +65,6 @@ class CronSchedule:
         self.hour = _parse_field(fields[1], *_RANGES[1])
         self.dom = _parse_field(fields[2], *_RANGES[2])
         self.month = _parse_field(fields[3], *_RANGES[3])
-        # 7 is Sunday, including inside lists and ranges ("1,7", "5-7"). The
-        # field is parsed through 7 and then folded back into 0.
         dow = _parse_field(fields[4], 0, 7)
         if 7 in dow:
             dow.discard(7)

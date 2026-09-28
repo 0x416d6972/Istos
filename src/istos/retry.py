@@ -18,11 +18,7 @@ class RetryPolicy:
     max_retries: int = 0
     delay: float = 0.5
     backoff_factor: float = 2.0
-    #: Cap on a single wait. Without it, delay * factor**attempt grows without
-    #: bound (delay=0.5, factor=2, 40 retries is millions of days).
     max_delay: float = 60.0
-    #: Fractional jitter applied to each wait so retriers don't wake together.
-    #: 0.1 spreads the delay by ±10%. 0 disables it.
     jitter: float = 0.1
     on_failure: Optional[Callable[..., Any]] = None
 
@@ -74,9 +70,6 @@ async def execute_with_retry(
                 )
                 await asyncio.sleep(wait)
 
-    # All retries exhausted. The callback is a hook (dead-letter, metric);
-    # the failure still propagates so the caller — and an exactly-once ledger —
-    # cannot record it as a successful None.
     if policy.on_failure is not None:
         policy.on_failure(last_exception)
     raise last_exception  # type: ignore

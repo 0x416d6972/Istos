@@ -358,8 +358,6 @@ class QueueStore:
                     and rec.completed_at + self.result_ttl_s <= now
                 ):
                     await self._forget(job_id)
-            # Dead letters are parked for inspection, not forever. Same TTL as
-            # retained results, measured from when the job was dead-lettered.
             expired = [
                 job_id for job_id, rec in self._jobs.items()
                 if rec.state == JobState.DEAD

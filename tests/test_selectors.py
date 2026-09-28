@@ -79,7 +79,6 @@ async def test_query_once_formats_selector(istos, mocker):
     # Mock to_thread so it doesn't actually block and just executes the inner sync function
     mocker.patch("asyncio.to_thread", side_effect=lambda func, *args: func(*args))
     
-    # The mock session replies with nothing, which is a miss, not [].
     with pytest.raises(NotFoundError):
         await istos.query_once("greeter", limit=10, sort="desc")
     

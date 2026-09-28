@@ -20,8 +20,6 @@ class _LifecycleMixin(IstosBase):
     """Startup, shutdown and process entry points (serving/run/run_async) that orchestrate the domain binds."""
 
     def _install_signal_handlers(self, loop: asyncio.AbstractEventLoop) -> None:
-        # A new event every run. A previous SIGINT leaves the old event set,
-        # and wait() on it would return before this run did any work.
         self._shutdown_event = asyncio.Event()
         self._installed_signals: list = []
 
@@ -79,8 +77,6 @@ class _LifecycleMixin(IstosBase):
             await self._bind_subscribers(session)
             await self._bind_liveliness(session)
         except BaseException:
-            # serving() only shuts down after _startup returns. A bind that
-            # raises would otherwise leave the session, storage, and pools open.
             await self._shutdown()
             raise
 
@@ -183,7 +179,4 @@ class _LifecycleMixin(IstosBase):
         except RuntimeError:
             asyncio.run(self.run_async())
             return
-        # The loop only keeps a weak reference to the task. Hold it on the app
-        # so a running service is not collected, and so a startup failure stays
-        # attached to an object the caller still has.
         self._background_run = loop.create_task(self.run_async())

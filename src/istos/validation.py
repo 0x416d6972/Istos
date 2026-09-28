@@ -2,7 +2,7 @@ import inspect
 from typing import Any, Callable, Dict, Optional, get_type_hints
 
 try:
-    from pydantic import BaseModel, ValidationError, TypeAdapter, create_model
+    from pydantic import BaseModel, ConfigDict, ValidationError, TypeAdapter, create_model
     HAS_PYDANTIC = True
 except ImportError:
     HAS_PYDANTIC = False
@@ -82,15 +82,17 @@ def validate_params(
 
     # --- Mode 2: Auto-coerce individual typed parameters ---
     if not HAS_PYDANTIC or not hints:
-        # No pydantic or no hints: keep declared parameters, drop the rest.
-        # A closed signature must not receive arbitrary network keys via **kwargs
-        # splat; a function that declares **kwargs still receives them.
         return _declared_params(sig, params, excluded)
 
-    # Build a dynamic Pydantic model from the function's signature
     field_definitions = {}
+    var_keyword = False
     for name, param in sig.parameters.items():
         if name in excluded:
+            continue
+        if param.kind == inspect.Parameter.VAR_POSITIONAL:
+            continue
+        if param.kind == inspect.Parameter.VAR_KEYWORD:
+            var_keyword = True
             continue
         annotation = hints.get(name, Any)
         if annotation is Any:
@@ -102,10 +104,13 @@ def validate_params(
             field_definitions[name] = (annotation, ...)
 
     if not field_definitions:
-        return params
+        return _declared_params(sig, params, excluded)
 
     try:
-        DynamicModel = create_model("DynamicValidation", **field_definitions)  # type: ignore[call-overload]
+        model_kwargs: Dict[str, Any] = dict(field_definitions)
+        if var_keyword:
+            model_kwargs["__config__"] = ConfigDict(extra="allow")
+        DynamicModel = create_model("DynamicValidation", **model_kwargs)  # type: ignore[call-overload]
         validated = DynamicModel.model_validate(params)
         dumped: Dict[str, Any] = validated.model_dump()
         return dumped

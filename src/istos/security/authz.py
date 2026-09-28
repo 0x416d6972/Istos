@@ -236,8 +236,6 @@ class JWTAuthorizer:
             raise ValueError("Pass `secret` or `public_key`, not both.")
         families = {_jwt_family(alg) for alg in self._algorithms}
         if public_key is not None:
-            # HMAC with the public key as the secret is the algorithm-confusion
-            # attack: anyone who can read the public key can forge tokens.
             if families != {"asymmetric"}:
                 raise ValueError(
                     "public_key requires asymmetric algorithms (RS*, ES*, PS*), "
@@ -290,8 +288,6 @@ class JWTAuthorizer:
             return False
         ident = payload.get(self._id_claim)
         if ident is None or not str(ident).strip():
-            # A signature with no subject is not an identity. An empty id is
-            # falsy, so later code treats every such token as a different person.
             return False
         return Principal(
             id=str(ident).strip(),

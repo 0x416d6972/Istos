@@ -105,8 +105,6 @@ class query_wrapper:
             )
 
             if not results:
-                # A typo, a dead node, and a timeout all used to look like a
-                # handler that returned []. There was no handler.
                 raise NotFoundError(f"No handler replied for {self.prefix!r}")
 
             decoded = [r.decode() for r in results]

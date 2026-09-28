@@ -194,8 +194,6 @@ class handler_wrapper:
     async def __call__(self, *args: Any, **kwargs: Any) -> Any:
         self.calls += 1
 
-        # Idempotency key from the bound call (positional and keyword) plus who
-        # is calling. db / Depends stay out — they are injected, not inputs.
         idemp_params = self._bound_params(args, kwargs)
         idemp_key = self._make_idempotency_key(
             self.prefix, idemp_params, self._caller_identity()
@@ -307,9 +305,7 @@ class handler_wrapper:
                         operation="handle",
                         params=idemp_params,
                     )
-                    # middleware.invoke() installs scope.context. Copy the
-                    # delivery's identity into it. peek, so a task with no
-                    # request does not grow a context that outlives the call.
+                    # middleware.invoke() installs a fresh context — copy
                     outer = peek_request_context()
                     if outer is not None:
                         scope.context.principal = outer.principal
@@ -372,8 +368,6 @@ class handler_wrapper:
                 )
 
             # Network gate only — TestClient / in-process __call__ skips this.
-            # A fresh context per delivery: a reused task must not keep the
-            # previous principal, token, or correlation id.
             attachment = self._extract_attachment(query)
             ctx = ingress_context(
                 prefix=self.prefix, operation="handle", attachment=attachment,

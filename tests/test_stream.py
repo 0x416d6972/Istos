@@ -180,3 +180,47 @@ async def test_stream_ends_when_the_generator_does():
         )
     finally:
         await _stop(task)
+
+
+@pytest.mark.asyncio
+async def test_closing_a_stream_unblocks_the_reader():
+    """Closing the generator must not leave bridge.get waiting for a sentinel
+    that ``_offer`` dropped because ``stop`` was already set."""
+    import queue as thread_queue
+    import threading
+    import time
+
+    app = Istos(enable_health=False, enable_metrics=False, enable_discovery=False)
+    started = threading.Event()
+    released = threading.Event()
+
+    class _Session:
+        def get(self, selector, **kwargs):
+            token = kwargs["cancellation_token"]
+            while not token.is_cancelled():
+                time.sleep(0.01)
+            return []
+
+    app._session_manager._internal_session = _Session()
+
+    real_get = thread_queue.Queue.get
+
+    def tracking_get(self, *args, **kwargs):
+        started.set()
+        try:
+            return real_get(self, *args, **kwargs)
+        finally:
+            released.set()
+
+    thread_queue.Queue.get = tracking_get
+    gen = app.stream_query("sensor/temp", timeout_s=30)
+    task = asyncio.create_task(gen.__anext__())
+    try:
+        assert await asyncio.to_thread(started.wait, 2), "reader never blocked on the bridge"
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert released.wait(2), "bridge.get stayed blocked after the stream closed"
+    finally:
+        thread_queue.Queue.get = real_get
+        await gen.aclose()

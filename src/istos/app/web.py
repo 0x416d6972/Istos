@@ -246,8 +246,6 @@ class _WebMixin(IstosBase):
                         except Exception:
                             saw_error = True
                             continue
-                    # A Zenoh error reply is not "nobody answered". Skipping it
-                    # and then returning 504 hides the failure.
                     if getattr(reply, "err", None) is not None:
                         saw_error = True
                 return None, saw_error

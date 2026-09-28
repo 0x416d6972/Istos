@@ -163,20 +163,31 @@ class _StreamingMixin(IstosBase):
 
         import queue as thread_queue
 
-        # Bounded so a slow consumer cannot grow an unlimited buffer, and one
-        # thread that we join so it does not outlive the generator.
         bridge: thread_queue.Queue = thread_queue.Queue(maxsize=32)
         _END = object()
         cancel_token = zenoh.CancellationToken()
         stop = threading.Event()
 
         def _offer(item: Any) -> None:
-            while not stop.is_set():
+            sentinel = item is _END
+            while True:
                 try:
                     bridge.put(item, timeout=0.2)
                     return
                 except thread_queue.Full:
-                    continue
+                    if not stop.is_set():
+                        continue
+                    if not sentinel:
+                        return
+                    try:
+                        bridge.get_nowait()
+                    except thread_queue.Empty:
+                        pass
+                    try:
+                        bridge.put_nowait(_END)
+                    except thread_queue.Full:
+                        return
+                    return
 
         def _pump() -> None:
             try:
@@ -210,8 +221,6 @@ class _StreamingMixin(IstosBase):
                     raise error_from_payload(data, default_code="stream_error")
                 yield data
         finally:
-            # Consumer stopped early — cancel the get, make room so a blocked
-            # put can finish, and join the thread instead of abandoning it.
             stop.set()
             cancel_token.cancel()
             while True:
@@ -219,6 +228,10 @@ class _StreamingMixin(IstosBase):
                     bridge.get_nowait()
                 except thread_queue.Empty:
                     break
+            try:
+                bridge.put_nowait(_END)
+            except thread_queue.Full:
+                pass
             await asyncio.to_thread(thread.join, 5)
 
     async def open_channel(

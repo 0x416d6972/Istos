@@ -332,6 +332,17 @@ async def test_retry_backoff_delays_redelivery():
 
 
 @pytest.mark.integration
+def test_cron_schedule_stores_a_numeric_initial_delay():
+    app = _app()
+    app.schedule("jobs/report", {"kind": "daily"}, cron="0 0 * * *")
+    spec = app._schedules[-1]
+    assert spec["every_s"] is None
+    assert spec["initial_delay_s"] == 0.0
+
+    app.schedule("jobs/report", {"kind": "hourly"}, every_s=3600)
+    assert app._schedules[-1]["initial_delay_s"] == 3600
+
+
 @pytest.mark.asyncio
 async def test_schedule_enqueues_periodically():
     app = _app()

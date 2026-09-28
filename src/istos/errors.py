@@ -274,9 +274,6 @@ class ExceptionHandlerRegistry:
             handler = self._handlers.get(klass)
             if handler is not None:
                 return handler(exc)
-        # The exception text can carry paths, SQL, or secrets. Callers on the
-        # other side of the fabric are not the log. The handler already logged
-        # the traceback before resolve().
         return ErrorResponse(
             error="internal_error",
             code="internal_error",

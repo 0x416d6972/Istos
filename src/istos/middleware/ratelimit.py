@@ -57,8 +57,6 @@ class RateLimitMiddleware:
         self._key = key or _default_key
         self._buckets: Dict[str, Tuple[float, float]] = {}
         self._lock = asyncio.Lock()
-        # Drop buckets that have been idle this long and are back to full, so a
-        # stream of distinct keys cannot grow the map forever.
         self._idle_s = max(60.0, per * 10)
 
     def _evict(self, now: float) -> None:

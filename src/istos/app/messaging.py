@@ -516,8 +516,6 @@ class _MessagingMixin(IstosBase):
             self._zenoh_subscribers.append(sub)
 
             # History replay in the background so a slow get doesn't stall startup.
-            # Kept on the app: a bare create_task is only weakly referenced by
-            # the loop and can be collected before the replay finishes.
             if wrapper.replay_persisted:
                 task = loop.create_task(wrapper.replay_history(session))
                 self._replay_tasks.add(task)

@@ -286,10 +286,12 @@ class _QueueMixin(IstosBase):
             raise ValueError("schedule() needs exactly one of every_s= or cron=")
         if every_s is not None and every_s <= 0:
             raise ValueError("schedule(every_s=) must be positive")
+        if initial_delay_s is None:
+            initial_delay_s = every_s if every_s is not None else 0.0
         cron_sched = CronSchedule(cron) if cron is not None else None
         self._schedules.append({
             "prefix": prefix, "data": data, "every_s": every_s, "cron": cron_sched,
-            "initial_delay_s": every_s if initial_delay_s is None else initial_delay_s,
+            "initial_delay_s": initial_delay_s,
             "priority": priority, "serializer": serializer, "token": token,
         })
 
@@ -458,8 +460,6 @@ class _QueueMixin(IstosBase):
                 except asyncio.CancelledError:
                     raise
                 except Exception:
-                    # A dead beat task stops the schedule with no log until
-                    # shutdown. Stay up and try the next tick.
                     self._logger.exception(
                         "Scheduled beat for %s failed; retrying", spec["prefix"],
                         extra={"prefix": spec["prefix"]},

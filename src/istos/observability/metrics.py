@@ -13,8 +13,6 @@ class MetricsCollector:
 
     def __init__(self) -> None:
         self._counters: Dict[str, int] = {}
-        # count + sum only. Keeping every sample grows without bound (one float
-        # per request, forever) and the exporter never reads more than these two.
         self._histograms: Dict[str, Dict[str, float]] = {}
 
     def increment(self, name: str, labels: Optional[Dict[str, str]] = None, value: int = 1) -> None:

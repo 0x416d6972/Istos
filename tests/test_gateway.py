@@ -182,7 +182,6 @@ async def test_http_surface_end_to_end():
                 assert (await r.json())["status"] == "alive"
             async with http.get(f"{base}/readyz") as r:
                 assert r.status == 200
-            # /metrics follows the app authorizer; probes stay open.
             async with http.get(f"{base}/metrics") as r:
                 assert r.status == 401
             async with http.get(

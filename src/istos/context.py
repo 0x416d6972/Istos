@@ -9,10 +9,7 @@ from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-# Printable, single-line, bounded. Newlines and quotes are how a caller forges
-# a log line or a Prometheus label; anything else is dropped and a fresh id minted.
 _CORRELATION_ID_MAX = 200
-# W3C traceparent: version-traceid-spanid-flags, lowercase hex.
 _TRACEPARENT_RE = re.compile(r"^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$")
 
 

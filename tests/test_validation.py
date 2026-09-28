@@ -86,6 +86,14 @@ class TestPassthrough:
         result = validate_params(func, {"x": "hello", "y": "42"})
         assert result == {"x": "hello", "y": "42"}
 
+    def test_varargs_are_not_required_fields(self):
+        def func(x: int, *args: int, **kwargs: str): ...
+        result = validate_params(func, {"x": "3", "extra": "hi"})
+        assert result["x"] == 3
+        assert result["extra"] == "hi"
+        assert "args" not in result
+        assert "kwargs" not in result
+
 
 # ------------------------------------------------------------------
 # Integration: handler_wrapper.on_query with validation

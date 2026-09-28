@@ -56,9 +56,6 @@ class MiddlewareStack:
     ) -> Any:
         scope.context.prefix = scope.prefix
         scope.context.operation = scope.operation
-        # The token restores whatever this task was doing before the request,
-        # including "nothing". A reused task must not keep this request's
-        # principal, token, or correlation id.
         token = push_request_context(scope.context)
 
         async def dispatch(index: int, current: RequestScope) -> Any:
@@ -69,9 +66,6 @@ class MiddlewareStack:
             middleware = self._middlewares[index]
 
             async def call_next(next_scope: RequestScope) -> Any:
-                # A middleware may hand a different scope downstream. Install
-                # that scope's context for the rest of the chain, then put the
-                # previous one back so the caller still sees its own.
                 inner = push_request_context(next_scope.context)
                 try:
                     return await dispatch(index + 1, next_scope)
@@ -147,7 +141,5 @@ class CorrelationIdMiddleware:
         call_next: HandlerCallable,
     ) -> Any:
         if not scope.context.correlation_id:
-            # Fill the id on the existing context. Replacing the whole context
-            # would drop principal and attachment that an outer layer already set.
             scope.context.correlation_id = str(uuid.uuid4())
         return await call_next(scope)
