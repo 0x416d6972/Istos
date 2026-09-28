@@ -292,10 +292,14 @@ class QueueRole:
         if not await self._authorize(query, params):
             return
         result_b64 = _query_payload(query).decode("ascii") or None
-        results = await self.store.chord_report(
-            params.get("chord_id", ""), _as_int(params, "index", 0),
-            _as_int(params, "size", 1), result_b64,
-        )
+        try:
+            results = await self.store.chord_report(
+                params.get("chord_id", ""), _as_int(params, "index", 0),
+                _as_int(params, "size", 1), result_b64,
+            )
+        except ValueError:
+            _reply(query, {"complete": False, "error": "invalid_chord"})
+            return
         # `complete` is True (with results) for exactly one member; None otherwise.
         _reply(query, {"complete": results is not None, "results": results})
 

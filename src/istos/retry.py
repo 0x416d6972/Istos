@@ -1,4 +1,5 @@
 import asyncio
+import random
 from typing import Any, Callable, Optional
 from dataclasses import dataclass
 
@@ -17,6 +18,12 @@ class RetryPolicy:
     max_retries: int = 0
     delay: float = 0.5
     backoff_factor: float = 2.0
+    #: Cap on a single wait. Without it, delay * factor**attempt grows without
+    #: bound (delay=0.5, factor=2, 40 retries is millions of days).
+    max_delay: float = 60.0
+    #: Fractional jitter applied to each wait so retriers don't wake together.
+    #: 0.1 spreads the delay by ±10%. 0 disables it.
+    jitter: float = 0.1
     on_failure: Optional[Callable[..., Any]] = None
 
     @classmethod
@@ -34,7 +41,8 @@ async def execute_with_retry(
     """
     Executes a callable with retry logic and exponential backoff.
     If all retries are exhausted and on_failure is set, it is called
-    with the last exception. Otherwise the exception is re-raised.
+    with the last exception. The exception is then re-raised either way, so a
+    dead-letter hook cannot turn a failed call into a successful ``None``.
 
     Errors that asking again cannot fix (``not_found``, ``unauthorized``; see
     :func:`istos.errors.is_retryable`) fail on the first attempt.
@@ -54,6 +62,11 @@ async def execute_with_retry(
                 break
             if attempt < policy.max_retries:
                 wait = policy.delay * (policy.backoff_factor ** attempt)
+                if policy.max_delay > 0:
+                    wait = min(wait, policy.max_delay)
+                if policy.jitter:
+                    wait *= 1.0 + random.uniform(-policy.jitter, policy.jitter)
+                wait = max(0.0, wait)
                 _logger.warning(
                     "Attempt %d/%d failed: %s. Retrying in %.2fs...",
                     attempt + 1, policy.max_retries, e, wait,
@@ -61,8 +74,9 @@ async def execute_with_retry(
                 )
                 await asyncio.sleep(wait)
 
-    # All retries exhausted
+    # All retries exhausted. The callback is a hook (dead-letter, metric);
+    # the failure still propagates so the caller — and an exactly-once ledger —
+    # cannot record it as a successful None.
     if policy.on_failure is not None:
         policy.on_failure(last_exception)
-    else:
-        raise last_exception  # type: ignore
+    raise last_exception  # type: ignore

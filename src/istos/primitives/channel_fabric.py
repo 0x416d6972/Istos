@@ -127,6 +127,7 @@ class FabricChannelServer:
         self._prefix = wrapper.prefix
         self._serializer: Serialize = wrapper.serializer
         self._sessions: Dict[str, _ServerSession] = {}
+        self._run_tasks: set[asyncio.Task] = set()
         self._queryable: Any = None
         self._live_sub: Any = None
         self._logger = get_logger("channel")
@@ -167,7 +168,8 @@ class FabricChannelServer:
         try:
             reply = fut.result(timeout=10)
         except Exception as e:  # pragma: no cover - defensive
-            reply = reply_err(str(e))
+            self._logger.exception("channel open failed: %s", e)
+            reply = reply_err("channel open failed", code="internal_error")
         with contextlib.suppress(Exception):
             query.reply(key, self._serializer.serialize(reply))
 
@@ -194,7 +196,9 @@ class FabricChannelServer:
 
         up_sub = self._session.declare_subscriber(f"{self._prefix}/{sid}/up", up_cb)
         self._sessions[sid] = _ServerSession(chan, up_sub)
-        self._loop.create_task(self._run(sid, chan, attachment, params, principal))
+        task = self._loop.create_task(self._run(sid, chan, attachment, params, principal))
+        self._run_tasks.add(task)
+        task.add_done_callback(self._run_tasks.discard)
         return {"ok": True, "sid": sid}
 
     async def _run(

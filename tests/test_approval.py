@@ -11,6 +11,7 @@ from istos import (
     ApprovalState,
     ApprovalTimeout,
     Istos,
+    IstosSecurityError,
     IstosSecurityWarning,
     IstosTestClient,
     MeshTool,
@@ -318,9 +319,9 @@ def _agent_app() -> Istos:
     )
 
 
-def test_an_open_decide_endpoint_warns():
+def test_an_open_decide_endpoint_is_rejected():
     app = _agent_app()
-    with pytest.warns(IstosSecurityWarning, match="approve a tool call"):
+    with pytest.raises(IstosSecurityError, match="approve a tool call"):
         app.approvals()
 
 

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from istos import Istos
+from istos import Istos, NotFoundError
 
 @pytest.mark.asyncio
 async def test_zenoh_selectors_query_parameters(istos):
@@ -79,7 +79,9 @@ async def test_query_once_formats_selector(istos, mocker):
     # Mock to_thread so it doesn't actually block and just executes the inner sync function
     mocker.patch("asyncio.to_thread", side_effect=lambda func, *args: func(*args))
     
-    await istos.query_once("greeter", limit=10, sort="desc")
+    # The mock session replies with nothing, which is a miss, not [].
+    with pytest.raises(NotFoundError):
+        await istos.query_once("greeter", limit=10, sort="desc")
     
     mock_session.get.assert_called_once()
     args, kwargs = mock_session.get.call_args

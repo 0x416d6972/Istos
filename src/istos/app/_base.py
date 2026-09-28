@@ -212,6 +212,7 @@ class IstosBase:
         self._workers: List[worker_wrapper] = []
         self._schedules: List[dict] = []
         self._schedule_tasks: List[asyncio.Task] = []
+        self._replay_tasks: set = set()
         self._enable_mcp = enable_mcp
         self._mcp_path = mcp_path
         self._approval_gate: Optional[Any] = None

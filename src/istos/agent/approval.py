@@ -427,9 +427,12 @@ async def list_approvals(app: Any, *, timeout_s: float = 3.0, **query_kwargs: An
         for req in await list_approvals(app):
             print(req["id"], req["tool"], req["arguments"])
     """
-    replies = await app.query_once(
-        APPROVALS_WILDCARD, timeout_s=timeout_s, consolidate_replies=False, **query_kwargs
-    )
+    try:
+        replies = await app.query_once(
+            APPROVALS_WILDCARD, timeout_s=timeout_s, consolidate_replies=False, **query_kwargs
+        )
+    except NotFoundError:
+        return []
     if replies is None:
         return []
     if not isinstance(replies, list):
@@ -466,11 +469,14 @@ async def decide_approval(
     Raises :class:`~istos.errors.NotFoundError` when no node recognised the id —
     it was already settled, it expired, or the waiting node is gone.
     """
-    replies = await app.query_once(
-        DECIDE_WILDCARD,
-        request_id=request_id, approved=approved, by=by, note=note,
-        timeout_s=timeout_s, consolidate_replies=False, **query_kwargs,
-    )
+    try:
+        replies = await app.query_once(
+            DECIDE_WILDCARD,
+            request_id=request_id, approved=approved, by=by, note=note,
+            timeout_s=timeout_s, consolidate_replies=False, **query_kwargs,
+        )
+    except NotFoundError:
+        replies = []
     if replies is None:
         replies = []
     if not isinstance(replies, list):

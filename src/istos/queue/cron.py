@@ -65,8 +65,10 @@ class CronSchedule:
         self.hour = _parse_field(fields[1], *_RANGES[1])
         self.dom = _parse_field(fields[2], *_RANGES[2])
         self.month = _parse_field(fields[3], *_RANGES[3])
-        dow = _parse_field(fields[4].replace("7", "0") if fields[4] == "7" else fields[4], *_RANGES[4])
-        if 7 in dow:  # 7 is an alias for Sunday
+        # 7 is Sunday, including inside lists and ranges ("1,7", "5-7"). The
+        # field is parsed through 7 and then folded back into 0.
+        dow = _parse_field(fields[4], 0, 7)
+        if 7 in dow:
             dow.discard(7)
             dow.add(0)
         self.dow = dow
@@ -83,13 +85,48 @@ class CronSchedule:
             return dom_ok or dow_ok
         return dom_ok and dow_ok
 
+    def _day_matches(self, t: _dt.datetime) -> bool:
+        cron_dow = (t.weekday() + 1) % 7  # Python Mon=0..Sun=6 → cron Sun=0..Sat=6
+        dom_ok = t.day in self.dom
+        dow_ok = cron_dow in self.dow
+        if self._dom_restricted and self._dow_restricted:
+            return dom_ok or dow_ok
+        return dom_ok and dow_ok
+
     def next_after(self, after: _dt.datetime) -> _dt.datetime:
-        """The first firing strictly after ``after`` (minute resolution)."""
+        """The first firing strictly after ``after`` (minute resolution).
+
+        Jumps to the next matching month, day, hour, or minute instead of
+        testing every minute. The horizon is eight years so a February 29
+        expression still resolves across non-leap years.
+        """
         t = after.replace(second=0, microsecond=0) + _dt.timedelta(minutes=1)
-        # A year of minutes is a generous upper bound; any valid expression fires
-        # within that window.
-        for _ in range(366 * 24 * 60):
-            if self._matches(t):
-                return t
-            t += _dt.timedelta(minutes=1)
-        raise CronError(f"no matching time within a year for {self.expr!r}")
+        horizon = t + _dt.timedelta(days=366 * 8)
+        minutes = sorted(self.minute)
+        hours = sorted(self.hour)
+        while t < horizon:
+            if t.month not in self.month:
+                year, month = t.year, t.month + 1
+                if month == 13:
+                    year, month = year + 1, 1
+                t = t.replace(year=year, month=month, day=1, hour=0, minute=0)
+                continue
+            if not self._day_matches(t):
+                t = (t + _dt.timedelta(days=1)).replace(hour=0, minute=0)
+                continue
+            if t.hour not in self.hour:
+                later = [h for h in hours if h > t.hour]
+                if later:
+                    t = t.replace(hour=later[0], minute=minutes[0])
+                else:
+                    t = (t + _dt.timedelta(days=1)).replace(hour=hours[0], minute=minutes[0])
+                continue
+            if t.minute not in self.minute:
+                later = [m for m in minutes if m > t.minute]
+                if later:
+                    t = t.replace(minute=later[0])
+                else:
+                    t = t.replace(minute=minutes[0]) + _dt.timedelta(hours=1)
+                continue
+            return t
+        raise CronError(f"no matching time within eight years for {self.expr!r}")

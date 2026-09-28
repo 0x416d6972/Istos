@@ -14,11 +14,20 @@ from istos.middleware.base import HandlerCallable, RequestScope
 
 
 def _default_key(scope: RequestScope) -> str:
-    """Limit per authenticated identity; unauthenticated requests share one bucket."""
+    """Limit per authenticated identity.
+
+    Unauthenticated requests share one bucket per endpoint, not one bucket for
+    the whole process. A principal with no usable id (an empty JWT ``sub``)
+    is anonymous too — ``str(principal)`` would mint a fresh full bucket for
+    every distinct claims blob.
+    """
     principal = scope.context.principal
-    if principal is None:
-        return "anonymous"
-    return str(getattr(principal, "id", None) or principal)
+    if isinstance(principal, str) and principal:
+        return principal
+    ident = getattr(principal, "id", None) if principal is not None else None
+    if ident:
+        return str(ident)
+    return f"anonymous:{scope.prefix}"
 
 
 class RateLimitMiddleware:
@@ -48,11 +57,26 @@ class RateLimitMiddleware:
         self._key = key or _default_key
         self._buckets: Dict[str, Tuple[float, float]] = {}
         self._lock = asyncio.Lock()
+        # Drop buckets that have been idle this long and are back to full, so a
+        # stream of distinct keys cannot grow the map forever.
+        self._idle_s = max(60.0, per * 10)
+
+    def _evict(self, now: float) -> None:
+        if len(self._buckets) < 1024:
+            return
+        stale = [
+            key
+            for key, (tokens, last) in self._buckets.items()
+            if now - last >= self._idle_s and tokens >= self.burst
+        ]
+        for key in stale:
+            del self._buckets[key]
 
     async def __call__(self, scope: RequestScope, call_next: HandlerCallable) -> object:
         key = self._key(scope)
         async with self._lock:
             now = time.monotonic()
+            self._evict(now)
             tokens, last = self._buckets.get(key, (self.burst, now))
             tokens = min(self.burst, tokens + (now - last) * (self.rate / self.per))
             if tokens < 1.0:

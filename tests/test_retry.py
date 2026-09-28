@@ -73,7 +73,7 @@ async def test_retry_exhausted_raises():
 
 @pytest.mark.asyncio
 async def test_retry_on_failure_callback():
-    """If on_failure is set, it is called instead of raising."""
+    """on_failure runs, then the original exception is still raised."""
     captured = []
 
     def failure_handler(exc):
@@ -83,7 +83,8 @@ async def test_retry_on_failure_callback():
         raise ValueError("bad data")
 
     policy = RetryPolicy(max_retries=1, delay=0.01, on_failure=failure_handler)
-    await execute_with_retry(always_fails, policy)
+    with pytest.raises(ValueError, match="bad data"):
+        await execute_with_retry(always_fails, policy)
 
     assert len(captured) == 1
     assert isinstance(captured[0], ValueError)

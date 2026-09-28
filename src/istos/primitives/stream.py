@@ -22,7 +22,12 @@ from typing import Any, Callable, Iterable, Optional, Tuple, cast
 
 import zenoh
 
-from istos.context import RequestEnvelope, get_request_context
+from istos.context import (
+    ingress_context,
+    peek_request_context,
+    pop_request_context,
+    push_request_context,
+)
 from istos.security.authz import AuthContext, Authorizer, check_authorized
 from istos.errors import (
     ExceptionHandlerRegistry,
@@ -86,7 +91,8 @@ class stream_wrapper:
 
     def _reply_error(self, query: zenoh.Query, key: str, exc: Exception) -> None:
         error = self._exception_registry.resolve(exc)
-        error.correlation_id = get_request_context().correlation_id
+        ctx = peek_request_context()
+        error.correlation_id = ctx.correlation_id if ctx is not None else None
         try:
             query.reply(key, self.serializer.serialize(error.to_dict()))
         except Exception:  # pragma: no cover - reply channel gone
@@ -94,6 +100,7 @@ class stream_wrapper:
 
     async def on_query(self, query: zenoh.Query) -> None:
         key = str(query.selector.key_expr)
+        token = None
         try:
             params: dict = {}
             if hasattr(query.selector, "parameters") and query.selector.parameters:
@@ -114,15 +121,11 @@ class stream_wrapper:
                 self._reply_error(query, key, e)
                 return
 
-            req_ctx = get_request_context()
-            req_ctx.prefix = self.prefix
-            req_ctx.operation = "stream"
-            req_ctx.principal = principal
-            req_ctx.attachment = attachment
-            env = RequestEnvelope.from_attachment(attachment)
-            if env.correlation_id:
-                req_ctx.correlation_id = env.correlation_id
-            req_ctx.traceparent = env.traceparent
+            ctx = ingress_context(
+                prefix=self.prefix, operation="stream",
+                attachment=attachment, principal=principal,
+            )
+            token = push_request_context(ctx)
 
             try:
                 validated = validate_params(
@@ -158,10 +161,10 @@ class stream_wrapper:
                     scope = RequestScope(
                         prefix=self.prefix, operation="stream", params=params,
                     )
-                    scope.context.principal = req_ctx.principal
-                    scope.context.attachment = req_ctx.attachment
-                    scope.context.correlation_id = req_ctx.correlation_id
-                    scope.context.traceparent = req_ctx.traceparent
+                    scope.context.principal = ctx.principal
+                    scope.context.attachment = ctx.attachment
+                    scope.context.correlation_id = ctx.correlation_id
+                    scope.context.traceparent = ctx.traceparent
                     await self._middleware.invoke(scope, _drive)
                 else:
                     await _drive()
@@ -172,6 +175,8 @@ class stream_wrapper:
             )
             self._reply_error(query, key, e)
         finally:
+            if token is not None:
+                pop_request_context(token)
             # End the query the moment the generator is done.
             #
             # Zenoh finishes a query when its Query is dropped, and the consumer's

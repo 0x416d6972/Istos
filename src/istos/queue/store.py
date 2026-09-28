@@ -331,6 +331,7 @@ class QueueStore:
             rec.last_error = error
             if rec.attempts >= rec.max_attempts:
                 rec.state = JobState.DEAD
+                rec.completed_at = time.time()
                 disposition = "dead"
             else:
                 rec.state = JobState.READY
@@ -357,6 +358,16 @@ class QueueStore:
                     and rec.completed_at + self.result_ttl_s <= now
                 ):
                     await self._forget(job_id)
+            # Dead letters are parked for inspection, not forever. Same TTL as
+            # retained results, measured from when the job was dead-lettered.
+            expired = [
+                job_id for job_id, rec in self._jobs.items()
+                if rec.state == JobState.DEAD
+                and rec.completed_at
+                and rec.completed_at + self.result_ttl_s <= now
+            ]
+            for job_id in expired:
+                await self._forget(job_id)
         return len(changed)
 
     async def result(self, job_id: str) -> Tuple[str, Optional[bytes]]:
@@ -389,6 +400,8 @@ class QueueStore:
         """Record one chord member's completion. Returns the collected results (in
         member order) exactly once — to the caller that completes the barrier — and
         None for every earlier member. Results are base64 strings (or None)."""
+        if size <= 0 or index < 0 or index >= size:
+            raise ValueError(f"chord report index {index} is outside size {size}")
         async with self._lock:
             chord = self._chords.get(chord_id)
             if chord is None:
@@ -397,6 +410,10 @@ class QueueStore:
                     "reported": set(), "fired": False,
                 }
                 self._chords[chord_id] = chord
+            elif index >= chord["size"]:
+                raise ValueError(
+                    f"chord report index {index} is outside size {chord['size']}"
+                )
             if chord["fired"] or index in chord["reported"]:
                 return None  # already fired, or this member was already counted (redelivery)
             chord["reported"].add(index)

@@ -284,6 +284,8 @@ class _QueueMixin(IstosBase):
         """
         if (every_s is None) == (cron is None):
             raise ValueError("schedule() needs exactly one of every_s= or cron=")
+        if every_s is not None and every_s <= 0:
+            raise ValueError("schedule(every_s=) must be positive")
         cron_sched = CronSchedule(cron) if cron is not None else None
         self._schedules.append({
             "prefix": prefix, "data": data, "every_s": every_s, "cron": cron_sched,
@@ -440,19 +442,29 @@ class _QueueMixin(IstosBase):
                     extra={"prefix": spec["prefix"]},
                 )
 
+        cron = spec["cron"]
         try:
-            cron = spec["cron"]
-            if cron is not None:
-                while True:
-                    now = _datetime.datetime.now()
-                    wait = (cron.next_after(now) - now).total_seconds()
-                    await asyncio.sleep(max(0.0, wait))
-                    await _fire()
-            else:
+            if cron is None:
                 await asyncio.sleep(spec["initial_delay_s"])
-                while True:
+            while True:
+                try:
+                    if cron is not None:
+                        now = _datetime.datetime.now()
+                        wait = (cron.next_after(now) - now).total_seconds()
+                        await asyncio.sleep(max(0.0, wait))
                     await _fire()
-                    await asyncio.sleep(spec["every_s"])
+                    if cron is None:
+                        await asyncio.sleep(spec["every_s"])
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    # A dead beat task stops the schedule with no log until
+                    # shutdown. Stay up and try the next tick.
+                    self._logger.exception(
+                        "Scheduled beat for %s failed; retrying", spec["prefix"],
+                        extra={"prefix": spec["prefix"]},
+                    )
+                    await asyncio.sleep(1.0)
         except asyncio.CancelledError:
             pass
 

@@ -3,7 +3,7 @@ import inspect
 import zenoh
 from typing import Any, Callable, List, Optional, Union
 
-from istos.errors import error_from_payload, is_error_payload
+from istos.errors import NotFoundError, error_from_payload, is_error_payload
 from istos.messages.serialization import Serialize
 from istos.retry import RetryPolicy, execute_with_retry
 from istos.context import RequestEnvelope, peek_request_context
@@ -103,6 +103,11 @@ class query_wrapper:
             results: List[QueryResult] = await asyncio.to_thread(
                 self._blocking_query, zenoh_session, selector
             )
+
+            if not results:
+                # A typo, a dead node, and a timeout all used to look like a
+                # handler that returned []. There was no handler.
+                raise NotFoundError(f"No handler replied for {self.prefix!r}")
 
             decoded = [r.decode() for r in results]
             data = decoded[0] if len(decoded) == 1 else decoded

@@ -15,6 +15,32 @@ class SchemaValidationError(Exception):
         super().__init__(f"{message}: {errors}")
 
 
+def _declared_params(
+    sig: inspect.Signature,
+    params: Dict[str, Any],
+    excluded: set,
+) -> Dict[str, Any]:
+    """Parameters the callable actually declares.
+
+    ``**kwargs`` opts in to the rest. Anything else in ``params`` is dropped so
+    a network payload cannot introduce names the function never asked for.
+    """
+    accepted: set[str] = set()
+    var_keyword = False
+    for name, param in sig.parameters.items():
+        if name in excluded:
+            continue
+        if param.kind == inspect.Parameter.VAR_KEYWORD:
+            var_keyword = True
+        elif param.kind == inspect.Parameter.VAR_POSITIONAL:
+            continue
+        else:
+            accepted.add(name)
+    if var_keyword:
+        return dict(params)
+    return {k: v for k, v in params.items() if k in accepted}
+
+
 def validate_params(
     func: Callable,
     params: Dict[str, Any],
@@ -56,8 +82,10 @@ def validate_params(
 
     # --- Mode 2: Auto-coerce individual typed parameters ---
     if not HAS_PYDANTIC or not hints:
-        # No pydantic or no hints → passthrough
-        return params
+        # No pydantic or no hints: keep declared parameters, drop the rest.
+        # A closed signature must not receive arbitrary network keys via **kwargs
+        # splat; a function that declares **kwargs still receives them.
+        return _declared_params(sig, params, excluded)
 
     # Build a dynamic Pydantic model from the function's signature
     field_definitions = {}

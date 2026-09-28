@@ -176,6 +176,16 @@ def combine_authorizers(
     return _layered
 
 
+def _jwt_family(algorithm: str) -> str:
+    """``hmac`` for HS*, ``asymmetric`` for RS*/ES*/PS*. Anything else is rejected."""
+    name = algorithm.upper()
+    if name.startswith("HS"):
+        return "hmac"
+    if name.startswith(("RS", "ES", "PS", "ED")):
+        return "asymmetric"
+    raise ValueError(f"Unsupported JWT algorithm {algorithm!r}.")
+
+
 class JWTAuthorizer:
     """Authenticate a request from a JSON Web Token in its attachment.
 
@@ -222,8 +232,23 @@ class JWTAuthorizer:
         self._algorithms = list(algorithms)
         if "none" in (a.lower() for a in self._algorithms):
             raise ValueError("The 'none' JWT algorithm is unsafe and not allowed.")
-        self._key = public_key or secret
-        if not self._key:
+        if public_key is not None and secret is not None:
+            raise ValueError("Pass `secret` or `public_key`, not both.")
+        families = {_jwt_family(alg) for alg in self._algorithms}
+        if public_key is not None:
+            # HMAC with the public key as the secret is the algorithm-confusion
+            # attack: anyone who can read the public key can forge tokens.
+            if families != {"asymmetric"}:
+                raise ValueError(
+                    "public_key requires asymmetric algorithms (RS*, ES*, PS*), "
+                    "not HMAC."
+                )
+            self._key = public_key
+        elif secret is not None:
+            if families != {"hmac"}:
+                raise ValueError("secret requires HMAC algorithms (HS*), not RS*/ES*/PS*.")
+            self._key = secret
+        else:
             raise ValueError("JWTAuthorizer requires a `secret` or `public_key`.")
         self._audience = audience
         self._issuer = issuer
@@ -263,8 +288,13 @@ class JWTAuthorizer:
             )
         except jwt.PyJWTError:
             return False
+        ident = payload.get(self._id_claim)
+        if ident is None or not str(ident).strip():
+            # A signature with no subject is not an identity. An empty id is
+            # falsy, so later code treats every such token as a different person.
+            return False
         return Principal(
-            id=str(payload.get(self._id_claim, "")),
+            id=str(ident).strip(),
             roles=self._as_roles(payload.get(self._roles_claim)),
             claims=payload,
         )
@@ -302,6 +332,8 @@ def require_roles(
 
         require_roles("admin", authenticator=JWTAuthorizer(secret=...))
     """
+    if not roles:
+        raise ValueError("require_roles() needs at least one role")
     required = frozenset(roles)
     if mode not in ("all", "any"):
         raise ValueError("mode must be 'all' or 'any'")

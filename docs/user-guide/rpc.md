@@ -195,7 +195,7 @@ For one-off calls where a decorator is overkill:
 
 | Call | What it does |
 |---|---|
-| `await app.query_once(key, timeout_s=…, serializer=…, token=…, **params)` | One-shot get. `**params` → selector. Returns the decoded reply (single), a list (many), or `[]` (none). `token=` carries an auth token to a protected handler. |
+| `await app.query_once(key, timeout_s=…, serializer=…, token=…, **params)` | One-shot get. `**params` → selector. Returns the decoded reply (single) or a list (many). Zero replies raise `NotFoundError`. `token=` carries an auth token to a protected handler. |
 | `await app.delete_once(prefix)` | Network-wide DELETE on a key expression (tombstone / clear a stored value). |
 
 ```python

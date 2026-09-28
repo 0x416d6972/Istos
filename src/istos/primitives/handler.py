@@ -26,7 +26,12 @@ from istos.errors import (
 from istos.security.authz import Authorizer, AuthContext, check_authorized
 from istos.http.gateway import decode_params
 from istos.di.depends import resolve_dependencies, extract_depends
-from istos.context import RequestEnvelope, get_request_context
+from istos.context import (
+    ingress_context,
+    peek_request_context,
+    pop_request_context,
+    push_request_context,
+)
 from istos.middleware.base import MiddlewareStack, RequestScope
 from istos.logging import get_logger
 
@@ -116,13 +121,60 @@ class handler_wrapper:
         self._return_type = hints.get("return", None)
 
     @staticmethod
-    def _make_idempotency_key(prefix: str, params: dict) -> str:
+    def _make_idempotency_key(prefix: str, params: dict, identity: str = "") -> str:
         """
-        Deterministic key from prefix + sorted params.
-        Same input always produces the same key → enables exactly-once.
+        Deterministic key from prefix + caller + sorted params.
+
+        Positional and keyword arguments are bound to the same names first, so
+        ``move(10)`` and ``move(distance=10)`` match and ``move(10)`` does not
+        match ``move(20)``. ``identity`` is the principal (or a hash of the
+        token) so two callers with the same params do not share a result.
         """
-        raw = f"{prefix}:{_json.dumps(params, sort_keys=True, default=str)}"
+        raw = f"{prefix}\n{identity}\n{_json.dumps(params, sort_keys=True, default=str)}"
         return hashlib.sha256(raw.encode()).hexdigest()
+
+    def _bound_params(self, args: Tuple[Any, ...], kwargs: dict) -> dict:
+        """Arguments the handler was actually called with, minus injected ones."""
+        sig = inspect.signature(self.func)
+        try:
+            bound = sig.bind_partial(*args, **kwargs)
+        except TypeError:
+            raw = {f"arg{i}": value for i, value in enumerate(args)}
+            raw.update(kwargs)
+            return {
+                k: v for k, v in raw.items()
+                if k not in self._injected_params and k != "self"
+            }
+        params: dict = {}
+        for name, value in bound.arguments.items():
+            if name == "self" or name in self._injected_params:
+                continue
+            param = sig.parameters[name]
+            if param.kind is inspect.Parameter.VAR_KEYWORD and isinstance(value, dict):
+                params.update(value)
+            elif param.kind is inspect.Parameter.VAR_POSITIONAL and isinstance(value, tuple):
+                for index, item in enumerate(value):
+                    params[f"arg{index}"] = item
+            else:
+                params[name] = value
+        return params
+
+    @staticmethod
+    def _caller_identity() -> str:
+        """Who is calling, for the exactly-once key. Empty when anonymous."""
+        ctx = peek_request_context()
+        if ctx is None:
+            return ""
+        principal = ctx.principal
+        if isinstance(principal, str) and principal:
+            return "p:" + principal
+        ident = getattr(principal, "id", None) if principal is not None else None
+        if ident:
+            return "p:" + str(ident)
+        token = ctx.token
+        if token:
+            return "t:" + hashlib.sha256(token.encode()).hexdigest()[:16]
+        return ""
 
     def _validate_return(self, result: Any) -> Any:
         """Validate the return value against the function's return type hint."""
@@ -142,9 +194,12 @@ class handler_wrapper:
     async def __call__(self, *args: Any, **kwargs: Any) -> Any:
         self.calls += 1
 
-        # Idempotency key from network params only (not db / Depends).
-        idemp_params = {k: v for k, v in kwargs.items() if k not in self._injected_params}
-        idemp_key = self._make_idempotency_key(self.prefix, idemp_params)
+        # Idempotency key from the bound call (positional and keyword) plus who
+        # is calling. db / Depends stay out — they are injected, not inputs.
+        idemp_params = self._bound_params(args, kwargs)
+        idemp_key = self._make_idempotency_key(
+            self.prefix, idemp_params, self._caller_identity()
+        )
 
         claimed = False
         if self.durability == Durability.EXACTLY_ONCE:
@@ -252,13 +307,15 @@ class handler_wrapper:
                         operation="handle",
                         params=idemp_params,
                     )
-                    # middleware.invoke() installs a fresh context — copy
-                    # principal / attachment / cid / traceparent into it.
-                    outer = get_request_context()
-                    scope.context.principal = outer.principal
-                    scope.context.attachment = outer.attachment
-                    scope.context.correlation_id = outer.correlation_id
-                    scope.context.traceparent = outer.traceparent
+                    # middleware.invoke() installs scope.context. Copy the
+                    # delivery's identity into it. peek, so a task with no
+                    # request does not grow a context that outlives the call.
+                    outer = peek_request_context()
+                    if outer is not None:
+                        scope.context.principal = outer.principal
+                        scope.context.attachment = outer.attachment
+                        scope.context.correlation_id = outer.correlation_id
+                        scope.context.traceparent = outer.traceparent
                     return await self._middleware.invoke(scope, _handler)
                 return await _handler(RequestScope(prefix=self.prefix, operation="handle"))
 
@@ -301,6 +358,8 @@ class handler_wrapper:
             return None
 
     async def on_query(self, query: zenoh.Query) -> None:
+        ctx = None
+        token = None
         try:
             key = str(query.selector.key_expr)
 
@@ -313,7 +372,13 @@ class handler_wrapper:
                 )
 
             # Network gate only — TestClient / in-process __call__ skips this.
+            # A fresh context per delivery: a reused task must not keep the
+            # previous principal, token, or correlation id.
             attachment = self._extract_attachment(query)
+            ctx = ingress_context(
+                prefix=self.prefix, operation="handle", attachment=attachment,
+            )
+            token = push_request_context(ctx)
             try:
                 principal = await check_authorized(
                     self._authorizer,
@@ -326,7 +391,7 @@ class handler_wrapper:
                 )
             except UnauthorizedError as e:
                 error = self._exception_registry.resolve(e)
-                error.correlation_id = get_request_context().correlation_id
+                error.correlation_id = ctx.correlation_id
                 self._logger.warning(
                     "Unauthorized request on %s: %s", self.prefix, e,
                     extra={"prefix": self.prefix, "error": str(e)},
@@ -337,16 +402,7 @@ class handler_wrapper:
                     pass
                 return
 
-            req_ctx = get_request_context()
-            req_ctx.prefix = self.prefix
-            req_ctx.operation = "handle"
-            req_ctx.principal = principal
-            req_ctx.attachment = attachment
-            # Keep the caller's correlation_id / traceparent across hops.
-            _env = RequestEnvelope.from_attachment(attachment)
-            if _env.correlation_id:
-                req_ctx.correlation_id = _env.correlation_id
-            req_ctx.traceparent = _env.traceparent
+            ctx.principal = principal
 
             try:
                 validated_params = validate_params(
@@ -355,7 +411,7 @@ class handler_wrapper:
                 validated_params.pop("db", None)
             except SchemaValidationError as e:
                 error = self._exception_registry.resolve(e)
-                error.correlation_id = get_request_context().correlation_id
+                error.correlation_id = ctx.correlation_id
                 self._logger.warning(
                     "Validation error on %s: %s", self.prefix, e,
                     extra={"prefix": self.prefix, "error": str(e)},
@@ -370,7 +426,7 @@ class handler_wrapper:
                 query.reply(key, payload)
         except Exception as e:
             error = self._exception_registry.resolve(e)
-            error.correlation_id = get_request_context().correlation_id
+            error.correlation_id = ctx.correlation_id if ctx is not None else None
             self._logger.error(
                 "Handler error on %s: %s", self.prefix, e,
                 exc_info=True,
@@ -383,6 +439,9 @@ class handler_wrapper:
                 )
             except Exception:
                 pass
+        finally:
+            if token is not None:
+                pop_request_context(token)
             
     def __get__(self, instance: Any, owner: Any) -> Any:
         if instance is None:

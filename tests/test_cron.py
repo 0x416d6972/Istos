@@ -46,6 +46,20 @@ def test_dom_dow_union():
     assert c.next_after(dt.datetime(2026, 7, 12, 12, 0)) == dt.datetime(2026, 7, 13, 0, 0)
 
 
+def test_sunday_as_seven_in_a_list():
+    whole = CronSchedule("0 0 * * 7")
+    listed = CronSchedule("0 0 * * 1,7")
+    ranged = CronSchedule("0 0 * * 5-7")
+    assert whole.dow == {0}
+    assert 0 in listed.dow and 1 in listed.dow and 7 not in listed.dow
+    assert ranged.dow == {0, 5, 6}
+
+
+def test_february_29_is_reachable_across_a_non_leap_year():
+    c = CronSchedule("0 0 29 2 *")
+    assert c.next_after(dt.datetime(2026, 3, 1)) == dt.datetime(2028, 2, 29)
+
+
 def test_invalid_expressions():
     for bad in ["* * * *", "60 * * * *", "* 24 * * *", "*/0 * * * *", "5-1 * * * *"]:
         with pytest.raises(CronError):

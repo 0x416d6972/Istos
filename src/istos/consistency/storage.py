@@ -174,6 +174,9 @@ class InMemoryStoragePlugin:
     async def get_log(self, key: str, limit: int = 100) -> List[Any]:
         async with self._lock:
             entries = self._event_log.get(key, [])
+            # entries[-0:] is the whole list; a non-positive limit means none.
+            if limit <= 0:
+                return []
             return list(reversed(entries[-limit:]))
 
     # ---- Idempotency ----

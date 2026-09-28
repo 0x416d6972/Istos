@@ -12,7 +12,7 @@ from istos.security.authz import Authorizer, AuthContext, check_authorized
 from istos.errors import UnauthorizedError
 from istos.di.depends import has_dependencies, invoke_with_dependencies, positional_param_names
 from istos.middleware.base import MiddlewareStack, RequestScope
-from istos.context import RequestEnvelope, get_request_context
+from istos.context import ingress_context, pop_request_context, push_request_context
 from istos.logging import get_logger
 
 class bound_subscribe_wrapper:
@@ -208,30 +208,27 @@ class subscribe_wrapper:
         if self._validate_payload is not None:
             data = self._validate_payload(data)
 
-        req_ctx = get_request_context()
-        req_ctx.prefix = self.prefix
-        req_ctx.operation = "subscribe"
-        req_ctx.principal = principal
-        req_ctx.attachment = attachment
-        _env = RequestEnvelope.from_attachment(attachment)
-        if _env.correlation_id:
-            req_ctx.correlation_id = _env.correlation_id
-        req_ctx.traceparent = _env.traceparent
+        ctx = ingress_context(
+            prefix=self.prefix, operation="subscribe",
+            attachment=attachment, principal=principal,
+        )
+        token = push_request_context(ctx)
+        try:
+            async def _process():
+                if self._middleware is not None:
+                    scope = RequestScope(prefix=self.prefix, operation="subscribe")
+                    scope.context.principal = principal
+                    scope.context.attachment = attachment
+                    scope.context.correlation_id = ctx.correlation_id
+                    scope.context.traceparent = ctx.traceparent
+                    return await self._middleware.invoke(
+                        scope, lambda _s: self._dispatch(data, instance)
+                    )
+                return await self._dispatch(data, instance)
 
-        async def _process():
-            if self._middleware is not None:
-                scope = RequestScope(prefix=self.prefix, operation="subscribe")
-                scope.context.principal = principal
-                scope.context.attachment = attachment
-                outer = get_request_context()
-                scope.context.correlation_id = outer.correlation_id
-                scope.context.traceparent = outer.traceparent
-                return await self._middleware.invoke(
-                    scope, lambda _s: self._dispatch(data, instance)
-                )
-            return await self._dispatch(data, instance)
-
-        await execute_with_retry(_process, self.retry_policy)
+            await execute_with_retry(_process, self.retry_policy)
+        finally:
+            pop_request_context(token)
 
     async def replay_history(self, session: Any, instance: Optional[Any] = None) -> None:
         """Fetch persisted history from the object-store queryable and deliver it.

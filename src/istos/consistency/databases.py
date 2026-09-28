@@ -21,6 +21,7 @@ disposed on shutdown — the *app-level* tier. A ``Depends`` provider then lease
 
 from __future__ import annotations
 
+import threading
 from typing import TYPE_CHECKING, AsyncIterator, Callable, Dict, Mapping
 
 from istos.consistency.sqlalchemy_storage import create_async_engine_checked
@@ -46,6 +47,7 @@ class DatabaseRegistry:
         # Providers are cached per name so the same callable is returned every
         # time — required for `dependency_overrides` to match by identity.
         self._providers: Dict[str, Callable[[], AsyncIterator["AsyncSession"]]] = {}
+        self._build_lock = threading.Lock()
 
     def __contains__(self, name: str) -> bool:
         return name in self._configs
@@ -64,10 +66,13 @@ class DatabaseRegistry:
         """Create the engine + sessionmaker for `name` once (lazy, no I/O yet)."""
         if name in self._engines:
             return
-        config = self._require(name)
-        engine = create_async_engine_checked(config.build_url(), **config.engine_kwargs())
-        self._engines[name] = engine
-        self._sessionmakers[name] = async_sessionmaker(engine, expire_on_commit=False)
+        with self._build_lock:
+            if name in self._engines:
+                return
+            config = self._require(name)
+            engine = create_async_engine_checked(config.build_url(), **config.engine_kwargs())
+            self._engines[name] = engine
+            self._sessionmakers[name] = async_sessionmaker(engine, expire_on_commit=False)
 
     def engine(self, name: str) -> "AsyncEngine":
         """The shared, app-lifetime engine (connection pool) for `name`."""

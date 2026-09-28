@@ -13,7 +13,9 @@ class MetricsCollector:
 
     def __init__(self) -> None:
         self._counters: Dict[str, int] = {}
-        self._histograms: Dict[str, list[float]] = {}
+        # count + sum only. Keeping every sample grows without bound (one float
+        # per request, forever) and the exporter never reads more than these two.
+        self._histograms: Dict[str, Dict[str, float]] = {}
 
     def increment(self, name: str, labels: Optional[Dict[str, str]] = None, value: int = 1) -> None:
         key = self._key(name, labels)
@@ -21,14 +23,29 @@ class MetricsCollector:
 
     def observe(self, name: str, value: float, labels: Optional[Dict[str, str]] = None) -> None:
         key = self._key(name, labels)
-        if key not in self._histograms:
-            self._histograms[key] = []
-        self._histograms[key].append(value)
+        slot = self._histograms.get(key)
+        if slot is None:
+            slot = {"count": 0.0, "sum": 0.0}
+            self._histograms[key] = slot
+        slot["count"] += 1
+        slot["sum"] += value
+
+    @staticmethod
+    def _escape_label(value: str) -> str:
+        """Prometheus text exposition: backslash, newline, and quote are escaped."""
+        return (
+            value.replace("\\", "\\\\")
+            .replace("\n", "\\n")
+            .replace('"', '\\"')
+        )
 
     def _key(self, name: str, labels: Optional[Dict[str, str]]) -> str:
         if not labels:
             return name
-        label_str = ",".join(f'{k}="{v}"' for k, v in sorted(labels.items()))
+        label_str = ",".join(
+            f'{self._escape_label(k)}="{self._escape_label(v)}"'
+            for k, v in sorted(labels.items())
+        )
         return f"{name}{{{label_str}}}"
 
     def export_prometheus(self) -> str:
@@ -36,10 +53,10 @@ class MetricsCollector:
         lines: list[str] = []
         for key, value in sorted(self._counters.items()):
             lines.append(f"istos_{key} {value}")
-        for key, values in sorted(self._histograms.items()):
-            if values:
-                lines.append(f"istos_{key}_count {len(values)}")
-                lines.append(f"istos_{key}_sum {sum(values)}")
+        for key, slot in sorted(self._histograms.items()):
+            if slot["count"]:
+                lines.append(f"istos_{key}_count {int(slot['count'])}")
+                lines.append(f"istos_{key}_sum {slot['sum']}")
         return "\n".join(lines) + "\n"
 
     def snapshot(self) -> dict[str, Any]:

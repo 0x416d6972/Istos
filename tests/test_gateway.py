@@ -182,8 +182,15 @@ async def test_http_surface_end_to_end():
                 assert (await r.json())["status"] == "alive"
             async with http.get(f"{base}/readyz") as r:
                 assert r.status == 200
+            # /metrics follows the app authorizer; probes stay open.
             async with http.get(f"{base}/metrics") as r:
+                assert r.status == 401
+            async with http.get(
+                f"{base}/metrics",
+                headers={"Authorization": "Bearer good-token"},
+            ) as r:
                 assert r.status == 200
+                assert r.content_type == "text/plain"
 
             # Gateway WITHOUT a token → gate denies → 401
             async with http.post(f"{base}/robot/move", json={"distance": 5}) as r:

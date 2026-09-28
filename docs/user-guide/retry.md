@@ -43,10 +43,12 @@ def get_forecast(result):
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `max_retries` | `int` | `3` | Maximum number of retry attempts |
-| `delay` | `float` | `1.0` | Initial delay between retries (seconds) |
+| `max_retries` | `int` | `0` | Maximum number of retry attempts |
+| `delay` | `float` | `0.5` | Initial delay between retries (seconds) |
 | `backoff_factor` | `float` | `2.0` | Multiplier applied to delay after each retry |
-| `on_failure` | `Callable` | `None` | Callback invoked when all retries are exhausted |
+| `max_delay` | `float` | `60.0` | Cap on a single wait, in seconds |
+| `jitter` | `float` | `0.1` | Fractional spread (±) applied to each wait. `0` disables it |
+| `on_failure` | `Callable` | `None` | Called when retries are exhausted; the exception is still raised |
 
 ### Backoff Timeline Example
 
@@ -63,7 +65,7 @@ Attempt 5: wait 8.0s
 
 ## Dead Letter Handling
 
-The `on_failure` callback lets you handle permanently failed operations:
+The `on_failure` callback runs when the operation has permanently failed (a dead-letter hook). The original exception is still raised afterwards, so a failed exactly-once handler is not recorded as a successful `None`:
 
 ```python
 def handle_dead_letter(error):

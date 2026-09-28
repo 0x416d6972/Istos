@@ -21,7 +21,7 @@ import inspect
 from contextlib import AsyncExitStack
 from typing import Any, Awaitable, Callable, Optional
 
-from istos.context import RequestEnvelope, get_request_context
+from istos.context import ingress_context, pop_request_context, push_request_context
 from istos.security.authz import AuthContext, Authorizer, check_authorized
 from istos.errors import ExceptionHandlerRegistry, get_default_registry
 from istos.validation import validate_params
@@ -192,45 +192,44 @@ class channel_wrapper:
             principal = await self.authorize(attachment, params)
         session.principal = principal
 
-        req_ctx = get_request_context()
-        req_ctx.prefix = self.prefix
-        req_ctx.operation = "channel"
-        req_ctx.principal = principal
-        req_ctx.attachment = attachment
-        env = RequestEnvelope.from_attachment(attachment)
-        if env.correlation_id:
-            req_ctx.correlation_id = env.correlation_id
-        req_ctx.traceparent = env.traceparent
-        session.correlation_id = req_ctx.correlation_id
-
-        validated = validate_params(
-            self.func, params, skip_params=self._injected_params
+        ctx = ingress_context(
+            prefix=self.prefix, operation="channel",
+            attachment=attachment, principal=principal,
         )
-        validated.pop("db", None)
+        token = push_request_context(ctx)
+        try:
+            session.correlation_id = ctx.correlation_id
 
-        async with AsyncExitStack() as di_stack:
-            call_kwargs = {self._session_param: session, **validated}
-            if self._has_depends:
-                call_kwargs = await resolve_dependencies(
-                    self.func, call_kwargs, di_stack, cache={},
-                    overrides=self._dependency_overrides,
-                )
+            validated = validate_params(
+                self.func, params, skip_params=self._injected_params
+            )
+            validated.pop("db", None)
 
-            async def _drive(_scope: Any = None) -> None:
-                await self.func(**call_kwargs)
+            async with AsyncExitStack() as di_stack:
+                call_kwargs = {self._session_param: session, **validated}
+                if self._has_depends:
+                    call_kwargs = await resolve_dependencies(
+                        self.func, call_kwargs, di_stack, cache={},
+                        overrides=self._dependency_overrides,
+                    )
 
-            # Middleware wraps the whole session — once at open, once at close.
-            if self._middleware is not None:
-                scope = RequestScope(
-                    prefix=self.prefix, operation="channel", params=params,
-                )
-                scope.context.principal = req_ctx.principal
-                scope.context.attachment = req_ctx.attachment
-                scope.context.correlation_id = req_ctx.correlation_id
-                scope.context.traceparent = req_ctx.traceparent
-                await self._middleware.invoke(scope, _drive)
-            else:
-                await _drive()
+                async def _drive(_scope: Any = None) -> None:
+                    await self.func(**call_kwargs)
+
+                # Middleware wraps the whole session — once at open, once at close.
+                if self._middleware is not None:
+                    scope = RequestScope(
+                        prefix=self.prefix, operation="channel", params=params,
+                    )
+                    scope.context.principal = ctx.principal
+                    scope.context.attachment = ctx.attachment
+                    scope.context.correlation_id = ctx.correlation_id
+                    scope.context.traceparent = ctx.traceparent
+                    await self._middleware.invoke(scope, _drive)
+                else:
+                    await _drive()
+        finally:
+            pop_request_context(token)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """In-process invocation (TestClient) calls the handler directly."""

@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
 from typing import Any, Optional
+
+# Printable, single-line, bounded. Newlines and quotes are how a caller forges
+# a log line or a Prometheus label; anything else is dropped and a fresh id minted.
+_CORRELATION_ID_MAX = 200
+# W3C traceparent: version-traceid-spanid-flags, lowercase hex.
+_TRACEPARENT_RE = re.compile(r"^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$")
 
 
 @dataclass
@@ -114,3 +121,69 @@ def set_request_context(ctx: RequestContext) -> None:
 def reset_request_context() -> None:
     """Clear the active request context."""
     _request_context.set(None)
+
+
+def push_request_context(ctx: RequestContext) -> Token:
+    """Install ``ctx`` and return the token that restores whatever was active."""
+    return _request_context.set(ctx)
+
+
+def pop_request_context(token: Token) -> None:
+    """Restore the context that was active before :func:`push_request_context`."""
+    _request_context.reset(token)
+
+
+def sanitize_correlation_id(value: Optional[str]) -> Optional[str]:
+    """A caller-supplied correlation id, or None when it is missing or unsafe.
+
+    Unsafe means empty, too long, or containing a control character, quote, or
+    backslash — those are the characters that break a log line or a label.
+    """
+    if not isinstance(value, str) or not value or len(value) > _CORRELATION_ID_MAX:
+        return None
+    if any(ord(ch) < 32 or ch in '"\\' for ch in value):
+        return None
+    return value
+
+
+def sanitize_traceparent(value: Optional[str]) -> Optional[str]:
+    """A caller-supplied W3C ``traceparent``, or None when it is not one.
+
+    The all-zero trace id and span id are invalid per the spec and are rejected
+    so a peer cannot pin every span to a single forged trace.
+    """
+    if not isinstance(value, str):
+        return None
+    candidate = value.strip().lower()
+    if _TRACEPARENT_RE.fullmatch(candidate) is None or candidate.startswith("ff"):
+        return None
+    _version, trace_id, span_id, _flags = candidate.split("-")
+    if trace_id == "0" * 32 or span_id == "0" * 16:
+        return None
+    return candidate
+
+
+def ingress_context(
+    *,
+    prefix: str,
+    operation: str,
+    attachment: Optional[bytes],
+    principal: Any = None,
+) -> RequestContext:
+    """A fresh context for one delivery.
+
+    The correlation id and traceparent come from the envelope only when they
+    pass :func:`sanitize_correlation_id` / :func:`sanitize_traceparent`. Otherwise
+    the id is a new UUID and the traceparent is absent — a reused task must not
+    keep the previous delivery's values.
+    """
+    env = RequestEnvelope.from_attachment(attachment)
+    correlation_id = sanitize_correlation_id(env.correlation_id) or str(uuid.uuid4())
+    return RequestContext(
+        correlation_id=correlation_id,
+        prefix=prefix,
+        operation=operation,
+        principal=principal,
+        attachment=attachment,
+        traceparent=sanitize_traceparent(env.traceparent),
+    )

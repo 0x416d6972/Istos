@@ -1,10 +1,9 @@
 """Human-in-the-loop: the node's approval gate and its two fabric keys."""
 
-import warnings
 from typing import TYPE_CHECKING, Any, Optional
 
 from istos.app._base import IstosBase
-from istos.errors import IstosSecurityWarning
+from istos.errors import IstosSecurityError
 from istos.security.authz import Authorizer
 
 if TYPE_CHECKING:
@@ -62,13 +61,11 @@ class _ApprovalMixin(IstosBase):
             on_request=on_request,
         )
         if authorizer is None and self._authorizer is None:
-            warnings.warn(
-                f"{gate.decide_key} is reachable by any peer with no "
-                "authorization: anything on the fabric could approve a tool call "
-                "a human was meant to gate. Pass app.approvals(authorizer=...) "
-                "or Istos(authorizer=...).",
-                IstosSecurityWarning,
-                stacklevel=2,
+            raise IstosSecurityError(
+                f"{gate.decide_key} would be reachable by any peer, and a peer "
+                "could approve a tool call a human was meant to gate. Pass "
+                "app.approvals(authorizer=...) or Istos(authorizer=...). "
+                "authorizer=Public opts the decide key out on purpose."
             )
         register_approval_handlers(self, gate, authorizer=authorizer)
         self._approval_gate = gate

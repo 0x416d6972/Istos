@@ -256,6 +256,8 @@ class SqlAlchemyStoragePlugin:
             pass  # duplicate idempotency_key — already logged, skip
 
     async def get_log(self, key: str, limit: int = 100) -> List[Any]:
+        if limit <= 0:
+            return []
         await self._ensure_ready()
         async with self._engine.connect() as conn:
             rows = (

@@ -161,10 +161,22 @@ class _StreamingMixin(IstosBase):
             traceparent=ctx.traceparent if ctx else None,
         ).to_attachment()
 
-        loop = asyncio.get_running_loop()
-        queue: asyncio.Queue = asyncio.Queue()
+        import queue as thread_queue
+
+        # Bounded so a slow consumer cannot grow an unlimited buffer, and one
+        # thread that we join so it does not outlive the generator.
+        bridge: thread_queue.Queue = thread_queue.Queue(maxsize=32)
         _END = object()
         cancel_token = zenoh.CancellationToken()
+        stop = threading.Event()
+
+        def _offer(item: Any) -> None:
+            while not stop.is_set():
+                try:
+                    bridge.put(item, timeout=0.2)
+                    return
+                except thread_queue.Full:
+                    continue
 
         def _pump() -> None:
             try:
@@ -177,17 +189,18 @@ class _StreamingMixin(IstosBase):
                     get_kwargs["attachment"] = outbound
                 for reply in session.get(selector, **get_kwargs):
                     if reply.ok is not None:
-                        loop.call_soon_threadsafe(queue.put_nowait, bytes(reply.ok.payload))
+                        _offer(bytes(reply.ok.payload))
             except Exception as e:  # surfaced to the async consumer
-                loop.call_soon_threadsafe(queue.put_nowait, e)
+                _offer(e)
             finally:
-                loop.call_soon_threadsafe(queue.put_nowait, _END)
+                _offer(_END)
 
-        threading.Thread(target=_pump, daemon=True).start()
+        thread = threading.Thread(target=_pump, daemon=True, name="istos-stream")
+        thread.start()
 
         try:
             while True:
-                item = await queue.get()
+                item = await asyncio.to_thread(bridge.get)
                 if item is _END:
                     break
                 if isinstance(item, Exception):
@@ -197,9 +210,16 @@ class _StreamingMixin(IstosBase):
                     raise error_from_payload(data, default_code="stream_error")
                 yield data
         finally:
-            # Consumer stopped early (break / exception) — cancel the underlying
-            # get so the pump thread unwinds instead of draining to completion.
+            # Consumer stopped early — cancel the get, make room so a blocked
+            # put can finish, and join the thread instead of abandoning it.
+            stop.set()
             cancel_token.cancel()
+            while True:
+                try:
+                    bridge.get_nowait()
+                except thread_queue.Empty:
+                    break
+            await asyncio.to_thread(thread.join, 5)
 
     async def open_channel(
         self,

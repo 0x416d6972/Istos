@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from typing import Any, List, Optional, Tuple
@@ -48,6 +49,17 @@ end
 return 0
 """
 
+# Append a log line unless the idempotency key is already finished. One round
+# trip, so two concurrent handlers cannot both pass a read-then-write check.
+_LOG_LUA = """
+local cur = redis.call('GET', KEYS[1])
+if cur and string.sub(cur, 1, 1) ~= 'P' then
+    return 0
+end
+redis.call('LPUSH', KEYS[2], ARGV[1])
+return 1
+"""
+
 
 class RedisStoragePlugin:
     """
@@ -65,17 +77,20 @@ class RedisStoragePlugin:
         self._prefix = prefix
         self._client: Any = None
         self._scripts: dict[str, Any] = {}
+        self._client_lock = asyncio.Lock()
 
     async def _get_client(self) -> Any:
-        if self._client is None:
-            self._client = aioredis.from_url(self._url, decode_responses=False)
-            # register_script caches by SHA — the body travels once, not per call.
-            self._scripts = {
-                "claim": self._client.register_script(_CLAIM_LUA),
-                "mark": self._client.register_script(_MARK_LUA),
-                "release": self._client.register_script(_RELEASE_LUA),
-            }
-        return self._client
+        async with self._client_lock:
+            if self._client is None:
+                self._client = aioredis.from_url(self._url, decode_responses=False)
+                # register_script caches by SHA — the body travels once, not per call.
+                self._scripts = {
+                    "claim": self._client.register_script(_CLAIM_LUA),
+                    "mark": self._client.register_script(_MARK_LUA),
+                    "release": self._client.register_script(_RELEASE_LUA),
+                    "log": self._client.register_script(_LOG_LUA),
+                }
+            return self._client
 
     def _key(self, key: str) -> str:
         return f"{self._prefix}kv:{key}"
@@ -106,21 +121,27 @@ class RedisStoragePlugin:
         await client.delete(self._key(key))
 
     async def log(self, key: str, value: Any, idempotency_key: Optional[str] = None) -> None:
-        if idempotency_key:
-            # Test the record, not the result, so a handler that returned None
-            # still suppresses its duplicate.
-            done, _ = self._decode(await self._read_record(idempotency_key))
-            if done:
-                return
         client = await self._get_client()
         entry = json.dumps({
             "value": value.decode() if isinstance(value, bytes) else value,
             "timestamp": time.time(),
             "idempotency_key": idempotency_key,
         })
+        if idempotency_key:
+            # Pending ('P') and a missing row still log. Done ('D') and an
+            # untagged legacy result do not — decided in one script, not a
+            # read followed by a write.
+            await self._scripts["log"](
+                keys=[self._idemp_key(idempotency_key), self._log_key(key)],
+                args=[entry],
+            )
+            return
         await client.lpush(self._log_key(key), entry)
 
     async def get_log(self, key: str, limit: int = 100) -> List[Any]:
+        if limit <= 0:
+            # LRANGE 0 -1 is the whole list; Redis treats a negative stop that way.
+            return []
         client = await self._get_client()
         entries = await client.lrange(self._log_key(key), 0, limit - 1)
         return [json.loads(e) for e in entries]

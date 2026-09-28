@@ -13,10 +13,11 @@ from istos.discovery.capabilities import CAPABILITIES_WILDCARD, capabilities_key
 from istos.errors import (
     IstosError,
     IstosSecurityWarning,
+    NotFoundError,
     UnauthorizedError,
     reply_err,
 )
-from istos.security.authz import Authorizer
+from istos.security.authz import AuthContext, Authorizer, check_authorized
 from istos.context import RequestContext, RequestEnvelope, set_request_context
 from istos.http.gateway import HttpRoute, build_selector, extract_bearer, status_for_reply, sse_event, decode_params
 from istos.http.health import register_health_handlers
@@ -76,6 +77,36 @@ class _WebMixin(IstosBase):
         else the docs ``web_port`` (backward compatible)."""
         return self._http_port or self._docs_web_port
 
+    async def _reject_unauthorized_http(self, request: Any) -> Optional[Any]:
+        """401 when an app authorizer is set and this HTTP request fails it.
+
+        Probes stay open. ``/metrics`` and the docs schema do not: they describe
+        the service and used to skip the authorizer that gates the mesh.
+        """
+        if self._authorizer is None:
+            return None
+        from aiohttp import web
+
+        from istos.http.gateway import extract_bearer
+
+        token = extract_bearer(request.headers.get("Authorization"))
+        attachment = token.encode("utf-8") if token else None
+        try:
+            await check_authorized(
+                self._authorizer,
+                AuthContext(
+                    prefix=request.path,
+                    key_expr=request.path,
+                    attachment=attachment,
+                    operation="http",
+                ),
+            )
+        except UnauthorizedError:
+            return web.json_response(
+                reply_err("Unauthorized.", code="unauthorized"), status=401,
+            )
+        return None
+
     async def _start_http_server(self) -> Any:
         """Start the embedded aiohttp server hosting the HTTP surface:
         K8s probes, Prometheus ``/metrics``, the ingress gateway routes, and
@@ -97,6 +128,9 @@ class _WebMixin(IstosBase):
         app.router.add_get('/readyz', _readyz)
 
         async def _metrics(request: web.Request) -> web.Response:
+            denied = await self._reject_unauthorized_http(request)
+            if denied is not None:
+                return denied
             return web.Response(
                 text=self._metrics.export_prometheus(),
                 content_type='text/plain', charset='utf-8',
@@ -126,14 +160,22 @@ class _WebMixin(IstosBase):
                 return web.Response(text=html, content_type='text/html')
 
             async def asyncapi_yaml_handler(request: web.Request) -> web.Response:
+                denied = await self._reject_unauthorized_http(request)
+                if denied is not None:
+                    return denied
                 try:
                     results = await self.query_once(self._docs_prefix or ".istos/docs", timeout_s=2.0)
                     if results:
                         yaml_content = results[0] if isinstance(results, list) else results
                         return web.Response(text=yaml_content, content_type='application/yaml')
                     return web.Response(text="Docs not found on network", status=404)
+                except NotFoundError:
+                    return web.Response(text="Docs not found on network", status=404)
                 except Exception as e:
-                    return web.Response(text=f"Error querying network: {e}", status=500)
+                    self._logger.error(
+                        "Docs query failed: %s", e, exc_info=True,
+                    )
+                    return web.Response(text="Error querying network", status=500)
 
             app.router.add_get('/', web_ui_handler)
             app.router.add_get('/asyncapi.yaml', asyncapi_yaml_handler)
@@ -188,22 +230,30 @@ class _WebMixin(IstosBase):
             )
             outbound_attachment = envelope.to_attachment()
 
-            def _query() -> Optional[bytes]:
+            def _query() -> tuple[Optional[bytes], bool]:
                 session = self._session_manager.session
                 if session is None:
-                    return None
+                    return None, False
                 kwargs: dict = {"timeout": route.timeout_s}
                 if outbound_attachment is not None:
                     kwargs["attachment"] = outbound_attachment
+                saw_error = False
                 for reply in session.get(selector, **kwargs):
-                    try:
-                        return bytes(reply.ok.payload)
-                    except Exception:
-                        continue  # skip error replies from other queryables
-                return None
+                    ok = getattr(reply, "ok", None)
+                    if ok is not None:
+                        try:
+                            return bytes(ok.payload), False
+                        except Exception:
+                            saw_error = True
+                            continue
+                    # A Zenoh error reply is not "nobody answered". Skipping it
+                    # and then returning 504 hides the failure.
+                    if getattr(reply, "err", None) is not None:
+                        saw_error = True
+                return None, saw_error
 
             try:
-                payload = await asyncio.to_thread(_query)
+                payload, saw_error = await asyncio.to_thread(_query)
             except Exception as e:
                 self._logger.error(
                     "Gateway query failed for %s: %s", route.key_expr, e,
@@ -214,6 +264,11 @@ class _WebMixin(IstosBase):
                     status=502,
                 )
 
+            if payload is None and saw_error:
+                return web.json_response(
+                    reply_err("Upstream query failed.", code="gateway_error"),
+                    status=502,
+                )
             if payload is None:
                 return web.json_response(
                     reply_err(f"No handler replied for {route.key_expr!r}.", code="not_found"),
@@ -452,9 +507,12 @@ class _WebMixin(IstosBase):
             for service, manifest in tools.items():
                 ...
         """
-        replies = await self.query_once(
-            CAPABILITIES_WILDCARD, timeout_s=timeout_s, consolidate_replies=False,
-        )
+        try:
+            replies = await self.query_once(
+                CAPABILITIES_WILDCARD, timeout_s=timeout_s, consolidate_replies=False,
+            )
+        except NotFoundError:
+            return {}
         if replies is None:
             return {}
         if not isinstance(replies, list):

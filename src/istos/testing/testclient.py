@@ -108,11 +108,28 @@ class IstosTestClient:
                 if hasattr(agen, "aclose"):
                     await agen.aclose()
 
-    async def publish(self, prefix: str, data: Any) -> None:
-        """Deliver data to all matching subscribers in-process."""
+    async def publish(self, prefix: str, data: Any, token: Optional[str] = None) -> None:
+        """Deliver data to all matching subscribers in-process.
+
+        The authorizer gate runs, the same as a sample arriving on the mesh.
+        A denial raises ``UnauthorizedError`` and nothing is delivered.
+        """
         subscribers = self._find_subscribers(prefix)
         if not subscribers:
             raise KeyError(f"No subscribers registered for prefix: {prefix!r}")
+        attachment = (
+            RequestEnvelope(token=token).to_attachment() if token is not None else None
+        )
+        for sub in subscribers:
+            await check_authorized(
+                getattr(sub, "_authorizer", None),
+                AuthContext(
+                    prefix=getattr(sub, "prefix", prefix),
+                    key_expr=prefix,
+                    attachment=attachment,
+                    operation="subscribe",
+                ),
+            )
         for sub in subscribers:
             await sub(data)
 

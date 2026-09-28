@@ -104,6 +104,7 @@ class OpenAIChatModel:
         self.extra_body = extra_body or {}
         self._session: Optional[aiohttp.ClientSession] = None
         self._session_loop: Optional[asyncio.AbstractEventLoop] = None
+        self._session_lock = asyncio.Lock()
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """The shared session, created on first use.
@@ -113,16 +114,17 @@ class OpenAIChatModel:
         fresh session rather than a connector wired to a dead loop.
         """
         loop = asyncio.get_running_loop()
-        if self._session is not None and not self._session.closed:
-            if self._session_loop is loop:
-                return self._session
-            # Previous loop is gone; its transports cannot be closed from here.
-            self._session = None
-        self._session = aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=self.timeout_s)
-        )
-        self._session_loop = loop
-        return self._session
+        async with self._session_lock:
+            if self._session is not None and not self._session.closed:
+                if self._session_loop is loop:
+                    return self._session
+                # Previous loop is gone; its transports cannot be closed from here.
+                self._session = None
+            self._session = aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=self.timeout_s)
+            )
+            self._session_loop = loop
+            return self._session
 
     async def aclose(self) -> None:
         """Close the shared connection pool. Safe to call more than once."""
