@@ -5,7 +5,10 @@ import contextlib
 import inspect
 import uuid
 import warnings
-from typing import Any, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, cast
+
+if TYPE_CHECKING:
+    from aiohttp.web import Response
 
 from istos.primitives.channel import ChannelSession, channel_wrapper
 from istos.discovery.asyncapi import AsyncApiGenerator, get_asyncapi_ui_html
@@ -77,7 +80,7 @@ class _WebMixin(IstosBase):
         else the docs ``web_port`` (backward compatible)."""
         return self._http_port or self._docs_web_port
 
-    async def _reject_unauthorized_http(self, request: Any) -> Optional[Any]:
+    async def _reject_unauthorized_http(self, request: Any) -> Optional["Response"]:
         """401 when an app authorizer is set and this HTTP request fails it.
 
         Probes stay open. ``/metrics`` and the docs schema do not: they describe
@@ -102,8 +105,11 @@ class _WebMixin(IstosBase):
                 ),
             )
         except UnauthorizedError:
-            return web.json_response(
-                reply_err("Unauthorized.", code="unauthorized"), status=401,
+            return cast(
+                "Response",
+                web.json_response(
+                    reply_err("Unauthorized.", code="unauthorized"), status=401,
+                ),
             )
         return None
 

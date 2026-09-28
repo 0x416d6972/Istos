@@ -112,7 +112,7 @@ reply = await istos.query_once("robot/move", distance=15, speed="fast")
     There is no per-call transient session. Calling `@query` / `@publish` (or `query_once` / `publish_once`) before `istos.run()` / `run_async()` raises `RuntimeError`.
 
 !!! tip "Smart Selectors"
-    `query_once("robot/move", distance=15, speed="fast")` becomes the Zenoh selector `robot/move?distance=15&speed=fast`. Your handler receives these as typed Python arguments.
+    `query_once("robot/move", distance=15, speed="fast")` becomes the Zenoh selector `robot/move?distance=15;speed=fast`. Your handler receives these as typed Python arguments. Zero replies raise `NotFoundError`.
 
 ### Step 3: Add Pub/Sub
 

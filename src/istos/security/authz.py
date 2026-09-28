@@ -272,8 +272,10 @@ class JWTAuthorizer:
         token = ctx.token
         if not token:
             return False
-        options = {"require": ["exp"] if self._require_exp else [],
-                   "verify_aud": self._audience is not None}
+        options: Any = {
+            "require": ["exp"] if self._require_exp else [],
+            "verify_aud": self._audience is not None,
+        }
         try:
             payload = jwt.decode(
                 token,

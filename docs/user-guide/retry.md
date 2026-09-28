@@ -63,6 +63,9 @@ Attempt 5: wait 8.0s
 → on_failure() called
 ```
 
+A single wait never exceeds `max_delay` (default 60s). `jitter` (default 0.1)
+spreads each wait by ±10%.
+
 ## Dead Letter Handling
 
 The `on_failure` callback runs when the operation has permanently failed (a dead-letter hook). The original exception is still raised afterwards, so a failed exactly-once handler is not recorded as a successful `None`:

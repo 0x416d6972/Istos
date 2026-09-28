@@ -305,6 +305,9 @@ def get_forecast(result):
     return result
 ```
 
+`on_failure` is a dead-letter hook. The original exception is still raised
+after it runs.
+
 ### 9. Schema Validation
 
 Istos automatically validates and type-coerces incoming parameters at the network boundary — before your business logic runs. Supports three modes:

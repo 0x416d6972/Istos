@@ -70,6 +70,7 @@ class IstosBase:
         _unbind_channels: Callable[..., Any]
         _bind_subscribers: Callable[..., Any]
         _unbind_subscribers: Callable[..., Any]
+        _cancel_replay_tasks: Callable[..., Any]
         _bind_publishers: Callable[..., Any]
         _unbind_publishers: Callable[..., Any]
         _bind_persist: Callable[..., Any]

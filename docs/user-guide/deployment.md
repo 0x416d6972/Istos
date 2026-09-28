@@ -81,7 +81,7 @@ client needed on the kubelet side):
 |------|---------|
 | `GET /livez`, `GET /healthz` | liveness |
 | `GET /readyz` | readiness (503 if not ready) |
-| `GET /metrics` | Prometheus |
+| `GET /metrics` | Prometheus (uses the app authorizer when one is set) |
 
 See [HTTP Gateway](http-gateway.md).
 

@@ -177,8 +177,9 @@ Fail-closed, deliberately:
   run — a missing gate can never read as a pass.
 - `approval=` is *advisory*: it tells agents to stop, it does not stop a peer
   that queries the key directly. Keep the handler's `authorizer` as the real
-  gate. Deciding is privileged too, so give `app.approvals()` an authorizer —
-  Istos warns with `IstosSecurityWarning` when the decide key is left open.
+  gate. Deciding is privileged too, so give `app.approvals()` an authorizer.
+  With neither an app authorizer nor an explicit one, Istos raises
+  `IstosSecurityError`. `authorizer=Public` leaves the decide key open on purpose.
 
 A caller can also gate a prefix its owner did not declare:
 `tools_from_discovery(app, approval=["search/purge"])`.

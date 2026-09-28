@@ -5,6 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4] - 2026-09-28
+
+### Security
+
+- `GET /metrics` and `GET /asyncapi.yaml` now run the app authorizer when one
+  is set. `/livez`, `/healthz`, and `/readyz` stay open. A docs query that
+  fails returns a generic 500; the exception is logged, not written into the
+  body.
+- An exception with no registered handler is replied as `"Internal error"`.
+  The traceback stays in the responder's log.
+- Caller-supplied correlation ids and `traceparent` values are checked before
+  they are stored. A correlation id with a control character, quote, or
+  backslash is replaced. A `traceparent` that is not a W3C value, or that uses
+  the all-zero ids, is dropped.
+- `JWTAuthorizer` accepts HMAC algorithms only with `secret`, and RS/ES/PS/Ed
+  only with `public_key`. A token whose subject claim is missing or blank is
+  denied. `require_roles()` with no roles raises `ValueError`.
+- `app.approvals()` with neither an app authorizer nor an explicit one raises
+  `IstosSecurityError`. `authorizer=Public` is the opt-out.
+
+### Changed
+
+- **Breaking.** `query_once` and `@query` raise `NotFoundError` when no handler
+  replies. An empty list used to mean "nobody answered", which is the same
+  shape as a handler that returned nothing. Fan-out helpers
+  (`discover_capabilities`, `list_approvals`, `decide_approval`) still return
+  an empty result in that case.
+- **Breaking.** `RetryPolicy.on_failure` still runs, then the original
+  exception is raised. A failed exactly-once handler is no longer recorded as
+  a successful `None`. Waits are capped by `max_delay` (default 60s) and
+  spread by `jitter` (default ±10%).
+- **Breaking.** An exactly-once idempotency key includes the caller and the
+  bound arguments, positional and keyword. `move(10)` and `move(distance=10)`
+  share a key. Two callers with the same arguments do not. Keys written by
+  0.3.3 do not match.
+- `schedule(every_s=)` must be positive. A cron schedule stores
+  `initial_delay_s` as `0` when you do not pass one. Sunday `7` is accepted
+  inside a day-of-week list or range. The next-fire search can cross a
+  non-leap year to reach February 29.
+- A scheduled beat that raises is logged and retried. It no longer ends the
+  schedule.
+- `IstosRouter` accepts `queue()`, `schedule()`, and the `handle` / `publish` /
+  `subscribe` arguments the app methods already had. `TestClient.publish(token=)`
+  checks the subscriber authorizer before delivery.
+
+### Fixed
+
+- Request context is pushed and popped per delivery, including nested
+  middleware. A reused task does not keep the previous principal, token, or
+  correlation id.
+- Prometheus histograms keep a count and a sum. Label values escape `\`,
+  newline, and `"`.
+- A failed startup closes the session, storage, and pools. Signal handlers are
+  installed for that run and removed when it ends. Replay tasks, fabric
+  channel tasks, and `run()`'s background task are held until they finish.
+- A chord report with a bad size or index replies `invalid_chord` instead of
+  dying inside the owner. Dead-lettered jobs are forgotten after
+  `result_ttl_s`.
+- `get_log(limit<=0)` returns nothing on the in-memory, Redis, and SQLAlchemy
+  backends. The Redis event log decides "already finished" in one script.
+- `stream_query` uses a bounded queue. Closing the generator still delivers
+  the end marker, so a blocked read does not wait forever.
+- Parameters the handler does not declare are dropped, unless it has
+  `**kwargs`. `*args` and `**kwargs` are not required validation fields.
+- Anonymous rate-limit buckets are per endpoint. Idle buckets are evicted.
+  A principal with an empty id shares the anonymous bucket.
+
 ## [0.3.3] - 2026-08-22
 
 ### Fixed

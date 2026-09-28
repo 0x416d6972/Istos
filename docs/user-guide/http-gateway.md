@@ -219,7 +219,9 @@ traffic when the node is actually ready. Register custom readiness checks with
 
 `GET /metrics` returns the built-in `MetricsCollector` in Prometheus text format
 (request counts and latency histograms via the `PrometheusMiddleware`). Scrape it
-directly — no extra dependency required.
+directly — no extra dependency required. When the app has an `authorizer`, this
+route and `GET /asyncapi.yaml` require the same bearer token as the mesh.
+`/livez` and `/readyz` stay open.
 
 ## MCP tools
 

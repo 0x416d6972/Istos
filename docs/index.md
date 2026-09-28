@@ -11,7 +11,7 @@
 
     ![Python](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12%20|%203.13%20|%203.14-blue)
     ![License](https://img.shields.io/badge/license-Apache--2.0-green)
-    ![Status](https://img.shields.io/badge/status-0.3.3%20Beta-orange)
+    ![Status](https://img.shields.io/badge/status-0.3.4%20Beta-orange)
 
 ```bash
 uv pip install istos
@@ -159,7 +159,8 @@ Other guides: [capabilities](user-guide/capabilities.md), [liveliness](user-guid
 | `.istos/docs` | AsyncAPI | `serve_docs(...)` |
 
 With `http_port` set you also get `GET /livez`, `/readyz`, `/metrics`, plus any
-`http=` routes. See [HTTP Gateway](user-guide/http-gateway.md).
+`http=` routes. `/metrics` follows the app authorizer; the probes do not. See
+[HTTP Gateway](user-guide/http-gateway.md).
 
 Built-ins inherit the app-wide `authorizer`.
 
