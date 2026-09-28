@@ -194,10 +194,14 @@ async def test_closing_a_stream_unblocks_the_reader():
     started = threading.Event()
     released = threading.Event()
 
+    def _cancelled(token: object) -> bool:
+        flag = getattr(token, "is_cancelled")
+        return flag() if callable(flag) else bool(flag)
+
     class _Session:
         def get(self, selector, **kwargs):
             token = kwargs["cancellation_token"]
-            while not token.is_cancelled():
+            while not _cancelled(token):
                 time.sleep(0.01)
             return []
 
