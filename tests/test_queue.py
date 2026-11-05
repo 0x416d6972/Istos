@@ -74,9 +74,11 @@ async def test_store_expired_lease_reclaimed_by_sweep():
 async def test_store_writes_through_and_recovers():
     storage = InMemoryStoragePlugin()
     s = QueueStore("q", storage)
-    await s.add(b"a", max_attempts=3)
     jid = await s.add(b"b", max_attempts=3)
-    await s.ack(jid)  # acked jobs must not come back
+    claimed = await s.claim(lease_s=30)
+    assert claimed is not None and claimed.id == jid
+    assert await s.ack(jid, attempt=claimed.attempts)  # acked jobs must not come back
+    await s.add(b"a", max_attempts=3)
 
     recovered = QueueStore("q", storage)
     await recovered.load()

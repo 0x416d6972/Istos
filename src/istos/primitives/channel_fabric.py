@@ -109,18 +109,27 @@ class ChannelClient:
 
 
 class _ServerSession:
-    __slots__ = ("session", "up_sub")
+    __slots__ = ("session", "up_sub", "task")
 
     def __init__(self, session: ChannelSession, up_sub: Any) -> None:
         self.session = session
         self.up_sub = up_sub
+        self.task: Optional[asyncio.Task] = None
 
 
 class FabricChannelServer:
     """Serves one @channel over Zenoh: answers open handshakes, runs a handler
-    per session, and tears sessions down when their liveliness token drops."""
+    per session, and tears sessions down when their liveliness token drops.
 
-    def __init__(self, session: Any, wrapper: Any, loop: asyncio.AbstractEventLoop) -> None:
+    Closing a session unblocks a handler waiting in ``receive()``. A handler busy
+    elsewhere (a model call, a query) would never notice, so it is cancelled
+    once ``cancel_grace_s`` has passed after the client went away."""
+
+    def __init__(
+        self, session: Any, wrapper: Any, loop: asyncio.AbstractEventLoop,
+        *, cancel_grace_s: float = 5.0,
+    ) -> None:
+        self._cancel_grace_s = cancel_grace_s
         self._session = session
         self._wrapper = wrapper
         self._loop = loop
@@ -142,7 +151,7 @@ class FabricChannelServer:
 
     def unbind(self) -> None:
         for sid in list(self._sessions):
-            self._teardown(sid)
+            self._teardown(sid, grace_s=0.0)
         if self._queryable is not None:
             with contextlib.suppress(Exception):
                 self._queryable.undeclare()
@@ -195,8 +204,10 @@ class FabricChannelServer:
             self._loop.call_soon_threadsafe(chan.feed, payload)
 
         up_sub = self._session.declare_subscriber(f"{self._prefix}/{sid}/up", up_cb)
-        self._sessions[sid] = _ServerSession(chan, up_sub)
+        state = _ServerSession(chan, up_sub)
+        self._sessions[sid] = state
         task = self._loop.create_task(self._run(sid, chan, attachment, params, principal))
+        state.task = task
         self._run_tasks.add(task)
         task.add_done_callback(self._run_tasks.discard)
         return {"ok": True, "sid": sid}
@@ -224,13 +235,27 @@ class FabricChannelServer:
             sid = _sid_of(str(sample.key_expr), self._prefix)
             self._loop.call_soon_threadsafe(self._teardown, sid)
 
-    def _teardown(self, sid: str) -> None:
+    def _teardown(self, sid: str, *, grace_s: Optional[float] = None) -> None:
         state = self._sessions.pop(sid, None)
         if state is None:
             return
         state.session.close()  # unblocks the handler's receive() → it returns
         with contextlib.suppress(Exception):
             state.up_sub.undeclare()
+        task = state.task
+        if task is None or task.done():
+            return
+        try:
+            current = asyncio.current_task()
+        except RuntimeError:
+            current = None
+        if task is current:
+            return  # the handler finished and _run is tearing down after it
+        grace = self._cancel_grace_s if grace_s is None else grace_s
+        if grace <= 0:
+            task.cancel()
+        else:
+            self._loop.call_later(grace, task.cancel)  # no-op once it has finished
 
 
 def _attachment_of(query: zenoh.Query) -> Optional[bytes]:

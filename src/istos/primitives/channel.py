@@ -139,6 +139,7 @@ class channel_wrapper:
         durable: bool = False,
         session_store: Any = None,
         middleware: Optional[MiddlewareStack] = None,
+        storage: Any = None,
     ) -> None:
         if not inspect.iscoroutinefunction(func):
             raise TypeError(
@@ -164,6 +165,12 @@ class channel_wrapper:
         }
         self._has_depends = bool(self._depends_params)
         self._injected_params = set(self._depends_params) | {self._session_param}
+        # ``db`` is the app's storage, injected like on @handle — never read off
+        # the network.
+        self._storage = storage
+        self._inject_db = any(p.name == "db" for p in params[1:])
+        if self._inject_db:
+            self._injected_params.add("db")
         self._dependency_overrides = dependency_overrides or {}
 
     async def authorize(self, attachment: Optional[bytes], params: dict) -> Any:
@@ -207,6 +214,8 @@ class channel_wrapper:
 
             async with AsyncExitStack() as di_stack:
                 call_kwargs = {self._session_param: session, **validated}
+                if self._inject_db:
+                    call_kwargs["db"] = self._storage
                 if self._has_depends:
                     call_kwargs = await resolve_dependencies(
                         self.func, call_kwargs, di_stack, cache={},

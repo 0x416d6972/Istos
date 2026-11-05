@@ -6,6 +6,7 @@ import zenoh
 from typing import Any, AsyncIterator, Callable, Optional, Union
 
 from istos.messages.serialization import Serialize, JsonSerializer
+from istos.primitives._binding import ensure_network_bindable
 from istos.primitives.stream import stream_wrapper
 from istos.primitives.channel import channel_wrapper
 from istos.primitives.channel_fabric import ChannelClient, FabricChannelServer
@@ -63,6 +64,7 @@ class _StreamingMixin(IstosBase):
                 exception_registry=self._exception_registry,
                 dependency_overrides=self.dependency_overrides,
                 middleware=self._middleware_stack,
+                storage=self._storage,
             )
             self._streams.append(wrapper)
             return wrapper
@@ -106,6 +108,7 @@ class _StreamingMixin(IstosBase):
                 dependency_overrides=self.dependency_overrides,
                 durable=durable, session_store=SessionStore(self._storage),
                 middleware=self._middleware_stack,
+                storage=self._storage,
             )
             self._channels.append(wrapper)
             if ws is not None:
@@ -369,12 +372,13 @@ class _StreamingMixin(IstosBase):
         """Bind streaming handlers as multi-reply queryables."""
         loop = asyncio.get_running_loop()
         for wrapper in self._streams:
+            ensure_network_bindable(wrapper.func, "stream", wrapper.prefix)
             self._logger.info("Binding stream %s", wrapper.prefix, extra={"prefix": wrapper.prefix})
 
             def make_callback(w=wrapper):
                 def _sync_callback(query: zenoh.Query):
                     if not loop.is_closed():
-                        asyncio.run_coroutine_threadsafe(w.on_query(query), loop)
+                        self._submit(loop, w.on_query(query))
                 return _sync_callback
 
             queryable = session.declare_queryable(wrapper.prefix, make_callback(), complete=True)
@@ -385,6 +389,7 @@ class _StreamingMixin(IstosBase):
         plus liveliness-driven teardown, one server per channel."""
         loop = asyncio.get_running_loop()
         for wrapper in self._channels:
+            ensure_network_bindable(wrapper.func, "channel", wrapper.prefix)
             self._logger.info("Binding channel %s", wrapper.prefix, extra={"prefix": wrapper.prefix})
             server = FabricChannelServer(session, wrapper, loop)
             server.bind()

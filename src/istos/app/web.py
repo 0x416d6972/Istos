@@ -27,6 +27,25 @@ from istos.http.health import register_health_handlers
 
 from istos.app._base import IstosBase
 
+#: How long a WebSocket channel handler may keep running after its client left.
+_WS_CANCEL_GRACE_S = 5.0
+
+
+def _sse_text(chunk: Any) -> str:
+    """One stream chunk as SSE event data. Bytes (msgpack/raw serializers) are
+    sent as UTF-8 text when they are text, else base64."""
+    import base64
+    import json as _json
+
+    if isinstance(chunk, str):
+        return chunk
+    if isinstance(chunk, (bytes, bytearray)):
+        try:
+            return bytes(chunk).decode("utf-8")
+        except UnicodeDecodeError:
+            return base64.b64encode(bytes(chunk)).decode("ascii")
+    return _json.dumps(chunk, default=str)
+
 
 class _WebMixin(IstosBase):
     """The HTTP edge: embedded aiohttp server, gateway/SSE/WebSocket/MCP handlers, docs and capability discovery."""
@@ -119,7 +138,23 @@ class _WebMixin(IstosBase):
         (when configured) the docs UI. All share one port."""
         from aiohttp import web
 
-        app = web.Application()
+        app = web.Application(client_max_size=self._http_max_body_bytes)
+
+        if self._authorizer is None and (
+            self._http_routes or self._ws_channel_routes or self._enable_mcp
+        ):
+            surfaces = [f"{r.method} {r.path}" for r in self._http_routes]
+            surfaces += [f"WS {path}" for path, _ in self._ws_channel_routes]
+            if self._enable_mcp:
+                surfaces.append(f"POST {self._mcp_path} (MCP)")
+            warnings.warn(
+                f"HTTP routes {surfaces} are served on 0.0.0.0:{self._http_server_port()} "
+                "with no app-wide authorizer, so any client that reaches the port can "
+                "call them unless each endpoint sets its own. Set Istos(authorizer=...) "
+                "or Istos(require_auth=True).",
+                IstosSecurityWarning,
+                stacklevel=2,
+            )
 
         async def _livez(request: web.Request) -> web.Response:
             return web.json_response(await self._health.liveness())
@@ -335,7 +370,7 @@ class _WebMixin(IstosBase):
                 async for chunk in self.stream_query(
                     route.key_expr, timeout_s=route.timeout_s, token=token, **params
                 ):
-                    text_chunk = chunk if isinstance(chunk, str) else _json.dumps(chunk)
+                    text_chunk = _sse_text(chunk)
                     await response.write(sse_event(text_chunk).encode("utf-8"))
                 await response.write(sse_event("", event="end").encode("utf-8"))
             except IstosError as e:
@@ -368,10 +403,7 @@ class _WebMixin(IstosBase):
 
         from aiohttp import WSMsgType, web
 
-        async def _handler(request: web.Request) -> web.WebSocketResponse:
-            ws = web.WebSocketResponse(heartbeat=30.0)
-            await ws.prepare(request)
-
+        async def _handler(request: web.Request) -> web.StreamResponse:
             token = extract_bearer(request.headers.get("Authorization"))
             attachment = RequestEnvelope(
                 token=token,
@@ -383,6 +415,19 @@ class _WebMixin(IstosBase):
             conversation_id = params.pop("conversation_id", None)
             if wrapper.durable and conversation_id is None:
                 conversation_id = uuid.uuid4().hex
+
+            # Authorize on the handshake, before upgrading: a refused client
+            # gets a plain 401 instead of an open socket.
+            try:
+                principal = await wrapper.authorize(attachment, params)
+            except UnauthorizedError:
+                return web.json_response(
+                    reply_err("Not authorized for this channel.", code="unauthorized"),
+                    status=401,
+                )
+
+            ws = web.WebSocketResponse(heartbeat=30.0)
+            await ws.prepare(request)
 
             async def sink(raw: bytes) -> None:
                 # Prefer text frames (browser-friendly JSON); fall back to binary.
@@ -407,8 +452,19 @@ class _WebMixin(IstosBase):
                 session.close()
 
             reader = asyncio.create_task(pump_inbound())
+            runner = asyncio.create_task(wrapper.run(
+                session, attachment=attachment, params=params, principal=principal,
+            ))
             try:
-                await wrapper.run(session, attachment=attachment, params=params)
+                await asyncio.wait({runner, reader}, return_when=asyncio.FIRST_COMPLETED)
+                if not runner.done():
+                    # The client went away. A handler waiting in receive() has
+                    # already been woken; one busy elsewhere gets a grace
+                    # period and is then cancelled rather than left running.
+                    await asyncio.wait({runner}, timeout=_WS_CANCEL_GRACE_S)
+                    runner.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await runner
             except UnauthorizedError:
                 with contextlib.suppress(Exception):
                     await ws.send_str(_json.dumps(
@@ -420,6 +476,7 @@ class _WebMixin(IstosBase):
                 )
             finally:
                 session.close()
+                runner.cancel()
                 reader.cancel()
                 with contextlib.suppress(Exception):
                     await reader
@@ -436,11 +493,14 @@ class _WebMixin(IstosBase):
         from istos.http.mcp import MCPServer
 
         server = MCPServer(self)
+        server.validate()
 
         async def _handler(request: web.Request) -> web.StreamResponse:
             token = extract_bearer(request.headers.get("Authorization"))
             try:
                 body = await request.json()
+            except web.HTTPException:
+                raise  # e.g. 413 for a body over http_max_body_bytes
             except Exception:
                 return web.json_response(
                     {"jsonrpc": "2.0", "id": None,

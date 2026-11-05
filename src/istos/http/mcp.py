@@ -12,7 +12,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from istos.discovery.asyncapi import get_function_schemas
 from istos.discovery.naming import tool_name
+from istos.context import RequestEnvelope
 from istos.errors import IstosError, is_error_payload
+from istos.security.authz import AuthContext, check_authorized
 
 MCP_PROTOCOL_VERSION = "2025-06-18"
 
@@ -33,6 +35,12 @@ class MCPServer:
         self._name = name or app._service_name
         self._version = version
 
+    def validate(self) -> None:
+        """Raise if two handlers map to one tool name (``a/b`` and ``a.b`` do).
+        Called when the MCP route is mounted, so the clash fails startup instead
+        of one tool silently shadowing the other."""
+        self._tools()
+
     def _tools(self) -> Tuple[List[dict], Dict[str, str]]:
         tools: List[dict] = []
         by_name: Dict[str, str] = {}
@@ -40,6 +48,11 @@ class MCPServer:
             if h.prefix.startswith(".istos/"):
                 continue
             name = tool_name(h.prefix)
+            if name in by_name:
+                raise ValueError(
+                    f"MCP tool name {name!r} is claimed by both {by_name[name]!r} and "
+                    f"{h.prefix!r}; rename one of the handlers."
+                )
             by_name[name] = h.prefix
             try:
                 schemas = get_function_schemas(h.func)
@@ -70,8 +83,12 @@ class MCPServer:
             return None
 
         if method == "tools/list":
-            tools, _ = self._tools()
-            return _jsonrpc_result(mid, {"tools": tools})
+            tools, by_name = self._tools()
+            # List only what this caller may call: the handlers' own authorizers
+            # decide, the same gate tools/call goes through.
+            allowed = await self._callable_prefixes(set(by_name.values()), token)
+            visible = [t for t in tools if by_name[t["name"]] in allowed]
+            return _jsonrpc_result(mid, {"tools": visible})
 
         if method == "tools/call":
             params = message.get("params") or {}
@@ -84,6 +101,25 @@ class MCPServer:
             return _jsonrpc_result(mid, await self._call(prefix, arguments, token))
 
         return _jsonrpc_error(mid, -32601, f"Method not found: {method!r}")
+
+    async def _callable_prefixes(self, prefixes: set, token: Optional[str]) -> set:
+        attachment = RequestEnvelope(token=token).to_attachment()
+        allowed: set = set()
+        for h in self._app._handlers:
+            if h.prefix not in prefixes:
+                continue
+            try:
+                await check_authorized(
+                    getattr(h, "_authorizer", None),
+                    AuthContext(
+                        prefix=h.prefix, key_expr=h.prefix, params={},
+                        attachment=attachment, operation="handle",
+                    ),
+                )
+            except IstosError:
+                continue
+            allowed.add(h.prefix)
+        return allowed
 
     async def _call(self, prefix: str, arguments: dict, token: Optional[str]) -> dict:
         try:

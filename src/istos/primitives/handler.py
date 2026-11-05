@@ -117,7 +117,12 @@ class handler_wrapper:
         else:
             self.durability = durability
 
-        hints = get_type_hints(func)
+        # An unresolvable forward reference must not fail the app's import; the
+        # handler then runs without return-type validation.
+        try:
+            hints = get_type_hints(func)
+        except (NameError, TypeError, AttributeError):
+            hints = {}
         self._return_type = hints.get("return", None)
 
     @staticmethod
@@ -145,6 +150,9 @@ class handler_wrapper:
                 k: v for k, v in raw.items()
                 if k not in self._injected_params and k != "self"
             }
+        # ``f()`` and ``f(x=<default>)`` are the same request, so they must share
+        # one idempotency key.
+        bound.apply_defaults()
         params: dict = {}
         for name, value in bound.arguments.items():
             if name == "self" or name in self._injected_params:
@@ -334,11 +342,24 @@ class handler_wrapper:
                 pass  # storage write must never crash the handler
 
             # Complete the claim last: log() skips keys already marked done, so
-            # the event log must land while the key is still only claimed. Not
-            # best-effort like the writes above — swallowing this leaves the key
-            # claimed until the lease lapses and the work runs twice.
+            # the event log must land while the key is still only claimed.
+            #
+            # The side effects have already happened, so a failed write here must
+            # not surface as a failed call: the caller's error path would release
+            # the claim and a retry would run the handler again. Leave the key
+            # claimed instead — duplicates get ConflictError until the lease
+            # lapses, which is the narrowest window this backend allows.
             if self.durability == Durability.EXACTLY_ONCE:
-                await self.storage.mark_processed(idemp_key, result)
+                try:
+                    await self.storage.mark_processed(idemp_key, result)
+                except Exception:
+                    self._logger.error(
+                        "'%s' completed but its exactly-once result could not be "
+                        "recorded; the key stays claimed for %ss and a retry after "
+                        "that may run the handler again",
+                        self.prefix, self.idempotency_lease_s,
+                        exc_info=True, extra={"prefix": self.prefix},
+                    )
 
             return result
 
@@ -410,14 +431,19 @@ class handler_wrapper:
                     "Validation error on %s: %s", self.prefix, e,
                     extra={"prefix": self.prefix, "error": str(e)},
                 )
-                query.reply(key, self.serializer.serialize(error.to_dict()))
+                try:
+                    query.reply(key, self.serializer.serialize(error.to_dict()))
+                except Exception:
+                    pass
                 return
 
             result = await self(**validated_params)
 
-            if result is not None:
-                payload = self.serializer.serialize(result)
-                query.reply(key, payload)
+            # Always answer, ``None`` included: a handler with no return value
+            # that sends nothing leaves the caller waiting out its whole timeout
+            # and then reporting that no handler exists.
+            payload = self.serializer.serialize(result)
+            query.reply(key, payload)
         except Exception as e:
             error = self._exception_registry.resolve(e)
             error.correlation_id = ctx.correlation_id if ctx is not None else None

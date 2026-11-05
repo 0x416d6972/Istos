@@ -124,6 +124,7 @@ class _LifecycleMixin(IstosBase):
             ("persist", self._unbind_persist),
             ("channels", self._unbind_channels),
             ("handlers", self._unbind_handlers),
+            ("drain", self._drain_inflight),
             ("session", _close_stack),
         ):
             try:

@@ -7,7 +7,14 @@ from contextlib import AsyncExitStack
 from typing import Any, AsyncIterator, List, Optional
 
 from istos.app import Istos
-from istos.context import RequestContext, RequestEnvelope, set_request_context
+from contextvars import Token
+
+from istos.context import (
+    RequestContext,
+    RequestEnvelope,
+    pop_request_context,
+    push_request_context,
+)
 from istos.security.authz import AuthContext, check_authorized
 from istos.primitives.channel import ChannelClosed, ChannelSession
 from istos.validation import validate_params
@@ -56,15 +63,20 @@ class IstosTestClient:
                 return wrapper
         raise KeyError(f"No channel registered for prefix: {prefix!r}")
 
-    async def _gate(self, wrapper: Any, prefix: str, params: dict, token: Optional[str]) -> None:
-        """Run the authorizer and set a request context so the body can inject
-        the resolved principal/token. A denial raises ``UnauthorizedError``."""
+    async def _gate(
+        self, wrapper: Any, prefix: str, params: dict, token: Optional[str],
+    ) -> Token:
+        """Run the authorizer and push a request context so the body can inject
+        the resolved principal/token. A denial raises ``UnauthorizedError``.
+
+        Returns the token to pop: the context must not outlive the call, or the
+        next call in the same test (and the test body itself) sees this caller."""
         attachment = RequestEnvelope(token=token).to_attachment() if token is not None else None
         principal = await check_authorized(
             getattr(wrapper, "_authorizer", None),
             AuthContext(prefix=prefix, key_expr=prefix, params=params, attachment=attachment),
         )
-        set_request_context(RequestContext(
+        return push_request_context(RequestContext(
             prefix=prefix, principal=principal, attachment=attachment,
         ))
 
@@ -76,8 +88,11 @@ class IstosTestClient:
         validated = validate_params(handler.func, kwargs, skip_params=skip)
         validated.pop("db", None)
         validated.pop("session", None)
-        await self._gate(handler, prefix, validated, token)
-        return await handler(**validated)
+        ctx_token = await self._gate(handler, prefix, validated, token)
+        try:
+            return await handler(**validated)
+        finally:
+            pop_request_context(ctx_token)
 
     async def stream(
         self, prefix: str, token: Optional[str] = None, **kwargs: Any
@@ -91,8 +106,17 @@ class IstosTestClient:
         skip = getattr(wrapper, "_injected_params", None)
         validated = validate_params(wrapper.func, kwargs, skip_params=skip)
         validated.pop("db", None)
-        await self._gate(wrapper, prefix, validated, token)
+        ctx_token = await self._gate(wrapper, prefix, validated, token)
+        try:
+            async for chunk in self._drive_stream(wrapper, validated):
+                yield chunk
+        finally:
+            try:
+                pop_request_context(ctx_token)
+            except ValueError:
+                pass  # generator finalized in another context; nothing to restore
 
+    async def _drive_stream(self, wrapper: Any, validated: dict) -> AsyncIterator[Any]:
         async with AsyncExitStack() as di_stack:
             call_kwargs = dict(validated)
             if getattr(wrapper, "_has_depends", False):
@@ -120,8 +144,9 @@ class IstosTestClient:
         attachment = (
             RequestEnvelope(token=token).to_attachment() if token is not None else None
         )
+        principals = []
         for sub in subscribers:
-            await check_authorized(
+            principals.append(await check_authorized(
                 getattr(sub, "_authorizer", None),
                 AuthContext(
                     prefix=getattr(sub, "prefix", prefix),
@@ -129,9 +154,17 @@ class IstosTestClient:
                     attachment=attachment,
                     operation="subscribe",
                 ),
-            )
-        for sub in subscribers:
-            await sub(data)
+            ))
+        # Each delivery sees its publisher, as it would on the mesh.
+        for sub, principal in zip(subscribers, principals):
+            ctx_token = push_request_context(RequestContext(
+                prefix=getattr(sub, "prefix", prefix), operation="subscribe",
+                principal=principal, attachment=attachment,
+            ))
+            try:
+                await sub(data)
+            finally:
+                pop_request_context(ctx_token)
 
     def channel(
         self, prefix: str, token: Optional[str] = None,
@@ -197,9 +230,8 @@ class _TestChannel:
             store=self._wrapper.session_store,
             conversation_id=self._conversation_id,
         )
-        set_request_context(RequestContext(
-            prefix=self._wrapper.prefix, principal=principal, attachment=self._attachment,
-        ))
+        # wrapper.run installs the session's own request context inside the
+        # task, so nothing is set on the caller's.
 
         async def _run() -> None:
             try:

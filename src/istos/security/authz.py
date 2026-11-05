@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Iterable, Optional, Union
+from typing import Any, Awaitable, Callable, Iterable, Mapping, Optional, Union
 
 from istos.errors import ForbiddenError, UnauthorizedError
 
@@ -89,17 +89,28 @@ class TokenAuthorizer:
     Zenoh get/put (see :meth:`Istos.query_once`).
 
         istos = Istos(authorizer=TokenAuthorizer("s3cr3t"))
+
+    A plain token proves possession and nothing else, so it carries no identity
+    and no roles; ``require_roles`` then has nothing to check. Map each token to
+    a :class:`Principal` to give it one::
+
+        TokenAuthorizer({"ops-token": Principal("ops", roles=frozenset({"admin"}))})
     """
 
-    def __init__(self, tokens: Union[str, Iterable[str]]):
+    def __init__(self, tokens: Union[str, Iterable[str], Mapping[str, "Principal"]]):
+        self._principals: dict = {}
         if isinstance(tokens, str):
             tokens = {tokens}
+        elif isinstance(tokens, Mapping):
+            self._principals = dict(tokens)
         self._tokens = set(tokens)
         if not self._tokens:
             raise ValueError("TokenAuthorizer requires at least one token")
 
-    def __call__(self, ctx: AuthContext) -> bool:
-        return ctx.token is not None and ctx.token in self._tokens
+    def __call__(self, ctx: AuthContext) -> Any:
+        if ctx.token is None or ctx.token not in self._tokens:
+            return False
+        return self._principals.get(ctx.token, True)
 
 
 async def check_authorized(authorizer: Optional[Authorizer], ctx: AuthContext) -> Any:
@@ -342,7 +353,12 @@ def require_roles(
             principal = await check_authorized(authenticator, ctx)
             ctx.principal = principal
         if principal is None:
-            raise UnauthorizedError(f"Authentication required for '{ctx.prefix}'")
+            raise UnauthorizedError(
+                f"Authentication required for '{ctx.prefix}': no identity was "
+                "established (an authorizer that returns a bare True, such as "
+                "TokenAuthorizer with plain tokens, carries no roles — map tokens "
+                "to a Principal)"
+            )
         have = _roles_of(principal)
         ok = bool(required & have) if mode == "any" else required <= have
         if not ok:

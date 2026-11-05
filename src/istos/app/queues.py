@@ -37,6 +37,8 @@ class _QueueMixin(IstosBase):
         retry_jitter: float = 0.1,
         keep_results: bool = False,
         result_ttl_s: float = 3600.0,
+        dead_letter_ttl_s: Optional[float] = 7 * 86400.0,
+        chord_ttl_s: Optional[float] = 86400.0,
         ha: bool = False,
         authorizer: Optional[Authorizer] = None,
         store: Optional[QueueStore] = None,
@@ -59,7 +61,14 @@ class _QueueMixin(IstosBase):
         backoff (``retry_backoff_s`` base, doubling, capped at ``retry_backoff_max_s``,
         ``retry_jitter`` spread) up to ``max_attempts`` times, then dead-lettered.
         With ``keep_results=True`` the handler's return value is retained for
-        ``result_ttl_s`` seconds and readable via :meth:`result`.
+        ``result_ttl_s`` seconds and readable via :meth:`result`. Dead letters
+        are kept for ``dead_letter_ttl_s`` (a week by default; ``None`` keeps them
+        until removed) and a chord barrier whose members never all report is
+        dropped after ``chord_ttl_s``.
+
+        An ack or nack carries the claim's attempt number as a fencing token: a
+        worker whose lease expired, and whose job another worker has since
+        claimed, cannot finish or fail it.
 
         ``ha=True`` runs this owner as one of several replicas that elect a single
         leader over Zenoh liveliness; if the leader dies a standby takes over. HA
@@ -72,6 +81,7 @@ class _QueueMixin(IstosBase):
             store or QueueStore(
                 prefix.rstrip("/"), self._storage,
                 keep_results=keep_results, result_ttl_s=result_ttl_s,
+                dead_letter_ttl_s=dead_letter_ttl_s, chord_ttl_s=chord_ttl_s,
             ),
             lease_s=lease_s, max_attempts=max_attempts,
             sweep_interval_s=sweep_interval_s,
@@ -387,10 +397,14 @@ class _QueueMixin(IstosBase):
         return await self._queue_get(f"{prefix}/claim", token=token)
 
     async def _queue_ack(
-        self, prefix: str, job_id: str, *, result: Optional[bytes] = None, token: Any = None,
+        self, prefix: str, job_id: str, *, result: Optional[bytes] = None,
+        attempt: Optional[int] = None, token: Any = None,
     ) -> None:
+        params: dict = {"job_id": job_id}
+        if attempt is not None:
+            params["attempt"] = attempt  # lease fencing token from the claim
         await self._queue_get(
-            build_selector(f"{prefix}/ack", {"job_id": job_id}), payload=result, token=token,
+            build_selector(f"{prefix}/ack", params), payload=result, token=token,
         )
 
     async def _queue_nack(

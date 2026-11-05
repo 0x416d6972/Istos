@@ -3,7 +3,7 @@ import inspect
 import zenoh
 from typing import Any, Callable, List, Optional, Union
 
-from istos.errors import NotFoundError, error_from_payload, is_error_payload
+from istos.errors import NotFoundError, ReplyDecodeError, error_from_payload, is_error_payload
 from istos.messages.serialization import Serialize
 from istos.retry import RetryPolicy, execute_with_retry
 from istos.context import RequestEnvelope, peek_request_context
@@ -98,7 +98,7 @@ class query_wrapper:
             for k in query_kwargs:
                 kwargs.pop(k)
 
-        async def _do_query():
+        async def _do_query() -> Any:
             # session.get blocks — keep it off the event loop.
             results: List[QueryResult] = await asyncio.to_thread(
                 self._blocking_query, zenoh_session, selector
@@ -107,26 +107,34 @@ class query_wrapper:
             if not results:
                 raise NotFoundError(f"No handler replied for {self.prefix!r}")
 
-            decoded = [r.decode() for r in results]
-            data = decoded[0] if len(decoded) == 1 else decoded
+            try:
+                decoded = [r.decode() for r in results]
+            except Exception as e:
+                raise ReplyDecodeError(
+                    f"Reply from {self.prefix!r} could not be decoded: {e}"
+                ) from e
+            data: Any = decoded[0] if len(decoded) == 1 else decoded
 
             # Single replies only: one of several responders failing is not the
             # call failing, so a list is passed through as-is.
             if is_error_payload(data):
                 raise error_from_payload(data)
+            return data
 
-            # args may already hold `self` from bound_query_wrapper.
-            if self._has_depends:
-                return await invoke_with_dependencies(
-                    self.func, args=(*args, data), skip_names=self._skip_names,
-                    overrides=self._dependency_overrides,
-                )
-            if inspect.iscoroutinefunction(self.func):
-                return await self.func(*args, data, **kwargs)
-            else:
-                return await asyncio.to_thread(self.func, *args, data, **kwargs)
+        # Retry covers reaching the handler, not the callback: a callback that
+        # raises would otherwise send the request again and run the remote
+        # handler's side effects once per retry.
+        data = await execute_with_retry(_do_query, self.retry_policy)
 
-        return await execute_with_retry(_do_query, self.retry_policy)
+        # args may already hold `self` from bound_query_wrapper.
+        if self._has_depends:
+            return await invoke_with_dependencies(
+                self.func, args=(*args, data), skip_names=self._skip_names,
+                overrides=self._dependency_overrides,
+            )
+        if inspect.iscoroutinefunction(self.func):
+            return await self.func(*args, data, **kwargs)
+        return await asyncio.to_thread(self.func, *args, data, **kwargs)
 
     def _outbound_attachment(self) -> Optional[bytes]:
         """Build the attachment: the caller's token plus — when this query runs

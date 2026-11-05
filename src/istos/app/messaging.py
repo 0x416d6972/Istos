@@ -7,6 +7,7 @@ from typing import Any, AsyncIterator, Callable, Optional, Union
 from istos.communication.persist import ObjectStore, PersistRole, ReplayEvent, parse_store_url
 from istos.consistency.storage import Durability
 from istos.messages.serialization import Serialize, JsonSerializer
+from istos.primitives._binding import ensure_network_bindable
 from istos.primitives.handler import handler_wrapper
 from istos.primitives.query import query_wrapper
 from istos.primitives.subscribe import subscribe_wrapper
@@ -465,12 +466,13 @@ class _MessagingMixin(IstosBase):
         loop = asyncio.get_running_loop()
         
         for wrapper in self._handlers:
+            ensure_network_bindable(wrapper.func, "handle", wrapper.prefix)
             self._logger.info("Binding handler %s", wrapper.prefix, extra={"prefix": wrapper.prefix})
 
             def make_callback(w=wrapper):
                 def _sync_callback(query: zenoh.Query):
                     if not loop.is_closed():
-                        asyncio.run_coroutine_threadsafe(w.on_query(query), loop)
+                        self._submit(loop, w.on_query(query))
                 return _sync_callback
 
             queryable = session.declare_queryable(
@@ -489,12 +491,13 @@ class _MessagingMixin(IstosBase):
         loop = asyncio.get_running_loop()
 
         for wrapper in self._subscribers:
+            ensure_network_bindable(wrapper.func, "subscribe", wrapper.prefix)
             self._logger.info("Binding subscriber %s", wrapper.prefix, extra={"prefix": wrapper.prefix})
 
             def make_callback(w=wrapper):
                 def _sync_callback(sample: zenoh.Sample):
                     if not loop.is_closed():
-                        asyncio.run_coroutine_threadsafe(w.on_sample(sample), loop)
+                        self._submit(loop, w.on_sample(sample))
                 return _sync_callback
 
             if wrapper.durable:
@@ -503,7 +506,7 @@ class _MessagingMixin(IstosBase):
                 def make_miss_callback(w=wrapper):
                     def _miss(source: str, nb: int):
                         if not loop.is_closed():
-                            asyncio.run_coroutine_threadsafe(w.handle_miss(source, nb), loop)
+                            self._submit(loop, w.handle_miss(source, nb))
                     return _miss
 
                 sub: Any = declare_durable_subscriber(
@@ -576,7 +579,7 @@ class _MessagingMixin(IstosBase):
             def make_callback(w=wrapper):
                 def _sync_callback(sample: zenoh.Sample):
                     if not loop.is_closed():
-                        asyncio.run_coroutine_threadsafe(w.on_sample(sample), loop)
+                        self._submit(loop, w.on_sample(sample))
                 return _sync_callback
 
             sub = session.liveliness().declare_subscriber(wrapper.prefix, make_callback(), history=False)

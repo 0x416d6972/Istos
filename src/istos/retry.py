@@ -22,6 +22,12 @@ class RetryPolicy:
     jitter: float = 0.1
     on_failure: Optional[Callable[..., Any]] = None
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.max_retries, int) or self.max_retries < 0:
+            raise ValueError(f"max_retries must be a non-negative int, got {self.max_retries!r}")
+        if self.delay < 0 or self.max_delay < 0 or self.backoff_factor <= 0:
+            raise ValueError("delay/max_delay must be >= 0 and backoff_factor > 0")
+
     @classmethod
     def from_int(cls, value: int) -> "RetryPolicy":
         """Shorthand: retry=5 becomes RetryPolicy(max_retries=5)."""

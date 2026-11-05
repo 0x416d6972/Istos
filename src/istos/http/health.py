@@ -6,6 +6,10 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Awaitable
 
+from istos.logging import get_logger
+
+_logger = get_logger("health")
+
 HealthCheck = Callable[[], Awaitable[Dict[str, Any]]]
 
 
@@ -32,7 +36,10 @@ class HealthState:
                 if results[name].get("status") != "ok":
                     all_ok = False
             except Exception as exc:
-                results[name] = {"status": "error", "error": str(exc)}
+                # Readiness is answered to any peer; the exception text can
+                # carry DSNs or hostnames, so it goes to the log, not the reply.
+                _logger.warning("Readiness check %s failed", name, exc_info=True)
+                results[name] = {"status": "error", "error": type(exc).__name__}
                 all_ok = False
         return {
             "status": "ready" if all_ok else "not_ready",

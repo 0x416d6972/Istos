@@ -51,6 +51,9 @@ class worker_wrapper:
         self.func = func
         self.prefix = prefix.rstrip("/")
         self.concurrency = max(1, concurrency)
+        if poll_interval_s <= 0:
+            # 0 turns the idle wait into a busy loop against the queue owner.
+            raise ValueError(f"poll_interval_s must be > 0, got {poll_interval_s!r}")
         self.poll_interval_s = poll_interval_s
         self.serializer = serializer
         self._token = token
@@ -178,7 +181,8 @@ class worker_wrapper:
                 # a crash redelivers the whole step rather than losing the follow-on.
                 await self._advance_workflow(wf, result_bytes)
                 await self._app._queue_ack(
-                    self.prefix, job_id, result=result_bytes, token=self._token,
+                    self.prefix, job_id, result=result_bytes, attempt=attempt,
+                    token=self._token,
                 )
             except Exception:
                 # The lease will expire and the job redeliver — at-least-once.

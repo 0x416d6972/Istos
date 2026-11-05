@@ -62,7 +62,12 @@ def validate_params(
     """
     excluded = {"self"} | (skip_params or set())
     sig = inspect.signature(func)
-    hints = get_type_hints(func)
+    try:
+        hints = get_type_hints(func)
+    except (NameError, TypeError, AttributeError):
+        # Unresolvable forward reference: pass the declared params through
+        # unvalidated rather than failing every call.
+        hints = {}
 
     # --- Mode 1: Single Pydantic BaseModel parameter ---
     non_self_params = [
@@ -95,10 +100,8 @@ def validate_params(
             var_keyword = True
             continue
         annotation = hints.get(name, Any)
-        if annotation is Any:
-            # No typed hint for this param, skip validation
-            field_definitions[name] = (Any, ...)
-        elif param.default is not inspect.Parameter.empty:
+        # An untyped param is not coerced, but its default still makes it optional.
+        if param.default is not inspect.Parameter.empty:
             field_definitions[name] = (annotation, param.default)
         else:
             field_definitions[name] = (annotation, ...)

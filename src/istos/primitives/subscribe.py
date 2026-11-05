@@ -66,6 +66,9 @@ class subscribe_wrapper:
             4096 if dedup is True else int(dedup) if dedup else 0
         )
         self._seen: "OrderedDict[str, None]" = OrderedDict()
+        # Fingerprints being dispatched right now: a duplicate that arrives
+        # mid-dispatch is dropped, but nothing is "seen" until it succeeded.
+        self._inflight: set = set()
 
         if retry is None:
             self.retry_policy = RetryPolicy(max_retries=0)
@@ -85,18 +88,24 @@ class subscribe_wrapper:
             func, _positional[0] if _positional else None
         )
 
-    def _is_duplicate(self, raw_payload: bytes) -> bool:
-        """True if these bytes are already in the window, else records them."""
+    def _fingerprint(self, raw_payload: bytes) -> Optional[str]:
         if not self._dedup_window:
+            return None
+        return hashlib.sha256(raw_payload).hexdigest()
+
+    def _is_duplicate(self, fp: Optional[str]) -> bool:
+        """True if these bytes were already delivered, or are being delivered now."""
+        if fp is None:
             return False
-        fp = hashlib.sha256(raw_payload).hexdigest()
         if fp in self._seen:
             self._seen.move_to_end(fp)
             return True
+        return fp in self._inflight
+
+    def _record_delivered(self, fp: str) -> None:
         self._seen[fp] = None
         if len(self._seen) > self._dedup_window:
             self._seen.popitem(last=False)
-        return False
 
     async def _dispatch(self, data: Any, instance: Optional[Any] = None) -> Any:
         args = (instance, data) if instance is not None else (data,)
@@ -197,12 +206,33 @@ class subscribe_wrapper:
         """Deserialize, validate, and dispatch a payload through the retry +
         middleware pipeline. Shared by live delivery (``on_sample``) and history
         replay (``replay_history``)."""
-        if self._is_duplicate(raw_payload):
+        fp = self._fingerprint(raw_payload)
+        if self._is_duplicate(fp):
             self._logger.debug(
                 "Deduped duplicate sample on %s", self.prefix,
                 extra={"prefix": self.prefix},
             )
             return
+        if fp is None:
+            await self._deliver_once(raw_payload, principal, attachment, instance)
+            return
+        # Record the fingerprint only once the callback succeeded: a failed
+        # delivery must stay redeliverable, or the retry is dropped as a
+        # duplicate and the message is lost.
+        self._inflight.add(fp)
+        try:
+            await self._deliver_once(raw_payload, principal, attachment, instance)
+        finally:
+            self._inflight.discard(fp)
+        self._record_delivered(fp)
+
+    async def _deliver_once(
+        self,
+        raw_payload: bytes,
+        principal: Any,
+        attachment: Optional[bytes],
+        instance: Optional[Any],
+    ) -> None:
         data = self.serializer.deserialize(raw_payload)
         # Validate before retry — schema failures won't recover, and we can't reply.
         if self._validate_payload is not None:

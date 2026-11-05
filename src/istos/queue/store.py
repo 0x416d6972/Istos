@@ -137,11 +137,19 @@ class QueueStore:
         *,
         keep_results: bool = False,
         result_ttl_s: float = 3600.0,
+        dead_letter_ttl_s: Optional[float] = 7 * 86400.0,
+        chord_ttl_s: Optional[float] = 86400.0,
     ) -> None:
         self._name = name
         self._storage = storage
         self.keep_results = keep_results
         self.result_ttl_s = result_ttl_s
+        # Dead letters are kept for inspection, so they do not share the result
+        # TTL (an hour by default). ``None`` keeps them until removed.
+        self.dead_letter_ttl_s = dead_letter_ttl_s
+        # A chord whose members never all report (one dead-lettered) would hold
+        # its barrier forever. ``None`` keeps it forever.
+        self.chord_ttl_s = chord_ttl_s
         self._jobs: Dict[str, JobRecord] = {}
         self._ids: set = set()                              # membership, mirrored to storage
         self._ready: List[Tuple[int, int, str]] = []        # (-priority, seq, id)
@@ -190,6 +198,8 @@ class QueueStore:
                 continue  # stale entry: job was acked, nacked, or re-leased
             if rec.attempts >= rec.max_attempts:
                 rec.state = JobState.DEAD
+                rec.completed_at = now
+                rec.last_error = rec.last_error or "lease expired"
             else:
                 rec.state = JobState.READY
                 rec.lease_until = 0.0
@@ -302,10 +312,26 @@ class QueueStore:
                 return JobRecord.from_dict(rec.to_dict())
         return None
 
-    async def ack(self, job_id: str, *, result: Optional[bytes] = None) -> bool:
+    @staticmethod
+    def _holds_lease(rec: JobRecord, attempt: Optional[int]) -> bool:
+        """Whether an ack/nack comes from the worker that holds the lease now.
+
+        ``attempt`` is the fencing token handed out by :meth:`claim`. A worker
+        whose lease expired and whose job was claimed again carries an older
+        attempt number; letting it ack would finish (or fail) the job under the
+        worker that is running it. ``None`` is a caller that sent no token: it
+        is still refused once the job is no longer leased.
+        """
+        if rec.state != JobState.LEASED:
+            return False
+        return attempt is None or rec.attempts == attempt
+
+    async def ack(
+        self, job_id: str, *, result: Optional[bytes] = None, attempt: Optional[int] = None,
+    ) -> bool:
         async with self._lock:
             rec = self._jobs.get(job_id)
-            if rec is None:
+            if rec is None or not self._holds_lease(rec, attempt):
                 return False
             if self.keep_results:
                 rec.state = JobState.DONE
@@ -320,13 +346,15 @@ class QueueStore:
 
     async def nack(
         self, job_id: str, *, error: Optional[str] = None, retry_delay_s: float = 0.0,
+        attempt: Optional[int] = None,
     ) -> Optional[str]:
         """Fail a leased job. Redelivers (after ``retry_delay_s``) if attempts
-        remain, else dead-letters. Returns "requeued" or "dead" (or None if
-        the job is unknown)."""
+        remain, else dead-letters. Returns "requeued" or "dead", or None if the
+        job is unknown or the caller no longer holds its lease (see
+        :meth:`_holds_lease`)."""
         async with self._lock:
             rec = self._jobs.get(job_id)
-            if rec is None:
+            if rec is None or not self._holds_lease(rec, attempt):
                 return None
             rec.last_error = error
             if rec.attempts >= rec.max_attempts:
@@ -358,14 +386,27 @@ class QueueStore:
                     and rec.completed_at + self.result_ttl_s <= now
                 ):
                     await self._forget(job_id)
-            expired = [
-                job_id for job_id, rec in self._jobs.items()
-                if rec.state == JobState.DEAD
-                and rec.completed_at
-                and rec.completed_at + self.result_ttl_s <= now
-            ]
-            for job_id in expired:
-                await self._forget(job_id)
+            if self.dead_letter_ttl_s is not None:
+                expired = [
+                    job_id for job_id, rec in self._jobs.items()
+                    if rec.state == JobState.DEAD
+                    and rec.completed_at
+                    and rec.completed_at + self.dead_letter_ttl_s <= now
+                ]
+                for job_id in expired:
+                    await self._forget(job_id)
+            if self.chord_ttl_s is not None:
+                stale = [
+                    chord_id for chord_id, chord in self._chords.items()
+                    if chord.get("created_at", now) + self.chord_ttl_s <= now
+                ]
+                for chord_id in stale:
+                    _logger.warning(
+                        "Queue %s dropped chord %s: %d of %d members reported in %ss",
+                        self._name, chord_id, len(self._chords[chord_id]["reported"]),
+                        self._chords[chord_id]["size"], self.chord_ttl_s,
+                    )
+                    del self._chords[chord_id]
         return len(changed)
 
     async def result(self, job_id: str) -> Tuple[str, Optional[bytes]]:
@@ -405,7 +446,7 @@ class QueueStore:
             if chord is None:
                 chord = {
                     "size": size, "results": [None] * size,
-                    "reported": set(), "fired": False,
+                    "reported": set(), "fired": False, "created_at": time.time(),
                 }
                 self._chords[chord_id] = chord
             elif index >= chord["size"]:

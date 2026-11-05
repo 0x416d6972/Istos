@@ -80,7 +80,14 @@ class stream_client_wrapper(_client_base):
             self.prefix, timeout_s=self.timeout_s, serializer=self.serializer,
             token=token if token is not None else self._token, **kwargs,
         )
-        return await self._drive(args, stream)
+        try:
+            return await self._drive(args, stream)
+        finally:
+            # A body that stops early (break, return, raise) leaves the pump
+            # thread and the server's stream running until the timeout.
+            aclose = getattr(stream, "aclose", None)
+            if aclose is not None:
+                await aclose()
 
 
 class channel_client_wrapper(_client_base):

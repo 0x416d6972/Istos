@@ -9,7 +9,6 @@ from typing import Any, Awaitable, Callable, List, Optional, Protocol, runtime_c
 
 from istos.context import (
     RequestContext,
-    get_request_context,
     pop_request_context,
     push_request_context,
 )
@@ -91,7 +90,10 @@ class LoggingMiddleware:
         scope: RequestScope,
         call_next: HandlerCallable,
     ) -> Any:
-        ctx = get_request_context()
+        # The scope's own context: get_request_context() outside a request
+        # creates one per task and keeps it, so a long-lived task would log one
+        # correlation id for every request it served.
+        ctx = scope.context
         start = time.perf_counter()
         self._logger.info(
             "%s %s started",

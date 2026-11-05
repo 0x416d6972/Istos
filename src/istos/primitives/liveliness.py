@@ -4,6 +4,9 @@ import zenoh
 from typing import Any, Callable, Optional
 
 from istos.di.depends import has_dependencies, invoke_with_dependencies, positional_param_names
+from istos.logging import get_logger
+
+_logger = get_logger("liveliness")
 
 
 class bound_liveliness_wrapper:
@@ -55,7 +58,10 @@ class liveliness_wrapper:
             else:
                 await asyncio.to_thread(self.func, *args)
         except Exception as e:
-            print(f"[Istos Liveliness] Error processing sample on {self.prefix}: {e}")
+            _logger.error(
+                "Error processing liveliness sample on %s: %s", self.prefix, e,
+                exc_info=True, extra={"prefix": self.prefix},
+            )
 
     def __get__(self, instance: Any, owner: Any) -> Any:
         if instance is None:

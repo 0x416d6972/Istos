@@ -4,6 +4,7 @@ Every mixin inherits this, so ``__init__`` here is the single source of truth
 for instance state and mypy resolves ``self._x`` for the mixin methods."""
 
 import asyncio
+import threading
 import zenoh
 from contextlib import AsyncExitStack
 from typing import Any, AsyncIterator, Callable, List, Mapping, Optional, Type, Union, AsyncContextManager, cast
@@ -105,6 +106,8 @@ class IstosBase:
         http_port: Optional[int] = None,
         enable_mcp: bool = False,
         mcp_path: str = "/mcp",
+        http_max_body_bytes: int = 1024 * 1024,
+        shutdown_grace_s: float = 10.0,
     ):
         # configure_logging=True installs now; None defers to run(); False = never.
         self._log_level = log_level
@@ -201,6 +204,13 @@ class IstosBase:
         self._shm_provider: Optional[Any] = None
         self._docs_web_port: Optional[int] = None
         self._http_port: Optional[int] = http_port
+        # Largest HTTP request body the gateway/SSE/MCP surface reads (413 above).
+        self._http_max_body_bytes = http_max_body_bytes
+        # How long shutdown waits for in-flight network requests before closing
+        # the session underneath them.
+        self._shutdown_grace_s = shutdown_grace_s
+        self._inflight: set = set()
+        self._inflight_lock = threading.Lock()
         self._docs_prefix: Optional[str] = None
         self._shutdown_event: Optional[asyncio.Event] = None
         self._builtin_handlers_registered = False
@@ -217,6 +227,38 @@ class IstosBase:
         self._enable_mcp = enable_mcp
         self._mcp_path = mcp_path
         self._approval_gate: Optional[Any] = None
+
+    def _submit(self, loop: asyncio.AbstractEventLoop, coro: Any) -> None:
+        """Run a network callback's coroutine on ``loop`` from a Zenoh thread,
+        tracked so shutdown can wait for it instead of closing the session
+        underneath it."""
+        fut = asyncio.run_coroutine_threadsafe(coro, loop)
+        with self._inflight_lock:
+            self._inflight.add(fut)
+
+        def _done(f: Any) -> None:
+            with self._inflight_lock:
+                self._inflight.discard(f)
+
+        fut.add_done_callback(_done)
+
+    async def _drain_inflight(self) -> None:
+        """Wait up to ``shutdown_grace_s`` for in-flight network requests."""
+        with self._inflight_lock:
+            pending = list(self._inflight)
+        if not pending or self._shutdown_grace_s <= 0:
+            return
+        self._logger.info("Waiting for %d in-flight request(s)", len(pending))
+        _, still = await asyncio.wait(
+            [asyncio.wrap_future(f) for f in pending], timeout=self._shutdown_grace_s,
+        )
+        if still:
+            self._logger.warning(
+                "%d request(s) still running after %ss; cancelling them",
+                len(still), self._shutdown_grace_s,
+            )
+            for f in pending:
+                f.cancel()
 
     def _get_or_init_shm(self) -> Any:
         if self._shm_provider is None:

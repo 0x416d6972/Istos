@@ -62,10 +62,16 @@ class RateLimitMiddleware:
     def _evict(self, now: float) -> None:
         if len(self._buckets) < 1024:
             return
+        # A bucket that would be full by now carries no state: dropping it and
+        # starting a fresh (full) one is the same answer. Judge by the refilled
+        # level, not the stored one, or an exhausted key that never returns
+        # would be kept forever.
+        refill = self.rate / self.per
         stale = [
             key
             for key, (tokens, last) in self._buckets.items()
-            if now - last >= self._idle_s and tokens >= self.burst
+            if now - last >= self._idle_s
+            and tokens + (now - last) * refill >= self.burst
         ]
         for key in stale:
             del self._buckets[key]

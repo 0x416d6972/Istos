@@ -49,6 +49,16 @@ def _as_int(params: dict, key: str, default: int) -> int:
         return default
 
 
+def _fence(params: dict) -> Optional[int]:
+    """The lease fencing token (the claim's attempt number), if the caller sent one."""
+    if "attempt" not in params:
+        return None
+    try:
+        return int(params["attempt"])
+    except (TypeError, ValueError):
+        return None
+
+
 class QueueRole:
     """The queue owner. Binds enqueue / claim / ack / nack / result queryables on
     the shared session, publishes a nudge when a job arrives, and reclaims expired
@@ -263,7 +273,9 @@ class QueueRole:
         if not await self._authorize(query, params):
             return
         result = _query_payload(query) or None
-        ok = await self.store.ack(params.get("job_id", ""), result=result)
+        ok = await self.store.ack(
+            params.get("job_id", ""), result=result, attempt=_fence(params),
+        )
         _reply(query, {"ok": ok})
 
     async def _on_nack(self, query: "zenoh.Query") -> None:
@@ -274,6 +286,7 @@ class QueueRole:
         attempt = _as_int(params, "attempt", 1)
         disposition = await self.store.nack(
             params.get("job_id", ""), error=error, retry_delay_s=self._backoff(attempt),
+            attempt=_fence(params),
         )
         _reply(query, {"ok": disposition is not None, "disposition": disposition})
 

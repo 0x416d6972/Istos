@@ -8,6 +8,7 @@ try:
 except ImportError:
     HAS_PYDANTIC = False
 
+from istos.di.depends import extract_depends
 from istos.validation import _is_basemodel
 
 
@@ -25,13 +26,20 @@ def get_function_schemas(func: Callable) -> Dict[str, Any]:
         return {"payload_schema": None, "return_schema": None}
 
     sig = inspect.signature(func)
-    hints = get_type_hints(func)
+    try:
+        hints = get_type_hints(func)
+    except (NameError, TypeError, AttributeError):
+        hints = {}
 
-    # Payload Schema
+    # Payload Schema. Only what a caller sends: ``db`` and ``Depends(...)`` are
+    # injected by the framework, and listing them would tell an agent (or an MCP
+    # client) to supply arguments the endpoint never reads.
     payload_schema = None
     non_self_params = [
         (name, param) for name, param in sig.parameters.items()
-        if name != "self"
+        if name not in ("self", "db")
+        and extract_depends(param) is None
+        and param.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
     ]
 
     if len(non_self_params) == 1:
@@ -45,9 +53,7 @@ def get_function_schemas(func: Callable) -> Dict[str, Any]:
         field_definitions = {}
         for name, param in non_self_params:
             annotation = hints.get(name, Any)
-            if annotation is Any:
-                field_definitions[name] = (Any, ...)
-            elif param.default is not inspect.Parameter.empty:
+            if param.default is not inspect.Parameter.empty:
                 field_definitions[name] = (annotation, param.default)
             else:
                 field_definitions[name] = (annotation, ...)

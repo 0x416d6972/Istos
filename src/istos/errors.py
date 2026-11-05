@@ -24,7 +24,12 @@ class IstosSecurityError(Exception):
 
 
 class IstosError(Exception):
+    retryable: Optional[bool] = None
+
     """Base exception for Istos application errors.
+
+    ``retryable`` overrides the status-based rule in :func:`is_retryable` when a
+    subclass sets it.
 
     ``correlation_id`` is set when the error came off a responder's reply (see
     :func:`error_from_payload`) and matches the log line on the node that failed.
@@ -46,6 +51,20 @@ class IstosError(Exception):
         self.status = status
         self.details = details
         self.correlation_id = correlation_id
+
+
+class ReplyDecodeError(IstosError):
+    """A reply arrived but could not be deserialized (serializer mismatch, corrupt bytes).
+
+    Not retryable: the responder already ran, and asking again runs it again only
+    to get bytes this caller still cannot read.
+    """
+
+    retryable = False
+
+    def __init__(self, message: str = "Reply could not be decoded", **kwargs: Any):
+        kwargs.setdefault("code", "decode_error")
+        super().__init__(message, status=502, **kwargs)
 
 
 class NotFoundError(IstosError):
@@ -118,6 +137,9 @@ def is_retryable(exc: BaseException) -> bool:
     Everything else, transport faults included, is retryable.
     """
     if isinstance(exc, IstosError):
+        explicit = getattr(exc, "retryable", None)
+        if explicit is not None:
+            return bool(explicit)
         if exc.status in (409, 429):
             return True
         return not (400 <= exc.status < 500)

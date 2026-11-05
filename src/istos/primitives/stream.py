@@ -55,6 +55,7 @@ class stream_wrapper:
         exception_registry: Optional[ExceptionHandlerRegistry] = None,
         dependency_overrides: Optional[dict] = None,
         middleware: Optional[MiddlewareStack] = None,
+        storage: Any = None,
     ) -> None:
         if not inspect.isasyncgenfunction(func):
             raise TypeError(
@@ -75,6 +76,12 @@ class stream_wrapper:
         }
         self._has_depends = bool(self._depends_params)
         self._injected_params = set(self._depends_params)
+        # ``db`` is the app's storage, injected like on @handle — never read off
+        # the network.
+        self._storage = storage
+        self._inject_db = "db" in _params
+        if self._inject_db:
+            self._injected_params.add("db")
         self._dependency_overrides = (
             dependency_overrides if dependency_overrides is not None else {}
         )
@@ -138,6 +145,8 @@ class stream_wrapper:
 
             async with AsyncExitStack() as di_stack:
                 call_kwargs = dict(validated)
+                if self._inject_db:
+                    call_kwargs["db"] = self._storage
                 if self._has_depends:
                     call_kwargs = await resolve_dependencies(
                         self.func, call_kwargs, di_stack, cache={},
